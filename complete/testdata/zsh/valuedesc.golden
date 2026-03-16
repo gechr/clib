@@ -1,0 +1,31 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-f --format)-f+[Output format]:format:((json\:JSON\ output yaml\:YAML\ output text\:Plain\ text))' \
+        '(-f --format)--format=[Output format]:format:((json\:JSON\ output yaml\:YAML\ output text\:Plain\ text))' \
+        '(-t --tags)-t+[Filter tags]:tags:{_sequence compadd - bug feature docs}' \
+        '(-t --tags)--tags=[Filter tags]:tags:{_sequence compadd - bug feature docs}' \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+    && ret=0
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

@@ -1,0 +1,81 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '--root-local[Root local]' \
+        '--root-persistent[Root persistent]' \
+        ':: :_myapp_commands' \
+        '*::: :->myapp' \
+    && ret=0
+
+    case $state in
+    (myapp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:myapp-command-$line[1]:"
+        case $line[1] in
+            (parent)
+                _arguments "${_arguments_options[@]}" : \
+                    '--parent-local[Parent local]' \
+                    '--parent-persistent[Parent persistent]' \
+                    '--root-persistent[Root persistent]' \
+                    ':: :_myapp__parent_commands' \
+                    '*::: :->parent' \
+                && ret=0
+
+                case $state in
+                (parent)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:parent-command-$line[1]:"
+                    case $line[1] in
+                        (child)
+                            _arguments "${_arguments_options[@]}" : \
+                                '--child-local[Child local]' \
+                                '--parent-persistent[Parent persistent]' \
+                                '--root-persistent[Root persistent]' \
+                            && ret=0
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_myapp_commands] )) ||
+_myapp_commands() {
+    local commands; commands=(
+        'parent:Parent command' \
+    )
+    _describe -t commands 'myapp commands' commands "$@"
+}
+
+(( $+functions[_myapp__parent_commands] )) ||
+_myapp__parent_commands() {
+    local commands; commands=(
+        'child:Child command' \
+    )
+    _describe -t commands 'myapp parent commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

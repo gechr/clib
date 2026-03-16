@@ -1,0 +1,9 @@
+complete -c myapp -f
+
+complete -c myapp -s c -l config -k -xa "(__fish_complete_suffix .yaml .yml)" -d "Config file"
+complete -c myapp -s d -l dir -r -f -a "(__fish_complete_directories)" -d "Directory"
+complete -c myapp -l host -r -f -a "(__fish_print_hostnames)" -d "Host name"
+complete -c myapp -s o -l output -r -F -d "Output path"
+complete -c myapp -l shell -r -f -a "(__fish_complete_command)" -d "Shell command"
+complete -c myapp -l user -r -f -a "(__fish_complete_users)" -d "User name"
+complete -c myapp -s v -l verbose -d "Verbose output"

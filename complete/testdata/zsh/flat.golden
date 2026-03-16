@@ -1,0 +1,37 @@
+#compdef clibapp
+
+autoload -U is-at-least
+
+_clibapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-a --author)-a+[Author]:author:($(clibapp --@complete=author))' \
+        '(-a --author)--author=[Author]:author:($(clibapp --@complete=author))' \
+        '--ci=[CI status]:ci:(success failure pending)' \
+        '--columns=[Table columns]:columns:{_sequence compadd - $(clibapp --@complete=columns)}' \
+        '(-L --limit)-L+[Max results]: :_default' \
+        '(-L --limit)--limit=[Max results]: :_default' \
+        '--merge[Auto-merge]' \
+        '--no-merge[Disable auto-merge]' \
+        '(-s --state)-s+[State]:state:(open closed merged all)' \
+        '(-s --state)--state=[State]:state:(open closed merged all)' \
+        '(-v --verbose)-v[Verbose]' \
+        '(-v --verbose)--verbose[Verbose]' \
+    && ret=0
+}
+
+if [ "$funcstack[1]" = "_clibapp" ]; then
+    _clibapp "$@"
+else
+    compdef _clibapp clibapp
+fi

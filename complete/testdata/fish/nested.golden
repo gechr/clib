@@ -1,0 +1,35 @@
+complete -c myapp -f
+
+function __myapp_global_optspecs
+    string join \n -- 'verbose'
+end
+
+function __myapp_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        echo $argv[1]
+        return 1
+    end
+    return 0
+end
+
+function __myapp_using_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
+complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
+complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
+
+complete -c myapp -n '__myapp_needs_command' -l verbose -d "Verbose"
+
+complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
+complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
+complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
+
+complete -c myapp -n '__myapp_using_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"

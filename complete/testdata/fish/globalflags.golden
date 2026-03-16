@@ -1,0 +1,38 @@
+complete -c myapp -f
+
+function __myapp_global_optspecs
+    string join \n -- 'config=' 'no-config' 'no-proxy' 'v/verbose' 'color=' 'h' 'help'
+end
+
+function __myapp_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        echo $argv[1]
+        return 1
+    end
+    return 0
+end
+
+function __myapp_using_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
+complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
+complete -c myapp -n '__myapp_needs_command' -a version -d "Show version"
+
+complete -c myapp -n '__myapp_needs_command' -l color -x -a "auto always never" -d "Color mode"
+complete -c myapp -n '__myapp_needs_command' -l config -r -d "Config file"
+complete -c myapp -n '__myapp_needs_command' -s h -d "Show help"
+complete -c myapp -n '__myapp_needs_command' -l help -d "Show help"
+complete -c myapp -n '__myapp_needs_command' -l no-config -d "Disable config"
+complete -c myapp -n '__myapp_needs_command' -l no-proxy -d "Ignore proxies"
+complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
+
+complete -c myapp -n '__myapp_using_subcommand run' -s n -l dry-run -d "Dry run"
+complete -c myapp -n '__myapp_using_subcommand run' -s o -l output -x -a "text json" -d "Output format"

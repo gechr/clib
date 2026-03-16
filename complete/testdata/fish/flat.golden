@@ -1,0 +1,26 @@
+complete -c clibapp -f
+
+# Comma-separated columns completion
+function __clibapp_complete_columns
+    set -l value (string replace -r '^--columns=' '' -- (commandline -ct))
+    set -l columns (clibapp --@complete=columns)
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $columns
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $columns
+    end
+end
+
+complete -c clibapp -s a -l author -x -a "(clibapp --@complete=author)" -d "Author"
+complete -c clibapp -l ci -x -a "success failure pending" -d "CI status"
+complete -c clibapp -l columns -x -kra "(__clibapp_complete_columns)" -d "Table columns"
+complete -c clibapp -s L -l limit -r -d "Max results"
+complete -c clibapp -l merge -d "Auto-merge"
+complete -c clibapp -l no-merge -d "Disable auto-merge"
+complete -c clibapp -s s -l state -x -a "open closed merged all" -d "State"
+complete -c clibapp -s v -l verbose -d "Verbose"

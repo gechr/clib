@@ -1,0 +1,4 @@
+complete -c myapp -f
+
+complete -c myapp -s c -l config -k -xa "(__fish_complete_suffix .yaml)" -d "Config file"
+complete -c myapp -s v -l verbose -d "Verbose output"

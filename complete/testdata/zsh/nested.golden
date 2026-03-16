@@ -1,0 +1,86 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '--verbose[Verbose]' \
+        ':: :_myapp_commands' \
+        '*::: :->myapp' \
+    && ret=0
+
+    case $state in
+    (myapp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:myapp-command-$line[1]:"
+        case $line[1] in
+            (auth)
+                _arguments "${_arguments_options[@]}" : \
+                    '--token=[Auth token]: :_default' \
+                    ':: :_myapp__auth_commands' \
+                    '*::: :->auth' \
+                && ret=0
+
+                case $state in
+                (auth)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:auth-command-$line[1]:"
+                    case $line[1] in
+                        (login)
+                            _arguments "${_arguments_options[@]}" : \
+                                '--browser[Open browser]' \
+                            && ret=0
+                        ;;
+                        (logout)
+                            _arguments "${_arguments_options[@]}" : \
+                            && ret=0
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+            (run)
+                _arguments "${_arguments_options[@]}" : \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_myapp_commands] )) ||
+_myapp_commands() {
+    local commands; commands=(
+        'auth:Manage authentication' \
+        'run:Run command' \
+    )
+    _describe -t commands 'myapp commands' commands "$@"
+}
+
+(( $+functions[_myapp__auth_commands] )) ||
+_myapp__auth_commands() {
+    local commands; commands=(
+        'login:Log in' \
+        'logout:Log out' \
+    )
+    _describe -t commands 'myapp auth commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

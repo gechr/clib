@@ -1,0 +1,58 @@
+#compdef my-app
+
+autoload -U is-at-least
+
+_my_app() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+        ':: :_my_app_commands' \
+        '*::: :->my-app' \
+    && ret=0
+
+    case $state in
+    (my-app)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:my-app-command-$line[1]:"
+        case $line[1] in
+            (build)
+                _arguments "${_arguments_options[@]}" : \
+                    '(-o --output)-o+[Output path]: :_default' \
+                    '(-o --output)--output=[Output path]: :_default' \
+                && ret=0
+            ;;
+            (test)
+                _arguments "${_arguments_options[@]}" : \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_my_app_commands] )) ||
+_my_app_commands() {
+    local commands; commands=(
+        'build:Build the project' \
+        'test:Run tests' \
+    )
+    _describe -t commands 'my-app commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_my_app" ]; then
+    _my_app "$@"
+else
+    compdef _my_app my-app
+fi

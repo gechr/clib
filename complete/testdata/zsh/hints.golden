@@ -1,0 +1,36 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-c --config)-c+[Config file]:config:_files -g "*.{yaml,yml}"' \
+        '(-c --config)--config=[Config file]:config:_files -g "*.{yaml,yml}"' \
+        '(-d --dir)-d+[Directory]:dir:_files -/' \
+        '(-d --dir)--dir=[Directory]:dir:_files -/' \
+        '--host=[Host name]:host:_hosts' \
+        '(-o --output)-o+[Output path]:output:_files' \
+        '(-o --output)--output=[Output path]:output:_files' \
+        '--shell=[Shell command]:shell:_command_names -e' \
+        '--user=[User name]:user:_users' \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+    && ret=0
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

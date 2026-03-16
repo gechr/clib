@@ -1,0 +1,23 @@
+complete -c myapp -f
+
+# Comma-separated tags completion
+function __myapp_complete_tags
+    set -l value (string replace -r '^--tags=' '' -- (commandline -ct))
+    set -l tags "bug" "feature" "docs"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $tags
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $tags
+    end
+end
+
+complete -c myapp -s f -l format -x -a "json	JSON output
+yaml	YAML output
+text	Plain text" -d "Output format"
+complete -c myapp -s t -l tags -x -kra "(__myapp_complete_tags)" -d "Filter tags"
+complete -c myapp -s v -l verbose -d "Verbose output"

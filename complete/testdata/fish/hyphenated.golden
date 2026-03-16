@@ -1,0 +1,31 @@
+complete -c my-app -f
+
+function __my_app_global_optspecs
+    string join \n -- 'v/verbose'
+end
+
+function __my_app_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__my_app_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        echo $argv[1]
+        return 1
+    end
+    return 0
+end
+
+function __my_app_using_subcommand
+    set -l cmd (__my_app_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
+complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"
+complete -c my-app -n '__my_app_needs_command' -a test -d "Run tests"
+
+complete -c my-app -n '__my_app_needs_command' -s v -l verbose -d "Verbose output"
+
+complete -c my-app -n '__my_app_using_subcommand build' -s o -l output -r -d "Output path"

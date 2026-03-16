@@ -1,0 +1,66 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '--color=[Color mode]:color:(auto always never)' \
+        '--config=[Config file]: :_default' \
+        '-h[Show help]' \
+        '--help[Show help]' \
+        '--no-config[Disable config]' \
+        '--no-proxy[Ignore proxies]' \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+        ':: :_myapp_commands' \
+        '*::: :->myapp' \
+    && ret=0
+
+    case $state in
+    (myapp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:myapp-command-$line[1]:"
+        case $line[1] in
+            (run)
+                _arguments "${_arguments_options[@]}" : \
+                    '(-n --dry-run)-n[Dry run]' \
+                    '(-n --dry-run)--dry-run[Dry run]' \
+                    '(-o --output)-o+[Output format]:output:(text json)' \
+                    '(-o --output)--output=[Output format]:output:(text json)' \
+                && ret=0
+            ;;
+            (version)
+                _arguments "${_arguments_options[@]}" : \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_myapp_commands] )) ||
+_myapp_commands() {
+    local commands; commands=(
+        'run:Run command' \
+        'version:Show version' \
+    )
+    _describe -t commands 'myapp commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi
