@@ -2,7 +2,6 @@ package theme
 
 import (
 	"image/color"
-	"slices"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -227,48 +226,6 @@ func (t *Theme) Init() *Theme {
 		n.HelpKeyValueSeparator = ' '
 	}
 
-	return &n
-}
-
-// Plain returns a copy of the theme with all styles replaced by no-op styles.
-// Use this when output is not going to a terminal (e.g. piped) so that
-// Style.Render() returns plain text without ANSI escape codes.
-func (t *Theme) Plain() *Theme {
-	n := *t
-	noop := new(lipgloss.Style)
-	n.Bold = noop
-	n.Dim = noop
-	n.Red = noop
-	n.Green = noop
-	n.Yellow = noop
-	n.Blue = noop
-	n.Magenta = noop
-	n.Orange = noop
-	n.BoldGreen = noop
-	n.HelpSection = noop
-	n.HelpCommand = noop
-	n.HelpSubcommand = noop
-	n.HelpFlag = noop
-	n.HelpArg = noop
-	n.HelpValuePlaceholder = noop
-	n.HelpDim = noop
-	n.HelpBoldDim = noop
-	n.HelpEnumDefault = noop
-	n.HelpDescBacktick = noop
-	n.HelpKeyValueSeparatorStyle = noop
-	n.HelpRepeatEllipsis = noop
-	n.HelpFlagExample = noop
-	n.HelpFlagNote = noop
-	n.HelpFlagDefault = noop
-	n.MarkdownCode = noop
-	n.MarkdownText = noop
-	n.HelpUsageExample = HelpUsageExampleStyle{
-		Prompt: t.HelpUsageExample.Prompt,
-	}
-	n.TimeAgoThresholds = slices.Clone(t.TimeAgoThresholds)
-	for i := range n.TimeAgoThresholds {
-		n.TimeAgoThresholds[i].Style = lipgloss.Style{}
-	}
 	return &n
 }
 

@@ -355,41 +355,6 @@ func TestNewTheme_NoOptions(t *testing.T) {
 	require.Equal(t, def.Red.Render("x"), th.Red.Render("x"))
 }
 
-func TestPlain_StripsAllStyling(t *testing.T) {
-	th := theme.Default().Plain()
-
-	// All style renders should return plain text.
-	require.Equal(t, "x", th.Bold.Render("x"))
-	require.Equal(t, "x", th.Dim.Render("x"))
-	require.Equal(t, "x", th.Red.Render("x"))
-	require.Equal(t, "x", th.Green.Render("x"))
-	require.Equal(t, "x", th.Yellow.Render("x"))
-	require.Equal(t, "x", th.Blue.Render("x"))
-	require.Equal(t, "x", th.Magenta.Render("x"))
-	require.Equal(t, "x", th.Orange.Render("x"))
-	require.Equal(t, "x", th.BoldGreen.Render("x"))
-	require.Equal(t, "x", th.HelpSection.Render("x"))
-	require.Equal(t, "x", th.MarkdownCode.Render("x"))
-
-	// TimeAgoThresholds should have no-op styles but preserve MaxAge.
-	require.Len(t, th.TimeAgoThresholds, 5)
-	for _, ta := range th.TimeAgoThresholds {
-		require.Equal(t, "x", ta.Style.Render("x"))
-		require.NotZero(t, ta.MaxAge)
-	}
-
-	// HelpUsageExample should preserve prompt text.
-	require.Equal(t, "$", th.HelpUsageExample.Prompt)
-	require.Equal(t, "x", th.HelpUsageExample.PromptStyle.Render("x"))
-}
-
-func TestPlain_DoesNotMutateOriginal(t *testing.T) {
-	orig := theme.Default()
-	origBold := orig.Bold.Render("x")
-	_ = orig.Plain()
-	require.Equal(t, origBold, orig.Bold.Render("x"))
-}
-
 func TestWithHelpEnumDefault(t *testing.T) {
 	s := lipgloss.NewStyle().Italic(true)
 	th := theme.New(theme.WithHelpEnumDefault(s))
