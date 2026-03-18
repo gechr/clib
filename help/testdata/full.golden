@@ -1,0 +1,35 @@
+Usage
+
+  acme [options] [<target>]
+
+Arguments
+
+  [<target>]  Target to operate on
+
+Filters
+
+  -O, --owner <owner>    Owner/organization
+
+      --archived         Include archived
+  -l, --language <lang>  Filter by language
+
+  -i <regex>             Filter by regex
+  --include <name>       Include by exact name
+
+Options
+
+  -b, --branch <name>    Branch to use
+  -Q, --quick            Quick mode
+      --method <type>    Method [ssh, https]
+
+  -n, --dry              Dry run
+  -q, --quiet            Suppress output
+  -v, --verbose          Verbose output
+
+Examples
+
+  # Basic usage
+  $ acme target
+
+  # With filters
+  $ acme --language=Go all

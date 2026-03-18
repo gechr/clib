@@ -1,0 +1,4 @@
+Options
+
+  -a, --author <user>       Filter by author
+      --organization <org>  Limit to org

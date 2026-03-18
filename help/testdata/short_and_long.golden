@@ -1,0 +1,4 @@
+Options
+
+  -v, --verbose       Verbose output
+  -o, --output <fmt>  Output format

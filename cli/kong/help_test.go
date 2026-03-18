@@ -1021,7 +1021,14 @@ func TestArgs_NoArgs(t *testing.T) {
 
 func TestSections_HideLong(t *testing.T) {
 	flags := []complete.FlagMeta{
-		{Name: "include-pattern", Short: "i", Help: "Filter by regex", Placeholder: "regex", HideLong: true, Group: "Filters"},
+		{
+			Name:        "include-pattern",
+			Short:       "i",
+			Help:        "Filter by regex",
+			Placeholder: "regex",
+			HideLong:    true,
+			Group:       "Filters",
+		},
 	}
 
 	sections := kong.FlagSections(flags)
@@ -1030,7 +1037,7 @@ func TestSections_HideLong(t *testing.T) {
 	fg, ok := sections[0].Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	require.Len(t, fg, 1)
-	require.Equal(t, "", fg[0].Long)
+	require.Empty(t, fg[0].Long)
 	require.Equal(t, "i", fg[0].Short)
 }
 
@@ -1046,7 +1053,7 @@ func TestSections_HideShort(t *testing.T) {
 	require.True(t, ok)
 	require.Len(t, fg, 1)
 	require.Equal(t, "verbose", fg[0].Long)
-	require.Equal(t, "", fg[0].Short)
+	require.Empty(t, fg[0].Short)
 }
 
 func TestNodeSections_HideLong(t *testing.T) {
@@ -1062,7 +1069,7 @@ func TestNodeSections_HideLong(t *testing.T) {
 	fg, ok := filters.Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	require.Len(t, fg, 1)
-	require.Equal(t, "", fg[0].Long)
+	require.Empty(t, fg[0].Long)
 	require.Equal(t, "i", fg[0].Short)
 }
 
@@ -1082,7 +1089,7 @@ func TestNodeSections_HideShort(t *testing.T) {
 	for _, f := range fg {
 		if f.Long == "verbose" {
 			found = true
-			require.Equal(t, "", f.Short)
+			require.Empty(t, f.Short)
 		}
 	}
 	require.True(t, found)
@@ -1090,8 +1097,8 @@ func TestNodeSections_HideShort(t *testing.T) {
 
 func TestNodeSections_NoIndent(t *testing.T) {
 	type CLI struct {
-		Pattern string `name:"include-pattern" help:"Filter by regex" short:"i" clib:"hide-long,group='Filters'"`
-		Include string `name:"include"         help:"Include by name"           clib:"no-indent,group='Filters'"`
+		Pattern string `name:"include-pattern" help:"Filter by regex" short:"i"                        clib:"hide-long,group='Filters'"`
+		Include string `name:"include"         help:"Include by name" clib:"no-indent,group='Filters'"`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))

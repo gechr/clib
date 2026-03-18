@@ -1,0 +1,3 @@
+Options
+
+  -s, --state <state>  Filter by state [open, closed, merged, all]

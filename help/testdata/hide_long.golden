@@ -1,0 +1,4 @@
+Filters
+
+  -i <regex>            Filter by regex
+      --include <name>  Include by exact name
