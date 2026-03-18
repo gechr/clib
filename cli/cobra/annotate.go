@@ -15,6 +15,8 @@ type FlagExtra struct {
 	EnumHighlight []string `json:"enumHighlight"` // highlight hints for enum values
 	Extension     string   `json:"extension"`     // file extension filter for completion (e.g. "yaml" or "yaml,yml")
 	Group         string   `json:"group"`         // help section group
+	HideLong      bool     `json:"hideLong"`      // hide the long flag from help output
+	HideShort     bool     `json:"hideShort"`     // hide the short flag from help output
 	Hint          string   `json:"hint"`          // value type hint for completion (file, dir, command, user, host, url, email)
 	Negatable     bool     `json:"negatable"`     // supports --no- prefix
 	NegativeDesc  string   `json:"negativeDesc"`  // description for --no- variant (negatable flags)

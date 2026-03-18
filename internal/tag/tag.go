@@ -9,6 +9,8 @@ const (
 	Enum        = "enum"
 	Ext         = "ext"
 	Group       = "group"
+	HideLong    = "hide-long"
+	HideShort   = "hide-short"
 	Inverse     = "inverse"
 	Highlight   = "highlight"
 	Hint        = "hint"

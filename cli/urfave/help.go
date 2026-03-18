@@ -251,6 +251,15 @@ func flagToHelp(cmd *clilib.Command, f clilib.Flag) help.Flag {
 		}
 	}
 
+	if extra != nil {
+		if extra.HideLong {
+			hf.Long = ""
+		}
+		if extra.HideShort {
+			hf.Short = ""
+		}
+	}
+
 	return hf
 }
 

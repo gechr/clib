@@ -18,6 +18,8 @@ type FlagMeta struct {
 	HasArg              bool     // true if the flag takes a value (non-bool)
 	Help                string   // help text for --help output
 	Hidden              bool     // hidden flag
+	HideLong            bool     // hide the long flag from help output
+	HideShort           bool     // hide the short flag from help output
 	IsArg               bool     // true if this is a positional argument
 	IsCSV               bool     // true if the field type is CSVFlag or *CSVFlag
 	IsSlice             bool     // true if the field type is a slice
@@ -71,6 +73,10 @@ func (f *FlagMeta) ParseClibTag(t string) {
 			f.Extension = val
 		case tag.Group:
 			f.Group = val
+		case tag.HideLong:
+			f.HideLong = true
+		case tag.HideShort:
+			f.HideShort = true
 		case tag.Highlight:
 			if val != "" {
 				f.EnumHighlight = tag.SplitCSV(val)

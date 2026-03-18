@@ -16,6 +16,8 @@ type FlagExtra struct {
 	EnumHighlight []string // highlight hints for enum values
 	Extension     string   // file extension filter for completion (e.g. "yaml" or "yaml,yml")
 	Group         string   // help section group
+	HideLong      bool     // hide the long flag from help output
+	HideShort     bool     // hide the short flag from help output
 	Hint          string   // value type hint for completion (file, dir, command, user, host, url, email)
 	NegativeDesc  string   // description for --no- variant (negatable flags)
 	Placeholder   string   // value placeholder (e.g. "repo")

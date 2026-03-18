@@ -209,6 +209,15 @@ func pflagToHelpFlag(f *pflag.Flag) help.Flag {
 		hf.EnumDefault = f.DefValue
 	}
 
+	if extra != nil {
+		if extra.HideLong {
+			hf.Long = ""
+		}
+		if extra.HideShort {
+			hf.Short = ""
+		}
+	}
+
 	return hf
 }
 

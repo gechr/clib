@@ -286,6 +286,15 @@ func kongFlagToHelp(f *konglib.Flag) help.Flag {
 		meta.EnumDefault = f.Default
 	}
 
+	if clibTag != "" {
+		if _, ok := tag.Parse(clibTag, tag.HideLong); ok {
+			meta.HideLong = true
+		}
+		if _, ok := tag.Parse(clibTag, tag.HideShort); ok {
+			meta.HideShort = true
+		}
+	}
+
 	hf := helpFlagFromMeta(meta)
 	hf.PlaceholderLiteral = placeholderLiteral
 	return hf
@@ -429,8 +438,16 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		desc = f.Terse
 	}
 	repeatable := placeholder != "" && (f.IsCSV || (f.IsSlice && !f.PlaceholderOverride))
+	short := f.Short
+	if f.HideShort {
+		short = ""
+	}
+	if f.HideLong {
+		long = ""
+	}
+
 	return help.Flag{
-		Short:         f.Short,
+		Short:         short,
 		Long:          long,
 		Desc:          desc,
 		Enum:          f.Enum,
