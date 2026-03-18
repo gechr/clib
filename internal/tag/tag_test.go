@@ -8,55 +8,64 @@ import (
 )
 
 func TestParse_QuotedValue(t *testing.T) {
-	val, ok := tag.Parse("group='Filters',placeholder='repo'", "group")
+	val, ok, err := tag.Parse("group='Filters',placeholder='repo'", "group")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "Filters", val)
 }
 
 func TestParse_SecondKey(t *testing.T) {
-	val, ok := tag.Parse("group='Filters',placeholder='repo'", "placeholder")
+	val, ok, err := tag.Parse("group='Filters',placeholder='repo'", "placeholder")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "repo", val)
 }
 
 func TestParse_BareKey(t *testing.T) {
-	val, ok := tag.Parse("negatable,group='Filters'", "negatable")
+	val, ok, err := tag.Parse("negatable,group='Filters'", "negatable")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Empty(t, val)
 }
 
 func TestParse_NotFound(t *testing.T) {
-	val, ok := tag.Parse("group='Filters'", "missing")
+	val, ok, err := tag.Parse("group='Filters'", "missing")
+	require.NoError(t, err)
 	require.False(t, ok)
 	require.Empty(t, val)
 }
 
 func TestParse_UnquotedValue(t *testing.T) {
-	val, ok := tag.Parse("group=Filters", "group")
+	val, ok, err := tag.Parse("group=Filters", "group")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "Filters", val)
 }
 
 func TestParse_Empty(t *testing.T) {
-	val, ok := tag.Parse("", "group")
+	val, ok, err := tag.Parse("", "group")
+	require.NoError(t, err)
 	require.False(t, ok)
 	require.Empty(t, val)
 }
 
 func TestParse_QuotedValueWithComma(t *testing.T) {
-	val, ok := tag.Parse("terse='hello, world',group='G'", "terse")
+	val, ok, err := tag.Parse("terse='hello, world',group='G'", "terse")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "hello, world", val)
 }
 
 func TestParse_TrimmedEntries(t *testing.T) {
-	val, ok := tag.Parse("group='Filters', terse='Author'", "terse")
+	val, ok, err := tag.Parse("group='Filters', terse='Author'", "terse")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "Author", val)
 }
 
 func TestParse_SingleEntry(t *testing.T) {
-	val, ok := tag.Parse("group='Output'", "group")
+	val, ok, err := tag.Parse("group='Output'", "group")
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, "Output", val)
 }

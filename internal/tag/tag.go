@@ -1,6 +1,9 @@
 package tag
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Clib tag keys.
 const (
@@ -29,8 +32,12 @@ const (
 // Format: comma-separated entries, values optionally single-quoted:
 //
 //	"negatable,group='Filters',placeholder='repo'"
-func Parse(s, key string) (string, bool) {
-	for _, entry := range Split(s) {
+func Parse(s, key string) (string, bool, error) {
+	parts, err := Split(s)
+	if err != nil {
+		return "", false, err
+	}
+	for _, entry := range parts {
 		k, v, hasEq := strings.Cut(entry, "=")
 		k = strings.TrimSpace(k)
 		v = strings.TrimSpace(v)
@@ -38,17 +45,17 @@ func Parse(s, key string) (string, bool) {
 			continue
 		}
 		if !hasEq {
-			return "", true
+			return "", true, nil
 		}
 		v = strings.TrimPrefix(v, "'")
 		v = strings.TrimSuffix(v, "'")
-		return v, true
+		return v, true, nil
 	}
-	return "", false
+	return "", false, nil
 }
 
 // Split splits a clib tag on commas, respecting single-quoted values.
-func Split(s string) []string {
+func Split(s string) ([]string, error) {
 	var parts []string
 	var buf strings.Builder
 	inQuote := false
@@ -64,10 +71,13 @@ func Split(s string) []string {
 			buf.WriteRune(r)
 		}
 	}
+	if inQuote {
+		return nil, fmt.Errorf("unclosed quote in tag %q", s)
+	}
 	if buf.Len() > 0 {
 		parts = append(parts, strings.TrimSpace(buf.String()))
 	}
-	return parts
+	return parts, nil
 }
 
 // SplitCSV splits s on commas, trims whitespace from each element,

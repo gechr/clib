@@ -176,7 +176,7 @@ func TestParseClibTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var f complete.FlagMeta
-			f.ParseClibTag(tt.tag)
+			require.NoError(t, f.ParseClibTag(tt.tag))
 			require.Equal(t, tt.wantDesc, f.Terse)
 			require.Equal(t, tt.wantComp, f.Complete)
 			require.Equal(t, tt.wantGrp, f.Group)
@@ -186,7 +186,7 @@ func TestParseClibTag(t *testing.T) {
 
 func TestParseClibTag_NegatableDescs(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("negatable,positive='Show output',negative='Hide output'")
+	require.NoError(t, f.ParseClibTag("negatable,positive='Show output',negative='Hide output'"))
 	require.True(t, f.Negatable)
 	require.Equal(t, "Show output", f.PositiveDesc)
 	require.Equal(t, "Hide output", f.NegativeDesc)
@@ -599,34 +599,34 @@ func TestGenerator_Uninstall_DefaultConfigDir(t *testing.T) {
 
 func TestParseClibTag_Placeholder(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("placeholder='<value>'")
+	require.NoError(t, f.ParseClibTag("placeholder='<value>'"))
 	require.Equal(t, "<value>", f.Placeholder)
 	require.True(t, f.PlaceholderOverride)
 }
 
 func TestParseClibTag_Highlight(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("highlight='foo,bar'")
+	require.NoError(t, f.ParseClibTag("highlight='foo,bar'"))
 	require.Equal(t, []string{"foo", "bar"}, f.EnumHighlight)
 }
 
 func TestParseClibTag_HighlightEmpty(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("highlight=''")
+	require.NoError(t, f.ParseClibTag("highlight=''"))
 	require.Nil(t, f.EnumHighlight)
 }
 
 func TestParseClibTag_Default(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("default='open'")
+	require.NoError(t, f.ParseClibTag("default='open'"))
 	require.Equal(t, "open", f.EnumDefault)
 }
 
 func TestParseClibTag_AllKeys(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag(
+	require.NoError(t, f.ParseClibTag(
 		"terse='My flag',complete='predictor=author',group='people',placeholder='<name>',negatable,positive='Enable it',negative='Disable it',highlight='a,b',default='x'",
-	)
+	))
 	require.Equal(t, "My flag", f.Terse)
 	require.Equal(t, "predictor=author", f.Complete)
 	require.Equal(t, "people", f.Group)
@@ -655,13 +655,13 @@ func TestFlagMeta_Desc_PreferDescription(t *testing.T) {
 
 func TestParseClibTag_Ext(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("ext='yaml'")
+	require.NoError(t, f.ParseClibTag("ext='yaml'"))
 	require.Equal(t, "yaml", f.Extension)
 }
 
 func TestParseClibTag_ExtMultiple(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("ext='yaml,yml'")
+	require.NoError(t, f.ParseClibTag("ext='yaml,yml'"))
 	require.Equal(t, "yaml,yml", f.Extension)
 }
 
@@ -678,7 +678,7 @@ func TestFromFlags_Extension(t *testing.T) {
 
 func TestParseClibTag_Hint(t *testing.T) {
 	var f complete.FlagMeta
-	f.ParseClibTag("hint='file'")
+	require.NoError(t, f.ParseClibTag("hint='file'"))
 	require.Equal(t, "file", f.ValueHint)
 }
 

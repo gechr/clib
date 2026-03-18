@@ -16,5 +16,7 @@ func TestClibGroup_NilTag(t *testing.T) {
 			Tag:  nil,
 		},
 	}
-	require.Empty(t, clibGroup(f))
+	group, err := clibGroup(f)
+	require.NoError(t, err)
+	require.Empty(t, group)
 }

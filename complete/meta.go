@@ -1,6 +1,7 @@
 package complete
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gechr/clib/internal/tag"
@@ -57,12 +58,19 @@ func (f *FlagMeta) Desc() string {
 //	clib:"terse='Draft filter',complete='predictor=repo',group='filters'"
 //
 // Supported keys: complete, enum, group, inverse, negatable, negative, placeholder, positive, terse.
-func (f *FlagMeta) ParseClibTag(t string) {
+func (f *FlagMeta) ParseClibTag(t string) error {
 	if t == "" {
-		return
+		return nil
 	}
-	for _, entry := range tag.Split(t) {
+	parts, err := tag.Split(t)
+	if err != nil {
+		return err
+	}
+	for _, entry := range parts {
 		key, val, _ := strings.Cut(entry, "=")
+		if key == "" {
+			return fmt.Errorf("empty key in tag %q", t)
+		}
 		val = strings.TrimPrefix(val, "'")
 		val = strings.TrimSuffix(val, "'")
 		switch key {
@@ -103,6 +111,64 @@ func (f *FlagMeta) ParseClibTag(t string) {
 			f.Terse = val
 		case tag.Hint:
 			f.ValueHint = val
+		default:
+			return fmt.Errorf("unknown tag key %q in %q", key, t)
 		}
 	}
+
+	return f.validateTagOnly()
+}
+
+// validateTagOnly checks constraints that are fully determined by clib tag keys alone.
+func (f *FlagMeta) validateTagOnly() error {
+	if f.HideLong && f.HideShort {
+		return fmt.Errorf("%s: hide-long and hide-short are mutually exclusive", f.flagLabel())
+	}
+	return nil
+}
+
+// Validate checks constraints that depend on the fully populated FlagMeta,
+// including fields set by the CLI framework (e.g. negatable from kong's tag).
+// Callers should invoke this after all metadata is populated.
+func (f *FlagMeta) Validate() error {
+	p := f.flagLabel() + ": "
+	if f.HideLong && f.Short == "" {
+		return fmt.Errorf("%shide-long has no effect without a short flag", p)
+	}
+	if f.HideShort && f.Name == "" {
+		return fmt.Errorf("%shide-short has no effect without a long flag", p)
+	}
+	if f.NoIndent && f.Short != "" {
+		return fmt.Errorf("%sno-indent has no effect on flags with a short form", p)
+	}
+	if f.NegativeDesc != "" && !f.Negatable {
+		return fmt.Errorf("%snegative requires negatable", p)
+	}
+	if f.PositiveDesc != "" && !f.Negatable {
+		return fmt.Errorf("%spositive requires negatable", p)
+	}
+	if f.InversePrefix != "" && !f.Negatable {
+		return fmt.Errorf("%sinverse requires negatable", p)
+	}
+	if len(f.EnumHighlight) > 0 && len(f.Enum) == 0 {
+		return fmt.Errorf("%shighlight requires enum", p)
+	}
+	if f.EnumDefault != "" && len(f.Enum) == 0 {
+		return fmt.Errorf("%sdefault requires enum", p)
+	}
+	return nil
+}
+
+func (f *FlagMeta) flagLabel() string {
+	flag := f.Name
+	if flag == "" {
+		flag = f.Short
+	}
+	if flag == "" {
+		flag = f.Origin
+	}
+	if f.Name == "" {
+		return "-" + flag
+	}
+	return "--" + flag
 }

@@ -29,14 +29,16 @@ func findFlagByName(flags []complete.FlagMeta, name string) *complete.FlagMeta {
 }
 
 func TestReflect_Basic(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 
 	// Should have 8 flags (Name, Verbose, Draft, Output, Hidden, Limit, Authors, Query).
 	require.Len(t, flags, 8)
 }
 
 func TestReflect_NameFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "name")
 	require.NotNil(t, f)
 
@@ -50,7 +52,8 @@ func TestReflect_NameFlag(t *testing.T) {
 }
 
 func TestReflect_VerboseFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "verbose")
 	require.NotNil(t, f)
 
@@ -60,7 +63,8 @@ func TestReflect_VerboseFlag(t *testing.T) {
 }
 
 func TestReflect_NegatableFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "draft")
 	require.NotNil(t, f)
 
@@ -70,7 +74,8 @@ func TestReflect_NegatableFlag(t *testing.T) {
 }
 
 func TestReflect_EnumFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "output")
 	require.NotNil(t, f)
 
@@ -79,7 +84,8 @@ func TestReflect_EnumFlag(t *testing.T) {
 }
 
 func TestReflect_EnumHighlight(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "output")
 	require.NotNil(t, f)
 
@@ -87,7 +93,8 @@ func TestReflect_EnumHighlight(t *testing.T) {
 }
 
 func TestReflect_HiddenFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "hidden-flag")
 	require.NotNil(t, f)
 
@@ -95,7 +102,8 @@ func TestReflect_HiddenFlag(t *testing.T) {
 }
 
 func TestReflect_PointerFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "limit")
 	require.NotNil(t, f)
 
@@ -103,7 +111,8 @@ func TestReflect_PointerFlag(t *testing.T) {
 }
 
 func TestReflect_CSVFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "authors")
 	require.NotNil(t, f)
 
@@ -113,7 +122,8 @@ func TestReflect_CSVFlag(t *testing.T) {
 }
 
 func TestReflect_ArgFlag(t *testing.T) {
-	flags := kong.Reflect(&testCLI{})
+	flags, err := kong.Reflect(&testCLI{})
+	require.NoError(t, err)
 
 	var argFlag *complete.FlagMeta
 	for i := range flags {
@@ -138,14 +148,16 @@ func TestFlagMeta_Desc_ExplicitTerse(t *testing.T) {
 
 func TestReflect_NonStruct(t *testing.T) {
 	s := "not a struct"
-	flags := kong.Reflect(&s)
+	flags, err := kong.Reflect(&s)
+	require.NoError(t, err)
 	require.Nil(t, flags)
 }
 
 func TestReflect_NilPointer(t *testing.T) {
 	// Passing a typed nil pointer should return nil, not panic.
 	var cli *testCLI
-	flags := kong.Reflect(cli)
+	flags, err := kong.Reflect(cli)
+	require.NoError(t, err)
 	require.Nil(t, flags)
 }
 
@@ -160,7 +172,8 @@ type testEmbeddedCLI struct {
 }
 
 func TestReflect_EmbeddedStruct(t *testing.T) {
-	flags := kong.Reflect(&testEmbeddedCLI{})
+	flags, err := kong.Reflect(&testEmbeddedCLI{})
+	require.NoError(t, err)
 	require.Len(t, flags, 2)
 
 	f := findFlagByName(flags, "debug")
@@ -189,7 +202,8 @@ type testPrlLikeCLI struct {
 }
 
 func TestReflect_PrlLikeCLI(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 
 	// 1 arg (Query) + 10 named + 1 auto-derived (NoName) = 12 total
 	// (CompletionFlags excluded, Sub cmd excluded).
@@ -197,7 +211,8 @@ func TestReflect_PrlLikeCLI(t *testing.T) {
 }
 
 func TestReflect_Aliases(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "org")
 	require.NotNil(t, f)
 
@@ -205,7 +220,8 @@ func TestReflect_Aliases(t *testing.T) {
 }
 
 func TestReflect_Optional(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 
 	var arg *complete.FlagMeta
 	for i := range flags {
@@ -219,7 +235,8 @@ func TestReflect_Optional(t *testing.T) {
 }
 
 func TestReflect_Placeholder(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "match")
 	require.NotNil(t, f)
 
@@ -227,7 +244,8 @@ func TestReflect_Placeholder(t *testing.T) {
 }
 
 func TestReflect_PlaceholderOverride_NativeTag(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "match")
 	require.NotNil(t, f)
 
@@ -238,7 +256,8 @@ func TestReflect_PlaceholderOverride_ClibTag(t *testing.T) {
 	type CLI struct {
 		Output string `name:"output" help:"Output" clib:"placeholder='path'"`
 	}
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "output")
 	require.NotNil(t, f)
 
@@ -250,7 +269,8 @@ func TestReflect_PlaceholderOverride_NotSetWhenEmpty(t *testing.T) {
 	type CLI struct {
 		Name string `name:"name" help:"Name"`
 	}
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "name")
 	require.NotNil(t, f)
 
@@ -258,7 +278,8 @@ func TestReflect_PlaceholderOverride_NotSetWhenEmpty(t *testing.T) {
 }
 
 func TestReflect_Group(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "limit")
 	require.NotNil(t, f)
 
@@ -266,7 +287,8 @@ func TestReflect_Group(t *testing.T) {
 }
 
 func TestReflect_PointerCSVFlag(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "author")
 	require.NotNil(t, f)
 
@@ -276,7 +298,8 @@ func TestReflect_PointerCSVFlag(t *testing.T) {
 }
 
 func TestReflect_IsSlice(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "filter")
 	require.NotNil(t, f)
 
@@ -285,7 +308,8 @@ func TestReflect_IsSlice(t *testing.T) {
 }
 
 func TestReflect_CompleteTag(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 
 	f := findFlagByName(flags, "repo")
 	require.NotNil(t, f)
@@ -301,7 +325,8 @@ func TestReflect_CompleteTag(t *testing.T) {
 }
 
 func TestReflect_AutoDeriveName(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "no-name")
 	require.NotNil(t, f, "field without name tag should auto-derive kebab-case name")
 	require.Equal(t, "NoName", f.Origin)
@@ -309,7 +334,8 @@ func TestReflect_AutoDeriveName(t *testing.T) {
 }
 
 func TestReflect_SkipCmdFields(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 	for _, f := range flags {
 		if f.Origin == "Sub" {
 			t.Fatal("cmd field should be skipped")
@@ -318,7 +344,8 @@ func TestReflect_SkipCmdFields(t *testing.T) {
 }
 
 func TestReflect_ArgOrigin(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 
 	var arg *complete.FlagMeta
 	for i := range flags {
@@ -340,7 +367,8 @@ type testEmbeddedPtrCLI struct {
 }
 
 func TestReflect_EmbeddedPointerStruct(t *testing.T) {
-	flags := kong.Reflect(&testEmbeddedPtrCLI{})
+	flags, err := kong.Reflect(&testEmbeddedPtrCLI{})
+	require.NoError(t, err)
 	require.Len(t, flags, 2)
 
 	f := findFlagByName(flags, "debug")
@@ -353,7 +381,8 @@ func TestReflect_EnumDefaultFromNativeTag(t *testing.T) {
 		Color string `name:"color" help:"Color mode" default:"auto" enum:"auto,always,never"`
 	}
 
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "color")
 	require.NotNil(t, f)
 
@@ -366,7 +395,8 @@ func TestReflect_EnumDefaultClibOverridesNative(t *testing.T) {
 		State string `name:"state" help:"State" clib:"default='open'" default:"closed" enum:"open,closed"`
 	}
 
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "state")
 	require.NotNil(t, f)
 
@@ -378,7 +408,8 @@ func TestReflect_EnumDefaultNotSetWithoutEnum(t *testing.T) {
 		Name string `name:"name" help:"Name" default:"foo"`
 	}
 
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "name")
 	require.NotNil(t, f)
 
@@ -397,7 +428,8 @@ func TestReflect_FieldNameToFlag(t *testing.T) {
 		HTMLParser string `help:"HTML parser"`
 	}
 
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	for _, tc := range []struct{ field, want string }{
 		{"Config", "config"},
 		{"NoConfig", "no-config"},
@@ -421,7 +453,8 @@ func TestReflect_FieldNameToFlag(t *testing.T) {
 }
 
 func TestReflect_ExcludesCompletionFlags(t *testing.T) {
-	flags := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	require.NoError(t, err)
 
 	completionNames := []string{
 		complete.FlagComplete, complete.FlagShell, "install-completion",
@@ -437,7 +470,8 @@ func TestReflect_ValueHint(t *testing.T) {
 	type CLI struct {
 		Output string `name:"output" help:"Output path" clib:"hint='file'"`
 	}
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "output")
 	require.NotNil(t, f)
 	require.Equal(t, "file", f.ValueHint)
@@ -447,7 +481,8 @@ func TestReflect_PositiveNegativeDesc(t *testing.T) {
 	type CLI struct {
 		Draft bool `name:"draft" help:"Filter by draft" clib:"positive='Include drafts',negative='Exclude drafts'" negatable:""`
 	}
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "draft")
 	require.NotNil(t, f)
 	require.True(t, f.Negatable)
@@ -460,7 +495,8 @@ func TestReflect_ExtTag(t *testing.T) {
 		Config string `name:"config" help:"Config file" clib:"ext='yaml'"`
 	}
 
-	flags := kong.Reflect(&CLI{})
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
 	f := findFlagByName(flags, "config")
 	require.NotNil(t, f)
 	require.Equal(t, "yaml", f.Extension)

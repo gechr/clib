@@ -92,7 +92,9 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 		// Read clib annotations on the cmd field for terse and path completion.
 		if child.Tag != nil && child.Tag.Has(tagClib) {
 			var meta complete.FlagMeta
-			meta.ParseClibTag(child.Tag.Get(tagClib))
+			if err := meta.ParseClibTag(child.Tag.Get(tagClib)); err != nil {
+				panic(err)
+			}
 			if meta.Terse != "" {
 				sub.Terse = meta.Terse
 			}
@@ -135,7 +137,9 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 		}
 	}
 	if flag.Tag != nil && flag.Tag.Has(tagClib) {
-		meta.ParseClibTag(flag.Tag.Get(tagClib))
+		if err := meta.ParseClibTag(flag.Tag.Get(tagClib)); err != nil {
+			panic(err)
+		}
 	}
 	if flag.Tag != nil && flag.Tag.Has(tagNegatable) {
 		meta.Negatable = true

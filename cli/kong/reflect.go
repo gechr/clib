@@ -47,23 +47,23 @@ func appendHyphenIfNeeded(buf []byte, name string, i int) []byte {
 
 // Reflect extracts flag metadata from a CLI struct by reading Kong-style struct tags.
 // It reads the bare-tag format: name:"foo" help:"..." short:"x" etc.
-func Reflect(cli any) []complete.FlagMeta {
+func Reflect(cli any) ([]complete.FlagMeta, error) {
 	v := reflect.ValueOf(cli)
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return nil
+			return nil, nil
 		}
 		v = v.Elem()
 	}
 	t := v.Type()
 	if t.Kind() != reflect.Struct {
-		return nil
+		return nil, nil
 	}
 
 	return inspectStruct(t)
 }
 
-func inspectStruct(t reflect.Type) []complete.FlagMeta {
+func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 	var flags []complete.FlagMeta
 
 	csvType := reflect.TypeFor[CSVFlag]()
@@ -81,18 +81,11 @@ func inspectStruct(t reflect.Type) []complete.FlagMeta {
 
 		// Handle embedded structs by recursing.
 		if field.Anonymous {
-			ft := field.Type
-			if ft.Kind() == reflect.Pointer {
-				ft = ft.Elem()
+			embedded, err := inspectEmbedded(field.Type, completionFlagsType)
+			if err != nil {
+				return nil, err
 			}
-			// Skip CompletionFlags - these are internal completion
-			// infrastructure and should not appear in generated scripts.
-			if ft == completionFlagsType {
-				continue
-			}
-			if ft.Kind() == reflect.Struct {
-				flags = append(flags, inspectStruct(ft)...)
-			}
+			flags = append(flags, embedded...)
 			continue
 		}
 
@@ -107,7 +100,9 @@ func inspectStruct(t reflect.Type) []complete.FlagMeta {
 		meta.Placeholder = field.Tag.Get(tagPlaceholder)
 
 		// clib-specific metadata: clib:"terse='...',complete='...',group='...'"
-		meta.ParseClibTag(field.Tag.Get(tagClib))
+		if err := meta.ParseClibTag(field.Tag.Get(tagClib)); err != nil {
+			return nil, err
+		}
 
 		// PlaceholderOverride: true if placeholder was set via either kong's
 		// native placeholder:"" tag or the clib:"placeholder='...'" tag.
@@ -167,8 +162,23 @@ func inspectStruct(t reflect.Type) []complete.FlagMeta {
 			meta.Name = fieldNameToFlag(field.Name)
 		}
 
+		if err := meta.Validate(); err != nil {
+			return nil, err
+		}
 		flags = append(flags, meta)
 	}
 
-	return flags
+	return flags, nil
+}
+
+// inspectEmbedded recurses into an embedded struct type, skipping the
+// CompletionFlags type which is internal infrastructure.
+func inspectEmbedded(ft reflect.Type, skip reflect.Type) ([]complete.FlagMeta, error) {
+	if ft.Kind() == reflect.Pointer {
+		ft = ft.Elem()
+	}
+	if ft == skip || ft.Kind() != reflect.Struct {
+		return nil, nil
+	}
+	return inspectStruct(ft)
 }

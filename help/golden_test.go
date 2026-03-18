@@ -41,7 +41,7 @@ func goldenSections() map[string][]help.Section {
 			},
 		}}},
 
-		// clib:hide-long — suppress long form, show short only.
+		// clib:hide-long - suppress long form, show short only.
 		"hide_long": {{Title: "Filters", Content: []help.Content{
 			help.FlagGroup{
 				{Short: "i", Placeholder: "regex", Desc: "Filter by regex"},
@@ -49,7 +49,7 @@ func goldenSections() map[string][]help.Section {
 			},
 		}}},
 
-		// clib:hide-short — suppress short form, show long only.
+		// clib:hide-short - suppress short form, show long only.
 		"hide_short": {{Title: "Options", Content: []help.Content{
 			help.FlagGroup{
 				{Long: "verbose", Desc: "Verbose output"},
@@ -57,7 +57,7 @@ func goldenSections() map[string][]help.Section {
 			},
 		}}},
 
-		// clib:no-indent — long-only flag at same indent as short flags.
+		// clib:no-indent - long-only flag at same indent as short flags.
 		"no_indent": {{Title: "Filters", Content: []help.Content{
 			help.FlagGroup{
 				{Short: "i", Placeholder: "regex", Desc: "Filter by regex"},

@@ -18,7 +18,7 @@ func TestHelpPrinter(t *testing.T) {
 	renderer := help.NewRenderer(theme.Default())
 
 	var called bool
-	printer := kong.HelpPrinter(renderer, func() []help.Section {
+	printer := kong.HelpPrinter(renderer, func() ([]help.Section, error) {
 		called = true
 		return []help.Section{
 			{
@@ -33,7 +33,7 @@ func TestHelpPrinter(t *testing.T) {
 					},
 				},
 			},
-		}
+		}, nil
 	})
 
 	type CLI struct{}
@@ -58,7 +58,7 @@ func TestHelpPrinter_MultipleSections(t *testing.T) {
 	var buf bytes.Buffer
 	renderer := help.NewRenderer(theme.Default())
 
-	printer := kong.HelpPrinter(renderer, func() []help.Section {
+	printer := kong.HelpPrinter(renderer, func() ([]help.Section, error) {
 		return []help.Section{
 			{
 				Title:   "Usage",
@@ -81,7 +81,7 @@ func TestHelpPrinter_MultipleSections(t *testing.T) {
 					},
 				},
 			},
-		}
+		}, nil
 	})
 
 	type CLI struct{}
@@ -446,11 +446,11 @@ func TestHelpPrinterFunc(t *testing.T) {
 	renderer := help.NewRenderer(theme.Default())
 
 	var receivedCtx *konglib.Context
-	printer := kong.HelpPrinterFunc(renderer, func(ctx *konglib.Context) []help.Section {
+	printer := kong.HelpPrinterFunc(renderer, func(ctx *konglib.Context) ([]help.Section, error) {
 		receivedCtx = ctx
 		return []help.Section{
 			{Title: "Usage", Content: []help.Content{help.Text("app [options]")}},
-		}
+		}, nil
 	})
 
 	type CLI struct{}
@@ -474,7 +474,8 @@ func TestNodeSections_Root(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	require.Equal(t, []string{"Usage", "Commands", "Options"}, sectionTitles(sections))
 
@@ -516,7 +517,8 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, sectionTitles(sections))
 
@@ -557,7 +559,8 @@ func TestNodeSections_Aliases(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"format", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	aliases := findSection(sections, "Aliases")
 	require.NotNil(t, aliases)
@@ -574,7 +577,8 @@ func TestNodeSections_PositionalArgs(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"bump", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	usage := findSection(sections, "Usage")
 	u, ok := usage.Content[0].(help.Usage)
@@ -591,7 +595,8 @@ func TestNodeSections_HiddenChildrenSkipped(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	cmds := findSection(sections, "Commands")
 	require.NotNil(t, cmds)
@@ -608,7 +613,8 @@ func TestNodeSections_HiddenFlagsSkipped(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -625,7 +631,8 @@ func TestNodeSections_Negatable(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -646,7 +653,8 @@ func TestNodeSections_Short(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -667,7 +675,8 @@ func TestNodeSections_CSVFlagRepeatable(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -689,7 +698,8 @@ func TestNodeSections_CSVFlagPtrRepeatable(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -730,7 +740,8 @@ func TestNodeSectionsFunc_Basic(t *testing.T) {
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
 
 	fn := kong.NodeSectionsFunc()
-	sections := fn(ctx)
+	sections, err := fn(ctx)
+	require.NoError(t, err)
 
 	require.Equal(t, []string{"Usage", "Options"}, sectionTitles(sections))
 }
@@ -745,7 +756,8 @@ func TestNodeSectionsFunc_WithHideArguments(t *testing.T) {
 	ctx := parseForHelp(t, &CLI{}, []string{"bump", "--help"}, konglib.Name("myapp"))
 
 	fn := kong.NodeSectionsFunc(kong.WithHideArguments())
-	sections := fn(ctx)
+	sections, err := fn(ctx)
+	require.NoError(t, err)
 
 	require.Nil(t, findSection(sections, "Arguments"))
 }
@@ -760,11 +772,13 @@ func TestNodeSections_WithHideArguments(t *testing.T) {
 	ctx := parseForHelp(t, &CLI{}, []string{"bump", "--help"}, konglib.Name("myapp"))
 
 	// Without hide arguments - should have Arguments section.
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 	require.NotNil(t, findSection(sections, "Arguments"))
 
 	// With hide arguments - should not have Arguments section.
-	sections = kong.NodeSections(ctx, kong.WithHideArguments())
+	sections, err = kong.NodeSections(ctx, kong.WithHideArguments())
+	require.NoError(t, err)
 	require.Nil(t, findSection(sections, "Arguments"))
 }
 
@@ -777,7 +791,8 @@ func TestNodeSections_GroupedFlags(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	require.Equal(t, []string{"Usage", "Filters", "Output", "Options"}, sectionTitles(sections))
 
@@ -800,7 +815,8 @@ func TestNodeSections_GroupedSubgroups(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	filters := findSection(sections, "Filters")
 	require.NotNil(t, filters)
@@ -829,7 +845,8 @@ func TestNodeSections_GroupedWithUngroupedLocalAndInherited(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	require.Equal(
 		t,
@@ -847,7 +864,8 @@ func TestNodeSections_GroupedInheritedTriggersGroupedMode(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	require.Equal(
 		t,
@@ -862,7 +880,8 @@ func TestNodeSections_ClibEnumHighlightDefault(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -887,7 +906,8 @@ func TestNodeSections_ClibEnumOverridesKongEnum(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -911,7 +931,8 @@ func TestNodeSections_KongNativeDefaultFallback(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -935,7 +956,8 @@ func TestNodeSections_ClibDefaultOverridesKongDefault(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -961,7 +983,8 @@ func TestNodeSections_WithArguments(t *testing.T) {
 	}
 	cli := &CLI{}
 	ctx := parseForHelp(t, cli, []string{"run", "--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx, kong.WithArguments(&cli.Run))
+	sections, err := kong.NodeSections(ctx, kong.WithArguments(&cli.Run))
+	require.NoError(t, err)
 	args := findSection(sections, "Arguments")
 	require.NotNil(t, args)
 	require.Len(t, args.Content, 1)
@@ -976,7 +999,8 @@ func TestArgs_Basic(t *testing.T) {
 	type CLI struct {
 		File string `name:"file" help:"File to process" arg:"" clib:"terse='Target file'"`
 	}
-	args := kong.Args(&CLI{})
+	args, err := kong.Args(&CLI{})
+	require.NoError(t, err)
 	require.Len(t, args, 1)
 	require.Equal(t, "file", args[0].Name)
 	require.Equal(t, "Target file", args[0].Desc)
@@ -988,7 +1012,8 @@ func TestArgs_Optional(t *testing.T) {
 	type CLI struct {
 		Query string `name:"query" help:"Search query" arg:"" optional:""`
 	}
-	args := kong.Args(&CLI{})
+	args, err := kong.Args(&CLI{})
+	require.NoError(t, err)
 	require.Len(t, args, 1)
 	require.False(t, args[0].Required)
 }
@@ -997,7 +1022,8 @@ func TestArgs_Slice(t *testing.T) {
 	type CLI struct {
 		Files []string `name:"files" help:"Files to process" arg:""`
 	}
-	args := kong.Args(&CLI{})
+	args, err := kong.Args(&CLI{})
+	require.NoError(t, err)
 	require.Len(t, args, 1)
 	require.True(t, args[0].Repeatable)
 }
@@ -1006,7 +1032,8 @@ func TestArgs_NameFallback(t *testing.T) {
 	type CLI struct {
 		QueryTerm string `help:"Search query" arg:""`
 	}
-	args := kong.Args(&CLI{})
+	args, err := kong.Args(&CLI{})
+	require.NoError(t, err)
 	require.Len(t, args, 1)
 	require.Equal(t, "queryterm", args[0].Name)
 }
@@ -1015,7 +1042,8 @@ func TestArgs_NoArgs(t *testing.T) {
 	type CLI struct {
 		Verbose bool `help:"Verbose"`
 	}
-	args := kong.Args(&CLI{})
+	args, err := kong.Args(&CLI{})
+	require.NoError(t, err)
 	require.Empty(t, args)
 }
 
@@ -1062,7 +1090,8 @@ func TestNodeSections_HideLong(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	filters := findSection(sections, "Filters")
 	require.NotNil(t, filters)
@@ -1079,7 +1108,8 @@ func TestNodeSections_HideShort(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	flags := findSection(sections, "Options")
 	require.NotNil(t, flags)
@@ -1102,7 +1132,8 @@ func TestNodeSections_NoIndent(t *testing.T) {
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
-	sections := kong.NodeSections(ctx)
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
 
 	filters := findSection(sections, "Filters")
 	require.NotNil(t, filters)

@@ -17,12 +17,16 @@ import (
 // returned by the provided callback.
 func HelpPrinter(
 	r *help.Renderer,
-	sections func() []help.Section,
+	sections func() ([]help.Section, error),
 	opts ...help.Option,
 ) konglib.HelpPrinter {
 	return func(_ konglib.HelpOptions, ctx *konglib.Context) error {
+		s, err := sections()
+		if err != nil {
+			return err
+		}
 		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
-		return r.Render(w, help.Apply(sections(), opts...))
+		return r.Render(w, help.Apply(s, opts...))
 	}
 }
 
@@ -31,12 +35,16 @@ func HelpPrinter(
 // to vary by subcommand.
 func HelpPrinterFunc(
 	r *help.Renderer,
-	sections func(*konglib.Context) []help.Section,
+	sections func(*konglib.Context) ([]help.Section, error),
 	opts ...help.Option,
 ) konglib.HelpPrinter {
 	return func(_ konglib.HelpOptions, ctx *konglib.Context) error {
+		s, err := sections(ctx)
+		if err != nil {
+			return err
+		}
 		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
-		return r.Render(w, help.Apply(sections(ctx), opts...))
+		return r.Render(w, help.Apply(s, opts...))
 	}
 }
 
@@ -62,8 +70,8 @@ func WithArguments(cli any) NodeSectionsOption {
 
 // NodeSectionsFunc returns a sections callback for use with HelpPrinterFunc,
 // with the given options applied.
-func NodeSectionsFunc(opts ...NodeSectionsOption) func(*konglib.Context) []help.Section {
-	return func(ctx *konglib.Context) []help.Section {
+func NodeSectionsFunc(opts ...NodeSectionsOption) func(*konglib.Context) ([]help.Section, error) {
+	return func(ctx *konglib.Context) ([]help.Section, error) {
 		return NodeSections(ctx, opts...)
 	}
 }
@@ -72,7 +80,7 @@ func NodeSectionsFunc(opts ...NodeSectionsOption) func(*konglib.Context) []help.
 // It determines the active node via ctx.Selected() (falls back to the
 // application root) and produces Usage, Arguments, Aliases, Commands,
 // and flag sections.
-func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) []help.Section {
+func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Section, error) {
 	var cfg nodeSectionsConfig
 	for _, o := range opts {
 		o(&cfg)
@@ -91,7 +99,11 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) []help.Secti
 	// Arguments section.
 	switch {
 	case cfg.argsCLI != nil:
-		if args := Args(cfg.argsCLI); len(args) > 0 {
+		args, err := Args(cfg.argsCLI)
+		if err != nil {
+			return nil, err
+		}
+		if len(args) > 0 {
 			sections = append(sections, help.Section{
 				Title:   "Arguments",
 				Content: []help.Content{help.Args(args)},
@@ -127,9 +139,13 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) []help.Secti
 	}
 
 	// Flag sections.
-	sections = append(sections, buildNodeFlagSections(node)...)
+	flagSections, err := buildNodeFlagSections(node)
+	if err != nil {
+		return nil, err
+	}
+	sections = append(sections, flagSections...)
 
-	return sections
+	return sections, nil
 }
 
 // nodeUsageSection builds the Usage section for a node.
@@ -235,7 +251,7 @@ func hasVisibleChildren(node *konglib.Node) bool {
 }
 
 // kongFlagToHelp converts a kong flag to a help.Flag.
-func kongFlagToHelp(f *konglib.Flag) help.Flag {
+func kongFlagToHelp(f *konglib.Flag) (help.Flag, error) {
 	meta := complete.FlagMeta{
 		Name:                f.Name,
 		Help:                f.Help,
@@ -261,19 +277,8 @@ func kongFlagToHelp(f *konglib.Flag) help.Flag {
 	if f.Tag != nil {
 		clibTag = f.Tag.Get(tagClib)
 	}
-	if clibTag != "" {
-		if clibEnum, ok := tag.Parse(clibTag, tag.Enum); ok && clibEnum != "" {
-			meta.Enum = tag.SplitCSV(clibEnum)
-		}
-		if hl, ok := tag.Parse(clibTag, tag.Highlight); ok && hl != "" {
-			meta.EnumHighlight = tag.SplitCSV(hl)
-		}
-		if def, ok := tag.Parse(clibTag, tag.Default); ok && def != "" {
-			meta.EnumDefault = def
-		}
-		if inv, ok := tag.Parse(clibTag, tag.Inverse); ok && inv != "" {
-			meta.InversePrefix = inv
-		}
+	if err := applyClibTag(&meta, clibTag); err != nil {
+		return help.Flag{}, err
 	}
 	if len(meta.Enum) == 0 && f.Tag != nil {
 		if enum := f.Tag.Get(tagEnum); enum != "" {
@@ -286,21 +291,54 @@ func kongFlagToHelp(f *konglib.Flag) help.Flag {
 		meta.EnumDefault = f.Default
 	}
 
-	if clibTag != "" {
-		if _, ok := tag.Parse(clibTag, tag.HideLong); ok {
-			meta.HideLong = true
-		}
-		if _, ok := tag.Parse(clibTag, tag.HideShort); ok {
-			meta.HideShort = true
-		}
-		if _, ok := tag.Parse(clibTag, tag.NoIndent); ok {
-			meta.NoIndent = true
-		}
-	}
-
 	hf := helpFlagFromMeta(meta)
 	hf.PlaceholderLiteral = placeholderLiteral
-	return hf
+	return hf, nil
+}
+
+// applyClibTag parses the clib struct tag and applies values to meta.
+func applyClibTag(meta *complete.FlagMeta, clibTag string) error {
+	if clibTag == "" {
+		return nil
+	}
+	parse := func(key string) (string, bool, error) { return tag.Parse(clibTag, key) }
+
+	if v, ok, err := parse(tag.Enum); err != nil {
+		return err
+	} else if ok && v != "" {
+		meta.Enum = tag.SplitCSV(v)
+	}
+	if v, ok, err := parse(tag.Highlight); err != nil {
+		return err
+	} else if ok && v != "" {
+		meta.EnumHighlight = tag.SplitCSV(v)
+	}
+	if v, ok, err := parse(tag.Default); err != nil {
+		return err
+	} else if ok && v != "" {
+		meta.EnumDefault = v
+	}
+	if v, ok, err := parse(tag.Inverse); err != nil {
+		return err
+	} else if ok && v != "" {
+		meta.InversePrefix = v
+	}
+	if _, ok, err := parse(tag.HideLong); err != nil {
+		return err
+	} else if ok {
+		meta.HideLong = true
+	}
+	if _, ok, err := parse(tag.HideShort); err != nil {
+		return err
+	} else if ok {
+		meta.HideShort = true
+	}
+	if _, ok, err := parse(tag.NoIndent); err != nil {
+		return err
+	} else if ok {
+		meta.NoIndent = true
+	}
+	return nil
 }
 
 // flagPlaceholder returns the placeholder string and whether it's a literal
@@ -331,16 +369,16 @@ func isCSVFlag(f *konglib.Flag) bool {
 }
 
 // clibGroup reads the clib tag from a kong flag and returns the group value.
-func clibGroup(f *konglib.Flag) string {
+func clibGroup(f *konglib.Flag) (string, error) {
 	if f.Tag == nil {
-		return ""
+		return "", nil
 	}
 	clibTag := f.Tag.Get(tagClib)
 	if clibTag == "" {
-		return ""
+		return "", nil
 	}
-	group, _ := tag.Parse(clibTag, tag.Group)
-	return group
+	group, _, err := tag.Parse(clibTag, tag.Group)
+	return group, err
 }
 
 // ancestorFlags collects flags from all ancestor nodes.
@@ -358,33 +396,50 @@ func ancestorFlags(node *konglib.Node) []*konglib.Flag {
 //   - Compound group names ("Section/SubGroup") split flags within the same
 //     section into separate FlagGroup entries (blank line separator).
 //   - Otherwise: flat "Options" (local) + "Inherited Options" (ancestor).
-func buildNodeFlagSections(node *konglib.Node) []help.Section {
+func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
 	inherited := ancestorFlags(node)
 
 	var classified []help.ClassifiedFlag
-	classifyKongFlags := func(flags []*konglib.Flag, isInherited bool) {
+	classifyKongFlags := func(flags []*konglib.Flag, isInherited bool) error {
 		for _, f := range flags {
 			if f.Hidden {
 				continue
 			}
+			hf, err := kongFlagToHelp(f)
+			if err != nil {
+				return err
+			}
+			group, err := clibGroup(f)
+			if err != nil {
+				return err
+			}
 			classified = append(classified, help.ClassifiedFlag{
-				Flag:      kongFlagToHelp(f),
-				Group:     clibGroup(f),
+				Flag:      hf,
+				Group:     group,
 				Inherited: isInherited,
 			})
 		}
+		return nil
 	}
-	classifyKongFlags(node.Flags, false)
-	classifyKongFlags(inherited, true)
+	if err := classifyKongFlags(node.Flags, false); err != nil {
+		return nil, err
+	}
+	if err := classifyKongFlags(inherited, true); err != nil {
+		return nil, err
+	}
 
-	return help.BuildFlagSections(classified, help.KeepGroupOrder())
+	return help.BuildFlagSections(classified, help.KeepGroupOrder()), nil
 }
 
 // Args extracts positional argument entries from a CLI struct's reflected
 // metadata. It returns entries suitable for use in help.Args content.
-func Args(cli any) []help.Arg {
+func Args(cli any) ([]help.Arg, error) {
+	flags, err := Reflect(cli)
+	if err != nil {
+		return nil, err
+	}
 	var args []help.Arg
-	for _, f := range Reflect(cli) {
+	for _, f := range flags {
 		if f.IsArg {
 			name := f.Name
 			if name == "" {
@@ -398,7 +453,7 @@ func Args(cli any) []help.Arg {
 			})
 		}
 	}
-	return args
+	return args, nil
 }
 
 // FlagSections builds flag help sections from reflected FlagMeta.

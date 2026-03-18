@@ -111,11 +111,12 @@ func commandSubSpecs(cmd *cobralib.Command) []complete.SubSpec {
 
 		// PathArgs: check cmd.Annotations["clib"] for complete='path'.
 		if clib, ok := child.Annotations["clib"]; ok {
-			if val, found := tag.Parse(
+			if val, found, err := tag.Parse(
 				clib,
 				tag.Complete,
-			); found &&
-				val == "path" {
+			); err != nil {
+				panic(err)
+			} else if found && val == "path" {
 				sub.PathArgs = true
 			}
 		}

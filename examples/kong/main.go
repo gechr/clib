@@ -51,12 +51,18 @@ func main() {
 	r := help.NewRenderer(th)
 
 	var cli CLI
-	flags := clib.Reflect(&cli)
+	flags, err := clib.Reflect(&cli)
+	if err != nil {
+		panic(err)
+	}
 
 	k := kong.Must(&cli,
 		kong.Name("catalog"),
-		kong.Help(clib.HelpPrinter(r, func() []help.Section {
-			args := clib.Args(&cli)
+		kong.Help(clib.HelpPrinter(r, func() ([]help.Section, error) {
+			args, argsErr := clib.Args(&cli)
+			if argsErr != nil {
+				return nil, argsErr
+			}
 
 			sections := []help.Section{
 				{
@@ -72,7 +78,7 @@ func main() {
 			}
 
 			sections = append(sections, clib.FlagSections(flags)...)
-			return sections
+			return sections, nil
 		},
 			help.WithHelpFlags("Print short help", "Print long help with examples"),
 			help.WithLongHelp(os.Args, help.Section{
