@@ -20,6 +20,7 @@ type Flag struct {
 	EnumDefault        string   // default value annotation appended after enum list
 	EnumHighlight      []string // highlight substrings (parallel to Enum, used with EnumStyleHighlightPrefix)
 	Long               string   // "repo" -> rendered as --repo
+	NoIndent           bool     // true -> suppress short-flag alignment indent for long-only flags
 	Placeholder        string   // "repo" -> rendered as <repo>
 	PlaceholderLiteral bool     // true -> renders placeholder without <...>
 	Repeatable         bool     // true -> renders <placeholder>,…

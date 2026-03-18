@@ -1088,6 +1088,29 @@ func TestNodeSections_HideShort(t *testing.T) {
 	require.True(t, found)
 }
 
+func TestNodeSections_NoIndent(t *testing.T) {
+	type CLI struct {
+		Pattern string `name:"include-pattern" help:"Filter by regex" short:"i" clib:"hide-long,group='Filters'"`
+		Include string `name:"include"         help:"Include by name"           clib:"no-indent,group='Filters'"`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
+	sections := kong.NodeSections(ctx)
+
+	filters := findSection(sections, "Filters")
+	require.NotNil(t, filters)
+	fg, ok := filters.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	for _, f := range fg {
+		if f.Long == "include" {
+			require.True(t, f.NoIndent, "expected NoIndent on --include")
+			return
+		}
+	}
+	t.Fatal("expected include flag")
+}
+
 func TestSections_HasArgNoPlaceholder(t *testing.T) {
 	flags := []complete.FlagMeta{
 		{Name: "output", Help: "Output format", HasArg: true},

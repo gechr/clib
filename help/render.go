@@ -550,7 +550,7 @@ func (r *Renderer) buildFlagPart(f Flag, hasShort bool) string {
 		parts = append(parts, r.Theme.HelpFlag.Render(shortStr)+renderPlaceholder())
 	case longStr != "":
 		longPart := r.Theme.HelpFlag.Render(longStr) + renderPlaceholder()
-		if hasShort {
+		if hasShort && !f.NoIndent {
 			// Mixed section: extra indent to align -- with short-flag entries.
 			parts = append(parts, "    "+longPart)
 		} else {

@@ -258,6 +258,9 @@ func flagToHelp(cmd *clilib.Command, f clilib.Flag) help.Flag {
 		if extra.HideShort {
 			hf.Short = ""
 		}
+		if extra.NoIndent {
+			hf.NoIndent = true
+		}
 	}
 
 	return hf

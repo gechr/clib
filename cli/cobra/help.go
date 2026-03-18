@@ -216,6 +216,9 @@ func pflagToHelpFlag(f *pflag.Flag) help.Flag {
 		if extra.HideShort {
 			hf.Short = ""
 		}
+		if extra.NoIndent {
+			hf.NoIndent = true
+		}
 	}
 
 	return hf

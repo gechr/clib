@@ -24,6 +24,7 @@ type FlagMeta struct {
 	IsCSV               bool     // true if the field type is CSVFlag or *CSVFlag
 	IsSlice             bool     // true if the field type is a slice
 	Name                string   // flag name
+	NoIndent            bool     // suppress short-flag alignment indent in help
 	InversePrefix       string   // prefix for negated flag (default "no-")
 	Negatable           bool     // true if the flag supports --no- prefix
 	NegativeDesc        string   // explicit description for --no- variant
@@ -77,6 +78,8 @@ func (f *FlagMeta) ParseClibTag(t string) {
 			f.HideLong = true
 		case tag.HideShort:
 			f.HideShort = true
+		case tag.NoIndent:
+			f.NoIndent = true
 		case tag.Highlight:
 			if val != "" {
 				f.EnumHighlight = tag.SplitCSV(val)

@@ -11,6 +11,7 @@ const (
 	Group       = "group"
 	HideLong    = "hide-long"
 	HideShort   = "hide-short"
+	NoIndent    = "no-indent"
 	Inverse     = "inverse"
 	Highlight   = "highlight"
 	Hint        = "hint"

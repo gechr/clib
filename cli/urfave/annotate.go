@@ -19,6 +19,7 @@ type FlagExtra struct {
 	HideLong      bool     // hide the long flag from help output
 	HideShort     bool     // hide the short flag from help output
 	Hint          string   // value type hint for completion (file, dir, command, user, host, url, email)
+	NoIndent      bool     // suppress short-flag alignment indent in help
 	NegativeDesc  string   // description for --no- variant (negatable flags)
 	Placeholder   string   // value placeholder (e.g. "repo")
 	PositiveDesc  string   // description for positive variant (negatable flags)

@@ -293,6 +293,9 @@ func kongFlagToHelp(f *konglib.Flag) help.Flag {
 		if _, ok := tag.Parse(clibTag, tag.HideShort); ok {
 			meta.HideShort = true
 		}
+		if _, ok := tag.Parse(clibTag, tag.NoIndent); ok {
+			meta.NoIndent = true
+		}
 	}
 
 	hf := helpFlagFromMeta(meta)
@@ -449,6 +452,7 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 	return help.Flag{
 		Short:         short,
 		Long:          long,
+		NoIndent:      f.NoIndent,
 		Desc:          desc,
 		Enum:          f.Enum,
 		EnumDefault:   f.EnumDefault,

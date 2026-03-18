@@ -18,6 +18,7 @@ type FlagExtra struct {
 	HideLong      bool     `json:"hideLong"`      // hide the long flag from help output
 	HideShort     bool     `json:"hideShort"`     // hide the short flag from help output
 	Hint          string   `json:"hint"`          // value type hint for completion (file, dir, command, user, host, url, email)
+	NoIndent      bool     `json:"noIndent"`      // suppress short-flag alignment indent in help
 	Negatable     bool     `json:"negatable"`     // supports --no- prefix
 	NegativeDesc  string   `json:"negativeDesc"`  // description for --no- variant (negatable flags)
 	Placeholder   string   `json:"placeholder"`   // value placeholder (e.g. "repo")
