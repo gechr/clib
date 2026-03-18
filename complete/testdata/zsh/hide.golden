@@ -1,0 +1,28 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '-i+[Filter by regex]: :_default' \
+        '--include=[Include by name]: :_default' \
+        '--verbose[Verbose output]' \
+    && ret=0
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

@@ -1,0 +1,5 @@
+complete -c myapp -f
+
+complete -c myapp -s i -r -d "Filter by regex"
+complete -c myapp -l include -r -d "Include by name"
+complete -c myapp -l verbose -d "Verbose output"

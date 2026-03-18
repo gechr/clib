@@ -179,12 +179,35 @@ func persistentFlagsGen() *complete.Generator {
 	}
 }
 
+func hideGen() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: complete.SortVisibleSpecs(
+			append(
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "include-pattern", Short: "i", Terse: "Filter by regex",
+					HasArg: true, HideLong: true,
+				}),
+				append(
+					complete.SpecsFromFlagMeta(complete.FlagMeta{
+						Name: "include", Terse: "Include by name", HasArg: true,
+					}),
+					complete.SpecsFromFlagMeta(complete.FlagMeta{
+						Name: "verbose", Short: "v", Terse: "Verbose output", HideShort: true,
+					})...,
+				)...,
+			),
+		),
+	}
+}
+
 func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
 		"dynamicargs":     dynamicArgsGen(),
 		"ext":             extGen(),
 		"flat":            newTestGen(),
 		"globalflags":     globalFlagsGen(),
+		"hide":            hideGen(),
 		"hints":           hintsGen(),
 		"hyphenated":      hyphenatedGen(),
 		"nested":          nestedGen(),

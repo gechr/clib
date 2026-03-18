@@ -149,9 +149,18 @@ func SpecsFromFlagMeta(f FlagMeta) []Spec {
 		return nil
 	}
 
+	longFlag := f.Name
+	shortFlag := f.Short
+	if f.HideLong {
+		longFlag = ""
+	}
+	if f.HideShort {
+		shortFlag = ""
+	}
+
 	spec := Spec{
-		LongFlag:   f.Name,
-		ShortFlag:  f.Short,
+		LongFlag:   longFlag,
+		ShortFlag:  shortFlag,
 		Terse:      f.Desc(),
 		HasArg:     f.HasArg,
 		Hidden:     f.Hidden,
