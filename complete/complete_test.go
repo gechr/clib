@@ -55,12 +55,12 @@ func testFlags() []complete.FlagMeta {
 	}
 }
 
-func newTestGen() *complete.Generator {
+func genFlat() *complete.Generator {
 	return complete.NewGenerator("clibapp").FromFlags(testFlags())
 }
 
 func TestGenerator_FromFlags(t *testing.T) {
-	gen := newTestGen()
+	gen := genFlat()
 
 	// Should have 9 specs (10 fields minus 1 arg minus 1 complete:"-", plus 1 negatable --no- variant).
 	require.Len(t, gen.Specs, 9)
@@ -229,7 +229,7 @@ func TestParseCompleteTag(t *testing.T) {
 // --- Print tests ---
 
 func TestGenerator_Print_DefaultShell(t *testing.T) {
-	gen := newTestGen()
+	gen := genFlat()
 	var buf strings.Builder
 	err := gen.Print(&buf, "")
 	require.NoError(t, err)
@@ -265,7 +265,7 @@ complete -c clibapp -s v -l verbose -d "Verbose"
 }
 
 func TestGenerator_Print_UnsupportedShell(t *testing.T) {
-	gen := newTestGen()
+	gen := genFlat()
 	var buf strings.Builder
 	err := gen.Print(&buf, "elvish")
 	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
@@ -277,7 +277,7 @@ func TestGenerator_Install_Fish(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("fish", true)
 	require.NoError(t, err)
 
@@ -319,7 +319,7 @@ func TestGenerator_Install_DefaultShell(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("", true)
 	require.NoError(t, err)
 
@@ -332,7 +332,7 @@ func TestGenerator_Install_Bash(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("bash", true)
 	require.NoError(t, err)
 
@@ -440,7 +440,7 @@ func TestGenerator_Install_Zsh(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("zsh", true)
 	require.NoError(t, err)
 
@@ -489,7 +489,7 @@ fi
 }
 
 func TestGenerator_Install_UnsupportedShell(t *testing.T) {
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("elvish", true)
 	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
 }
@@ -498,7 +498,7 @@ func TestGenerator_Install_NotQuiet(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("fish", false)
 	require.NoError(t, err)
 
@@ -513,7 +513,7 @@ func TestGenerator_Uninstall_Fish(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	// Install first.
 	err := gen.Install("fish", true)
 	require.NoError(t, err)
@@ -531,7 +531,7 @@ func TestGenerator_Uninstall_DefaultShell(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("", true)
 	require.NoError(t, err)
 
@@ -552,7 +552,7 @@ func TestGenerator_Uninstall_Bash(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("bash", true)
 	require.NoError(t, err)
 
@@ -568,7 +568,7 @@ func TestGenerator_Uninstall_Zsh(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", tmpDir)
 
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Install("zsh", true)
 	require.NoError(t, err)
 
@@ -581,7 +581,7 @@ func TestGenerator_Uninstall_Zsh(t *testing.T) {
 }
 
 func TestGenerator_Uninstall_UnsupportedShell(t *testing.T) {
-	gen := newTestGen()
+	gen := genFlat()
 	err := gen.Uninstall("elvish", false)
 	require.EqualError(t, err, `unsupported shell "elvish"`)
 }
@@ -710,7 +710,7 @@ func TestApplyMeta_OverwritesValueHintWhenSet(t *testing.T) {
 
 // --- Subcommand test generator helpers ---
 
-func subcommandGen() *complete.Generator {
+func genSubcommands() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -744,7 +744,7 @@ func subcommandGen() *complete.Generator {
 	}
 }
 
-func globalFlagsGen() *complete.Generator {
+func genGlobalFlags() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -846,7 +846,7 @@ func TestHandleAction_NoAction(t *testing.T) {
 	require.False(t, handled)
 }
 
-func nestedGen() *complete.Generator {
+func genNested() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{

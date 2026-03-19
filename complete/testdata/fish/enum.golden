@@ -1,0 +1,4 @@
+complete -c myapp -f
+
+complete -c myapp -l method -x -a "ssh https" -d "Clone method"
+complete -c myapp -s v -l verbose -d "Verbose output"

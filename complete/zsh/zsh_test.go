@@ -19,7 +19,7 @@ func flatGen() *complete.Generator {
 	}
 }
 
-func subcommandGen() *complete.Generator {
+func genSubcommands() *complete.Generator {
 	return &complete.Generator{
 		AppName: "testapp",
 		Specs: []complete.Spec{
@@ -32,7 +32,7 @@ func subcommandGen() *complete.Generator {
 	}
 }
 
-func nestedGen() *complete.Generator {
+func genNested() *complete.Generator {
 	return &complete.Generator{
 		AppName: "testapp",
 		Subs: []complete.SubSpec{
@@ -216,7 +216,7 @@ else
     compdef _testapp testapp
 fi
 `
-	out, err := Generate(subcommandGen())
+	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
@@ -301,7 +301,7 @@ else
     compdef _testapp testapp
 fi
 `
-	out, err := Generate(nestedGen())
+	out, err := Generate(genNested())
 	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }

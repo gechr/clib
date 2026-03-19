@@ -92,6 +92,17 @@ func TestReflect_EnumHighlight(t *testing.T) {
 	require.Equal(t, []string{"j", "y", "t"}, f.EnumHighlight)
 }
 
+func TestReflect_ClibEnumOverridesKongEnum(t *testing.T) {
+	type CLI struct {
+		Method string `name:"method" help:"Clone method" clib:"enum='ssh,https'" enum:"ssh,https,http"`
+	}
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	f := findFlagByName(flags, "method")
+	require.NotNil(t, f)
+	require.Equal(t, []string{"ssh", "https"}, f.Enum)
+}
+
 func TestReflect_HiddenFlag(t *testing.T) {
 	flags, err := kong.Reflect(&testCLI{})
 	require.NoError(t, err)

@@ -14,7 +14,7 @@ func flatGen() *complete.Generator {
 	}}
 }
 
-func subcommandGen() *complete.Generator {
+func genSubcommands() *complete.Generator {
 	return &complete.Generator{AppName: "testapp", Specs: []complete.Spec{
 		{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose"},
 	}, Subs: []complete.SubSpec{
@@ -26,7 +26,7 @@ func subcommandGen() *complete.Generator {
 	}}
 }
 
-func nestedGen() *complete.Generator {
+func genNested() *complete.Generator {
 	return &complete.Generator{
 		AppName: "testapp", Specs: []complete.Spec{{LongFlag: "verbose", Terse: "Verbose"}},
 		Subs: []complete.SubSpec{
@@ -172,7 +172,7 @@ fi
 }
 
 func TestGenerate_Subcommands(t *testing.T) {
-	out, err := Generate(subcommandGen())
+	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 	expected := `# testapp bash completion
 _testapp() {
@@ -253,7 +253,7 @@ fi
 }
 
 func TestGenerate_Nested(t *testing.T) {
-	out, err := Generate(nestedGen())
+	out, err := Generate(genNested())
 	require.NoError(t, err)
 	expected := `# testapp bash completion
 _testapp() {

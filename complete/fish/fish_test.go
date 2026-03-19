@@ -51,7 +51,7 @@ func flatGen() *complete.Generator {
 	})
 }
 
-func subcommandGen() *complete.Generator {
+func genSubcommands() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -85,7 +85,7 @@ func subcommandGen() *complete.Generator {
 	}
 }
 
-func nestedGen() *complete.Generator {
+func genNested() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -302,7 +302,7 @@ complete -c clibapp -s v -l verbose -d "Verbose"
 }
 
 func TestGenerate_Subcommands(t *testing.T) {
-	out, err := Generate(subcommandGen())
+	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 
 	expected := `complete -c myapp -f
@@ -346,7 +346,7 @@ complete -c myapp -n '__myapp_using_subcommand test t' -s r -l run -r -d "Test p
 }
 
 func TestGenerate_Nested(t *testing.T) {
-	out, err := Generate(nestedGen())
+	out, err := Generate(genNested())
 	require.NoError(t, err)
 
 	expected := `complete -c myapp -f

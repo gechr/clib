@@ -13,29 +13,34 @@ import (
 
 var update = flag.Bool("update", false, "update golden files")
 
-func hyphenatedGen() *complete.Generator {
+func genDynamicArgs() *complete.Generator {
 	return &complete.Generator{
-		AppName: "my-app",
+		AppName:     "myapp",
+		DynamicArgs: []string{"items", "subitems"},
 		Specs: []complete.Spec{
 			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
-		},
-		Subs: []complete.SubSpec{
-			{
-				Name:  "build",
-				Terse: "Build the project",
-				Specs: []complete.Spec{
-					{LongFlag: "output", ShortFlag: "o", Terse: "Output path", HasArg: true},
-				},
-			},
-			{
-				Name:  "test",
-				Terse: "Run tests",
-			},
 		},
 	}
 }
 
-func extGen() *complete.Generator {
+func genEnum() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: complete.SortVisibleSpecs(
+			append(
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "method", Terse: "Clone method", HasArg: true,
+					Enum: []string{"ssh", "https"},
+				}),
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "verbose", Short: "v", Terse: "Verbose output",
+				})...,
+			),
+		),
+	}
+}
+
+func genExt() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -51,7 +56,29 @@ func extGen() *complete.Generator {
 	}
 }
 
-func hintsGen() *complete.Generator {
+func genHide() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: complete.SortVisibleSpecs(
+			append(
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "include-pattern", Short: "i", Terse: "Filter by regex",
+					HasArg: true, HideLong: true,
+				}),
+				append(
+					complete.SpecsFromFlagMeta(complete.FlagMeta{
+						Name: "include", Terse: "Include by name", HasArg: true,
+					}),
+					complete.SpecsFromFlagMeta(complete.FlagMeta{
+						Name: "verbose", Short: "v", Terse: "Verbose output", HideShort: true,
+					})...,
+				)...,
+			),
+		),
+	}
+}
+
+func genHints() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -89,35 +116,29 @@ func hintsGen() *complete.Generator {
 	}
 }
 
-func valueDescGen() *complete.Generator {
+func genHyphenated() *complete.Generator {
 	return &complete.Generator{
-		AppName: "myapp",
+		AppName: "my-app",
 		Specs: []complete.Spec{
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+		Subs: []complete.SubSpec{
 			{
-				LongFlag:  "format",
-				ShortFlag: "f",
-				Terse:     "Output format",
-				HasArg:    true,
-				ValueDescs: []complete.ValueDesc{
-					{Value: "json", Desc: "JSON output"},
-					{Value: "yaml", Desc: "YAML output"},
-					{Value: "text", Desc: "Plain text"},
+				Name:  "build",
+				Terse: "Build the project",
+				Specs: []complete.Spec{
+					{LongFlag: "output", ShortFlag: "o", Terse: "Output path", HasArg: true},
 				},
 			},
 			{
-				LongFlag:  "tags",
-				ShortFlag: "t",
-				Terse:     "Filter tags",
-				HasArg:    true,
-				CommaList: true,
-				Values:    []string{"bug", "feature", "docs"},
+				Name:  "test",
+				Terse: "Run tests",
 			},
-			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
 		},
 	}
 }
 
-func pathArgsGen() *complete.Generator {
+func genPathArgs() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -140,17 +161,7 @@ func pathArgsGen() *complete.Generator {
 	}
 }
 
-func dynamicArgsGen() *complete.Generator {
-	return &complete.Generator{
-		AppName:     "myapp",
-		DynamicArgs: []string{"items", "subitems"},
-		Specs: []complete.Spec{
-			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
-		},
-	}
-}
-
-func persistentFlagsGen() *complete.Generator {
+func genPersistentFlags() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: []complete.Spec{
@@ -179,42 +190,49 @@ func persistentFlagsGen() *complete.Generator {
 	}
 }
 
-func hideGen() *complete.Generator {
+func genValueDesc() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
-		Specs: complete.SortVisibleSpecs(
-			append(
-				complete.SpecsFromFlagMeta(complete.FlagMeta{
-					Name: "include-pattern", Short: "i", Terse: "Filter by regex",
-					HasArg: true, HideLong: true,
-				}),
-				append(
-					complete.SpecsFromFlagMeta(complete.FlagMeta{
-						Name: "include", Terse: "Include by name", HasArg: true,
-					}),
-					complete.SpecsFromFlagMeta(complete.FlagMeta{
-						Name: "verbose", Short: "v", Terse: "Verbose output", HideShort: true,
-					})...,
-				)...,
-			),
-		),
+		Specs: []complete.Spec{
+			{
+				LongFlag:  "format",
+				ShortFlag: "f",
+				Terse:     "Output format",
+				HasArg:    true,
+				ValueDescs: []complete.ValueDesc{
+					{Value: "json", Desc: "JSON output"},
+					{Value: "yaml", Desc: "YAML output"},
+					{Value: "text", Desc: "Plain text"},
+				},
+			},
+			{
+				LongFlag:  "tags",
+				ShortFlag: "t",
+				Terse:     "Filter tags",
+				HasArg:    true,
+				CommaList: true,
+				Values:    []string{"bug", "feature", "docs"},
+			},
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
 	}
 }
 
 func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
-		"dynamicargs":     dynamicArgsGen(),
-		"ext":             extGen(),
-		"flat":            newTestGen(),
-		"globalflags":     globalFlagsGen(),
-		"hide":            hideGen(),
-		"hints":           hintsGen(),
-		"hyphenated":      hyphenatedGen(),
-		"nested":          nestedGen(),
-		"pathargs":        pathArgsGen(),
-		"persistentflags": persistentFlagsGen(),
-		"subcommands":     subcommandGen(),
-		"valuedesc":       valueDescGen(),
+		"dynamicargs":     genDynamicArgs(),
+		"enum":            genEnum(),
+		"ext":             genExt(),
+		"flat":            genFlat(),
+		"globalflags":     genGlobalFlags(),
+		"hide":            genHide(),
+		"hints":           genHints(),
+		"hyphenated":      genHyphenated(),
+		"nested":          genNested(),
+		"pathargs":        genPathArgs(),
+		"persistentflags": genPersistentFlags(),
+		"subcommands":     genSubcommands(),
+		"valuedesc":       genValueDesc(),
 	}
 
 	shells := []string{"bash", "zsh", "fish"}

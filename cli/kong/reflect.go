@@ -128,8 +128,10 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 			meta.Optional = true
 		}
 
-		if enum := field.Tag.Get(tagEnum); enum != "" {
-			meta.Enum = tag.SplitCSV(enum)
+		if len(meta.Enum) == 0 {
+			if enum := field.Tag.Get(tagEnum); enum != "" {
+				meta.Enum = tag.SplitCSV(enum)
+			}
 		}
 
 		// Fall back to kong's native default for enum highlighting.
