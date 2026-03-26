@@ -62,6 +62,7 @@ func genSubcommands() *complete.Generator {
 				HasArg:   true,
 				Values:   []string{"auto", "always", "never"},
 			},
+			{LongFlag: "@secret", HasArg: true, Hidden: true},
 		},
 		Subs: []complete.SubSpec{
 			{

@@ -163,6 +163,9 @@ func fishWriteHelpers(g *Generator, sb *strings.Builder, funcID string) {
 
 	fmt.Fprintf(sb, "\nfunction %s\n    string join \\n --", optspecsFn)
 	for _, spec := range g.Specs {
+		if spec.Hidden {
+			continue
+		}
 		var optspec string
 		switch {
 		case spec.ShortFlag != "" && spec.LongFlag != "":
