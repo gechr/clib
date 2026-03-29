@@ -96,12 +96,13 @@ type Spec struct {
 
 // SubSpec describes a subcommand for shell completion generation.
 type SubSpec struct {
-	Name     string    // subcommand name (e.g. "bump")
-	Aliases  []string  // command aliases (e.g. ["up"] for "update")
-	Terse    string    // short description for tab completion
-	Specs    []Spec    // subcommand-specific flag specs
-	Subs     []SubSpec // nested subcommands
-	PathArgs bool      // enable file completion for positional args
+	Name        string    // subcommand name (e.g. "bump")
+	Aliases     []string  // command aliases (e.g. ["up"] for "update")
+	Terse       string    // short description for tab completion
+	Specs       []Spec    // subcommand-specific flag specs
+	Subs        []SubSpec // nested subcommands
+	PathArgs    bool      // enable file completion for positional args
+	DynamicArgs []string  // per-position dynamic completion for positional args
 }
 
 // Value hint constants for completion.
@@ -366,13 +367,12 @@ func combineVisibleSpecs(specSets ...[]Spec) []Spec {
 	return SortVisibleSpecs(combined)
 }
 
-func appendSpecs(dst []Spec, specs ...[]Spec) []Spec {
-	total := len(dst)
+func appendSpecs(specs ...[]Spec) []Spec {
+	total := 0
 	for _, group := range specs {
 		total += len(group)
 	}
 	result := make([]Spec, 0, total)
-	result = append(result, dst...)
 	for _, group := range specs {
 		result = append(result, group...)
 	}

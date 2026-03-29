@@ -1,0 +1,125 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+        ':: :_myapp_commands' \
+        '*::: :->myapp' \
+    && ret=0
+
+    case $state in
+    (myapp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:myapp-command-$line[1]:"
+        case $line[1] in
+            (list)
+                _arguments "${_arguments_options[@]}" : \
+                && ret=0
+            ;;
+            (resolve)
+                _arguments "${_arguments_options[@]}" : \
+                    '(-f --force)-f[Force resolution]' \
+                    '(-f --force)--force[Force resolution]' \
+                    '1: :->dyn_1' \
+                    '2: :->dyn_2' \
+                && ret=0
+
+                case $state in
+                (dyn_1)
+                    local -a __pos=()
+                    local __skip_next=0
+                    local __after_dd=0
+                    local token
+                    for ((i=2; i<CURRENT; i++)); do
+                        token=${words[i]}
+                        if (( __after_dd )); then
+                            __pos+=("$token")
+                            continue
+                        fi
+                        if (( __skip_next )); then
+                            __skip_next=0
+                            continue
+                        fi
+                        if [[ $token == -- ]]; then
+                            __after_dd=1
+                            continue
+                        fi
+                        case $token in
+                            (-*)
+                                ;;
+                            (*)
+                                __pos+=("$token")
+                                ;;
+                        esac
+                    done
+                    local -a items
+                    items=(${(f)"$(myapp --@complete=incident 2>/dev/null)"})
+                    compadd -a items
+                ;;
+                (dyn_2)
+                    local -a __pos=()
+                    local __skip_next=0
+                    local __after_dd=0
+                    local token
+                    for ((i=2; i<CURRENT; i++)); do
+                        token=${words[i]}
+                        if (( __after_dd )); then
+                            __pos+=("$token")
+                            continue
+                        fi
+                        if (( __skip_next )); then
+                            __skip_next=0
+                            continue
+                        fi
+                        if [[ $token == -- ]]; then
+                            __after_dd=1
+                            continue
+                        fi
+                        case $token in
+                            (-*)
+                                ;;
+                            (*)
+                                __pos+=("$token")
+                                ;;
+                        esac
+                    done
+                    local -a items
+                    items=(${(f)"$(myapp --@complete=alert -- "${__pos[@]}" 2>/dev/null)"})
+                    compadd -a items
+                ;;
+                esac
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_myapp_commands] )) ||
+_myapp_commands() {
+    local commands; commands=(
+        'list:List items' \
+        'resolve:Resolve alerts' \
+    )
+    _describe -t commands 'myapp commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

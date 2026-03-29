@@ -218,6 +218,29 @@ func genValueDesc() *complete.Generator {
 	}
 }
 
+func genSubDynamicArgs() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+		Subs: []complete.SubSpec{
+			{
+				Name:        "resolve",
+				Terse:       "Resolve alerts",
+				DynamicArgs: []string{"incident", "alert"},
+				Specs: []complete.Spec{
+					{LongFlag: "force", ShortFlag: "f", Terse: "Force resolution"},
+				},
+			},
+			{
+				Name:  "list",
+				Terse: "List items",
+			},
+		},
+	}
+}
+
 func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
 		"dynamicargs":     genDynamicArgs(),
@@ -232,6 +255,7 @@ func TestGolden(t *testing.T) {
 		"pathargs":        genPathArgs(),
 		"persistentflags": genPersistentFlags(),
 		"subcommands":     genSubcommands(),
+		"subdynamicargs":  genSubDynamicArgs(),
 		"valuedesc":       genValueDesc(),
 	}
 

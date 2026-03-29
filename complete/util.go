@@ -73,6 +73,11 @@ func ValidateSubs(subs []SubSpec) error {
 				return err
 			}
 		}
+		for _, da := range sub.DynamicArgs {
+			if err := ValidateShellSafe(da, "DynamicArgs"); err != nil {
+				return err
+			}
+		}
 		if err := ValidateSpecs(sub.Specs); err != nil {
 			return err
 		}

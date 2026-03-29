@@ -167,7 +167,7 @@ func bashWriteCmdCase(
 	case pathArgs:
 		WriteIndented(sb, "            ", bashFileCompletionBlock)
 	case len(dynamicArgs) > 0:
-		bashWriteDynamicArgsParser(sb, specs)
+		bashWriteDynamicArgsParser(sb, specs, depth)
 		fmt.Fprint(sb, "            case ${#__dyn_pos[@]} in\n")
 		for i, da := range dynamicArgs {
 			if i == 0 {
@@ -198,12 +198,16 @@ func bashWriteCmdCase(
 	fmt.Fprint(sb, "            return 0\n            ;;\n")
 }
 
-func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec) {
+func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
+	cmdSkip := depth - 1
 	exact, equals := argValuePatterns(specs)
-	fmt.Fprint(sb, `            local -a __dyn_pos=()
-            local __skip_next=0
-            local __after_dd=0
-            for ((j=1; j<COMP_CWORD; j++)); do
+	fmt.Fprint(sb, "            local -a __dyn_pos=()\n")
+	fmt.Fprint(sb, "            local __skip_next=0\n")
+	fmt.Fprint(sb, "            local __after_dd=0\n")
+	if cmdSkip > 0 {
+		fmt.Fprintf(sb, "            local __cmd_skip=%d\n", cmdSkip)
+	}
+	fmt.Fprint(sb, `            for ((j=1; j<COMP_CWORD; j++)); do
                 if [[ "${__after_dd}" -eq 1 ]]; then
                     __dyn_pos+=("${COMP_WORDS[j]}")
                     continue
@@ -232,14 +236,23 @@ func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec) {
 			strings.Join(equals, "|"),
 		)
 	}
-	fmt.Fprint(sb, `                    -*)
+	fmt.Fprint(sb, "                    -*)\n                        ;;\n")
+	if cmdSkip > 0 {
+		fmt.Fprint(sb, `                    *)
+                        if [[ $__cmd_skip -gt 0 ]]; then
+                            ((__cmd_skip--))
+                        else
+                            __dyn_pos+=("${COMP_WORDS[j]}")
+                        fi
                         ;;
-                    *)
-                        __dyn_pos+=("${COMP_WORDS[j]}")
-                        ;;
-                esac
-            done
 `)
+	} else {
+		fmt.Fprint(
+			sb,
+			"                    *)\n                        __dyn_pos+=(\"${COMP_WORDS[j]}\")\n                        ;;\n",
+		)
+	}
+	fmt.Fprint(sb, "                esac\n            done\n")
 }
 
 func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
@@ -395,13 +408,22 @@ func bashWriteSubcmdCases(
 		childCmd := parentCmd + "__" + bashCmdNameFromApp(sub.Name)
 		visibleSpecs := combineVisibleSpecs(inheritedSpecs, sub.Specs)
 
-		bashWriteCmdCase(g, sb, childCmd, visibleSpecs, sub.Subs, sub.PathArgs, nil, depth)
+		bashWriteCmdCase(
+			g,
+			sb,
+			childCmd,
+			visibleSpecs,
+			sub.Subs,
+			sub.PathArgs,
+			sub.DynamicArgs,
+			depth,
+		)
 
 		if len(sub.Subs) == 0 {
 			continue
 		}
 
-		nextInherited := appendSpecs(nil, inheritedSpecs, persistentSpecs(sub.Specs))
+		nextInherited := appendSpecs(inheritedSpecs, persistentSpecs(sub.Specs))
 		bashWriteSubcmdCases(g, sb, sub.Subs, childCmd, nextInherited, depth+1)
 	}
 }

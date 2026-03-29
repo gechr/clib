@@ -1,0 +1,101 @@
+# myapp bash completion
+_myapp() {
+    local i cur prev opts cmd
+    COMPREPLY=()
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${COMP_WORDS[COMP_CWORD]}"
+    fi
+    prev="$3"
+    cmd=""
+    opts=""
+
+    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
+        case "${cmd},${i}" in
+            ",$1")
+                cmd="myapp"
+                ;;
+            myapp,list)
+                cmd="myapp__list"
+                ;;
+            myapp,resolve)
+                cmd="myapp__resolve"
+                ;;
+            *)
+                ;;
+        esac
+    done
+
+    case "${cmd}" in
+        myapp)
+            opts="--verbose -v list resolve"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        myapp__list)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        myapp__resolve)
+            opts="--force -f"
+            if [[ ${cur} == -* ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            local -a __dyn_pos=()
+            local __skip_next=0
+            local __after_dd=0
+            local __cmd_skip=1
+            for ((j=1; j<COMP_CWORD; j++)); do
+                if [[ "${__after_dd}" -eq 1 ]]; then
+                    __dyn_pos+=("${COMP_WORDS[j]}")
+                    continue
+                fi
+                if [[ "${__skip_next}" -eq 1 ]]; then
+                    __skip_next=0
+                    continue
+                fi
+                if [[ "${COMP_WORDS[j]}" == "--" ]]; then
+                    __after_dd=1
+                    continue
+                fi
+                case "${COMP_WORDS[j]}" in
+                    -*)
+                        ;;
+                    *)
+                        if [[ $__cmd_skip -gt 0 ]]; then
+                            ((__cmd_skip--))
+                        else
+                            __dyn_pos+=("${COMP_WORDS[j]}")
+                        fi
+                        ;;
+                esac
+            done
+            case ${#__dyn_pos[@]} in
+                0)
+                    COMPREPLY=($(compgen -W "${opts} $(myapp --@complete=incident 2>/dev/null)" -- "${cur}"))
+                    ;;
+                1)
+                    COMPREPLY=($(compgen -W "$(myapp --@complete=alert -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    ;;
+            esac
+            return 0
+            ;;
+    esac
+}
+
+if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
+    complete -F _myapp -o nosort -o bashdefault -o default myapp
+else
+    complete -F _myapp -o bashdefault -o default myapp
+fi

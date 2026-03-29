@@ -94,18 +94,19 @@ func zshWriteArguments(
 	fmt.Fprintf(sb, "%s&& ret=0\n", indent)
 
 	if funcName == "" && !pathArgs && len(dynamicArgs) > 0 {
-		zshWriteDynamicArgsCases(g, sb, dynamicArgs, indent)
+		zshWriteDynamicArgsCases(g, sb, specs, dynamicArgs, indent)
 	}
 }
 
 func zshWriteDynamicArgsCases(
 	g *Generator,
 	sb *strings.Builder,
+	specs []Spec,
 	dynamicArgs []string,
 	indent string,
 ) {
 	inner := indent + "    "
-	exact, equals := argValuePatterns(g.Specs)
+	exact, equals := argValuePatterns(specs)
 	fmt.Fprintf(sb, "\n%scase $state in\n", indent)
 	for i, da := range dynamicArgs {
 		fmt.Fprintf(sb, "%s(dyn_%d)\n", indent, i+1)
@@ -302,7 +303,7 @@ func zshWriteSubcommandCase(
 		fmt.Fprintf(sb, "%s(%s)\n", caseIndent, pattern)
 
 		allSpecs := combineVisibleSpecs(inheritedSpecs, sub.Specs)
-		nextInherited := appendSpecs(nil, inheritedSpecs, persistentSpecs(sub.Specs))
+		nextInherited := appendSpecs(inheritedSpecs, persistentSpecs(sub.Specs))
 		sortedChildSubs := SortSubSpecs(sub.Subs)
 		childFuncName := parentFuncName + "__" + zshFuncName(sub.Name)
 
@@ -318,7 +319,7 @@ func zshWriteSubcommandCase(
 				bodyIndent,
 			)
 		} else {
-			zshWriteArguments(g, sb, allSpecs, sub.PathArgs, nil, "", "", bodyIndent)
+			zshWriteArguments(g, sb, allSpecs, sub.PathArgs, sub.DynamicArgs, "", "", bodyIndent)
 		}
 
 		fmt.Fprintf(sb, "%s;;\n", caseIndent)

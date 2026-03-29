@@ -43,14 +43,16 @@ func GenerateFish(g *Generator) (string, error) {
 			}
 		}
 
-		fishWriteSubTree(g, &sb, g.Subs, usingSub, "")
+		fishWriteSubTree(g, &sb, g.Subs, usingSub, "", funcID, persistentSpecs(g.Specs), 1)
 	} else {
 		fmt.Fprint(&sb, "\n")
 		for _, spec := range rootSpecs {
 			fishWriteSpec(g, &sb, spec, "")
 		}
 		if len(g.DynamicArgs) > 0 {
-			fishWriteDynamicArgsHelper(g, &sb, funcID)
+			helperName := fmt.Sprintf("__%s_dynamic_args", funcID)
+			fishWriteDynamicArgsHelper(g, &sb, helperName, g.Specs, g.DynamicArgs, 0)
+			fmt.Fprintf(&sb, "\ncomplete -c %s -a \"(%s)\" -f\n", g.AppName, helperName)
 		}
 	}
 
@@ -75,15 +77,24 @@ func fishEscapeDesc(s string) string {
 	return fishEscapeString(s)
 }
 
-func fishWriteDynamicArgsHelper(g *Generator, sb *strings.Builder, funcID string) {
-	helperName := fmt.Sprintf("__%s_dynamic_args", funcID)
-	exact, equals := argValuePatterns(g.Specs)
+func fishWriteDynamicArgsHelper(
+	g *Generator,
+	sb *strings.Builder,
+	helperName string,
+	specs []Spec,
+	dynamicArgs []string,
+	cmdSkip int,
+) {
+	exact, equals := argValuePatterns(specs)
 	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
 	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
 	fmt.Fprint(sb, "    set -e tokens[1]\n")
 	fmt.Fprint(sb, "    set -l positional\n")
 	fmt.Fprint(sb, "    set -l skip_next 0\n")
 	fmt.Fprint(sb, "    set -l dashdash 0\n")
+	if cmdSkip > 0 {
+		fmt.Fprintf(sb, "    set -l cmd_skip %d\n", cmdSkip)
+	}
 	fmt.Fprint(sb, "    for t in $tokens\n")
 	fmt.Fprint(sb, "        if test $dashdash -eq 1\n")
 	fmt.Fprint(sb, "            set -a positional $t\n")
@@ -100,12 +111,20 @@ func fishWriteDynamicArgsHelper(g *Generator, sb *strings.Builder, funcID string
 		fmt.Fprint(sb, "            true\n")
 	}
 	fmt.Fprint(sb, "        else if not string match -q -- '-*' $t\n")
-	fmt.Fprint(sb, "            set -a positional $t\n")
+	if cmdSkip > 0 {
+		fmt.Fprint(sb, "            if test $cmd_skip -gt 0\n")
+		fmt.Fprint(sb, "                set cmd_skip (math $cmd_skip - 1)\n")
+		fmt.Fprint(sb, "            else\n")
+		fmt.Fprint(sb, "                set -a positional $t\n")
+		fmt.Fprint(sb, "            end\n")
+	} else {
+		fmt.Fprint(sb, "            set -a positional $t\n")
+	}
 	fmt.Fprint(sb, "        end\n")
 	fmt.Fprint(sb, "    end\n")
 	fmt.Fprint(sb, "    set -l nargs (count $positional)\n")
 	fmt.Fprint(sb, "    switch $nargs\n")
-	for i, da := range g.DynamicArgs {
+	for i, da := range dynamicArgs {
 		fmt.Fprintf(sb, "        case %d\n", i)
 		if i == 0 {
 			fmt.Fprintf(sb, "            %s --%s=%s\n", g.AppName, FlagComplete, da)
@@ -115,7 +134,6 @@ func fishWriteDynamicArgsHelper(g *Generator, sb *strings.Builder, funcID string
 		fmt.Fprintf(sb, "            %s --%s=%s -- $positional\n", g.AppName, FlagComplete, da)
 	}
 	fmt.Fprint(sb, "    end\nend\n")
-	fmt.Fprintf(sb, "\ncomplete -c %s -a \"(%s)\" -f\n", g.AppName, helperName)
 }
 
 func fishMatchPatterns(token string, patterns []string) string {
@@ -221,7 +239,9 @@ func fishWriteSubTree(
 	g *Generator,
 	sb *strings.Builder,
 	subs []SubSpec,
-	usingSub, parentCondition string,
+	usingSub, parentCondition, funcID string,
+	inheritedSpecs []Spec,
+	depth int,
 ) {
 	for _, sub := range SortSubSpecs(subs) {
 		allNames := append([]string{sub.Name}, sub.Aliases...)
@@ -244,7 +264,9 @@ func fishWriteSubTree(
 
 		subPersistent := SortVisibleSpecs(persistentSpecs(sub.Specs))
 		subLocal := fishNonPersistentSpecs(sub.Specs)
-		if len(subPersistent) == 0 && len(subLocal) == 0 && len(sub.Subs) == 0 && !sub.PathArgs {
+		hasDynArgs := len(sub.DynamicArgs) > 0
+		if len(subPersistent) == 0 && len(subLocal) == 0 && len(sub.Subs) == 0 && !sub.PathArgs &&
+			!hasDynArgs {
 			continue
 		}
 
@@ -262,8 +284,30 @@ func fishWriteSubTree(
 		if sub.PathArgs {
 			fmt.Fprintf(sb, "complete -c %s -n '%s' -F\n", g.AppName, leafCondition)
 		}
+		if hasDynArgs {
+			helperName := fmt.Sprintf("__%s_%s_dynamic_args", funcID, fishFuncName(sub.Name))
+			allSpecs := appendSpecs(inheritedSpecs, sub.Specs)
+			fishWriteDynamicArgsHelper(g, sb, helperName, allSpecs, sub.DynamicArgs, depth)
+			fmt.Fprintf(
+				sb,
+				"\ncomplete -c %s -n '%s' -a \"(%s)\" -f\n",
+				g.AppName,
+				leafCondition,
+				helperName,
+			)
+		}
 		if len(sub.Subs) > 0 {
-			fishWriteSubTree(g, sb, sub.Subs, usingSub, seenCondition)
+			nextInherited := appendSpecs(inheritedSpecs, persistentSpecs(sub.Specs))
+			fishWriteSubTree(
+				g,
+				sb,
+				sub.Subs,
+				usingSub,
+				seenCondition,
+				funcID,
+				nextInherited,
+				depth+1,
+			)
 		}
 	}
 }
