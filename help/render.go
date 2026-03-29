@@ -31,7 +31,7 @@ func NewRenderer(theme *theme.Theme, opts ...RendererOption) *Renderer {
 	r := &Renderer{
 		Theme:    theme.Init(),
 		argPad:   defaultArgPad,
-		cmdAlign: AlignRight,
+		cmdAlign: AlignLeft,
 		cmdPad:   defaultCmdPad,
 		flagPad:  defaultFlagPad,
 		maxWidth: autoMaxWidth,
@@ -48,7 +48,7 @@ const (
 
 	defaultFlagPad = 2 // padding between flag and description
 	defaultArgPad  = 2 // padding between arg and description
-	defaultCmdPad  = 1 // padding between command and description
+	defaultCmdPad  = 2 // padding between command and description
 
 	overflowPad = 2 // minimum gap when name overflows past descCol
 

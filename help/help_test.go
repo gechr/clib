@@ -461,9 +461,9 @@ func TestRender_CommandGroup(t *testing.T) {
 
 	require.Equal(t,
 		th.HelpSection.Render("Commands")+"\n\n"+
-			"    "+th.HelpSubcommand.Render("run")+" Run the app\n"+
-			"  "+th.HelpSubcommand.Render("build")+" Build the app\n"+
-			"   "+th.HelpSubcommand.Render("lint")+" Lint code\n",
+			"  "+th.HelpSubcommand.Render("run")+"    Run the app\n"+
+			"  "+th.HelpSubcommand.Render("build")+"  Build the app\n"+
+			"  "+th.HelpSubcommand.Render("lint")+"   Lint code\n",
 		buf.String(),
 	)
 }
@@ -1002,7 +1002,7 @@ func TestWithCommandAlign_Right(t *testing.T) {
 	stripped := ansi.Strip(buf.String())
 	// Names should be right-aligned: "run" padded more, "build" less.
 	require.Equal(t,
-		"Commands\n\n    run Run the app\n  build Build the app\n   lint Lint code\n",
+		"Commands\n\n    run  Run the app\n  build  Build the app\n   lint  Lint code\n",
 		stripped,
 	)
 }
@@ -1064,7 +1064,7 @@ func TestWithCommandPadding(t *testing.T) {
 	require.NoError(t, r.Render(&buf, sections))
 
 	require.Equal(t,
-		"Commands\n\n    run    Run the app\n  build    Build the app\n",
+		"Commands\n\n  run      Run the app\n  build    Build the app\n",
 		ansi.Strip(buf.String()),
 	)
 }
@@ -1687,7 +1687,7 @@ func TestRender_CommandGroup_LongName(t *testing.T) {
 
 	require.Equal(
 		t,
-		"Commands\n\n  very-long-command-name A command with a long name\n                      ls List things\n",
+		"Commands\n\n  very-long-command-name  A command with a long name\n  ls                      List things\n",
 		ansi.Strip(buf.String()),
 	)
 }

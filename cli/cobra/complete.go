@@ -26,7 +26,10 @@ type Completion struct {
 // NewCompletion adds hidden persistent flags to cmd and returns a Completion.
 // Flags added: --@complete, --@shell, --install-completion,
 // --uninstall-completion, --print-completion.
+// It also hides cobra's built-in "completion" subcommand.
 func NewCompletion(cmd *cobralib.Command) *Completion {
+	cmd.CompletionOptions.HiddenDefaultCmd = true
+
 	c := &Completion{}
 	pf := cmd.PersistentFlags()
 	pf.StringVar(&c.complete, complete.FlagComplete, "", "Dynamic completion type")
