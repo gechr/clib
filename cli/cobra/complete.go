@@ -1,6 +1,8 @@
 package cobra
 
 import (
+	"os"
+
 	"github.com/gechr/clib/complete"
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
@@ -16,6 +18,7 @@ const pflagTypeBool = "bool"
 
 // Completion manages hidden completion flags on a cobra command.
 type Completion struct {
+	cmd                 *cobralib.Command
 	complete            string
 	shell               string
 	installCompletion   bool
@@ -30,19 +33,29 @@ type Completion struct {
 func NewCompletion(cmd *cobralib.Command) *Completion {
 	cmd.CompletionOptions.HiddenDefaultCmd = true
 
-	c := &Completion{}
+	c := &Completion{cmd: cmd}
 	pf := cmd.PersistentFlags()
 	pf.StringVar(&c.complete, complete.FlagComplete, "", "Dynamic completion type")
 	pf.StringVar(&c.shell, complete.FlagShell, "", "Shell type for completions")
-	pf.BoolVar(&c.installCompletion, "install-completion", false, "Install shell completions")
-	pf.BoolVar(&c.uninstallCompletion, "uninstall-completion", false, "Uninstall shell completions")
-	pf.BoolVar(&c.printCompletion, "print-completion", false, "Print completion script")
+	pf.BoolVar(
+		&c.installCompletion,
+		complete.FlagInstallCompletion,
+		false,
+		"Install shell completions",
+	)
+	pf.BoolVar(
+		&c.uninstallCompletion,
+		complete.FlagUninstallCompletion,
+		false,
+		"Uninstall shell completions",
+	)
+	pf.BoolVar(&c.printCompletion, complete.FlagPrintCompletion, false, "Print completion script")
 
 	_ = pf.MarkHidden(complete.FlagComplete)
 	_ = pf.MarkHidden(complete.FlagShell)
-	_ = pf.MarkHidden("install-completion")
-	_ = pf.MarkHidden("uninstall-completion")
-	_ = pf.MarkHidden("print-completion")
+	_ = pf.MarkHidden(complete.FlagInstallCompletion)
+	_ = pf.MarkHidden(complete.FlagUninstallCompletion)
+	_ = pf.MarkHidden(complete.FlagPrintCompletion)
 
 	return c
 }
@@ -61,19 +74,46 @@ func (c *Completion) Handle(
 		o(&cfg)
 	}
 
-	shell := c.shell
-	if shell == "" {
-		shell = shellpkg.Detect()
-	}
+	action := c.action(cfg.args)
+	return complete.HandleAction(action, gen, handler, cfg.quiet)
+}
 
-	return complete.HandleAction(complete.Action{
-		Shell:               shell,
+func (c *Completion) action(args []string) complete.Action {
+	action := complete.Action{
+		Shell:               c.shell,
 		Complete:            c.complete,
-		Args:                cfg.args,
+		Args:                args,
 		InstallCompletion:   c.installCompletion,
 		UninstallCompletion: c.uninstallCompletion,
 		PrintCompletion:     c.printCompletion,
-	}, gen, handler, cfg.quiet)
+	}
+
+	if c.cmd != nil && !completionFlagsChanged(c.cmd.PersistentFlags()) {
+		complete.ApplyActionArgs(&action, os.Args[1:])
+	}
+	if action.Shell == "" {
+		action.Shell = shellpkg.Detect()
+	}
+
+	return action
+}
+
+func completionFlagsChanged(fs *pflag.FlagSet) bool {
+	if fs == nil {
+		return false
+	}
+	for _, name := range []string{
+		complete.FlagComplete,
+		complete.FlagShell,
+		complete.FlagInstallCompletion,
+		complete.FlagUninstallCompletion,
+		complete.FlagPrintCompletion,
+	} {
+		if flag := fs.Lookup(name); flag != nil && flag.Changed {
+			return true
+		}
+	}
+	return false
 }
 
 // Subcommands extracts subcommand completion specs from a cobra command tree.

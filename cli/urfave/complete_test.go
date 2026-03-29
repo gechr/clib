@@ -82,6 +82,30 @@ func TestHandle_Complete_NilHandler(t *testing.T) {
 	require.True(t, result)
 }
 
+func TestHandle_Complete_FromOSArgs(t *testing.T) {
+	cmd := &clilib.Command{Name: "app"}
+	c := urfavecli.NewCompletion(cmd)
+
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	os.Args = []string{
+		"app",
+		"--" + complete.FlagComplete + "=flags",
+		"--" + complete.FlagShell + "=fish",
+	}
+
+	gen := complete.NewGenerator("app")
+	var gotShell, gotKind string
+	handled, err := c.Handle(gen, func(shell, kind string, _ []string) {
+		gotShell = shell
+		gotKind = kind
+	})
+	require.NoError(t, err)
+	require.True(t, handled)
+	require.Equal(t, "fish", gotShell)
+	require.Equal(t, "flags", gotKind)
+}
+
 func TestHandle_PrintCompletion(t *testing.T) {
 	cmd := &clilib.Command{Name: "app"}
 	c := urfavecli.NewCompletion(cmd)
@@ -102,7 +126,7 @@ func TestHandle_PrintCompletion(t *testing.T) {
 	}
 	err = cmd.Run(
 		context.Background(),
-		[]string{"app", "--print-completion", "--" + complete.FlagShell + "=fish"},
+		[]string{"app", "--" + complete.FlagPrintCompletion, "--" + complete.FlagShell + "=fish"},
 	)
 	require.NoError(t, err)
 
@@ -115,6 +139,24 @@ func TestHandle_PrintCompletion(t *testing.T) {
 	require.True(t, result)
 	require.NoError(t, handleErr)
 	require.Equal(t, "complete -c app -f\n\n", buf.String())
+}
+
+func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
+	cmd := &clilib.Command{Name: "app"}
+	c := urfavecli.NewCompletion(cmd)
+
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	os.Args = []string{
+		"app",
+		"--" + complete.FlagInstallCompletion,
+		"--" + complete.FlagShell + "=elvish",
+	}
+
+	gen := complete.NewGenerator("app")
+	handled, err := c.Handle(gen, nil)
+	require.True(t, handled)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
 }
 
 func TestHandle_InstallCompletion(t *testing.T) {
@@ -133,7 +175,11 @@ func TestHandle_InstallCompletion(t *testing.T) {
 	}
 	err := cmd.Run(
 		context.Background(),
-		[]string{"clibapp", "--install-completion", "--" + complete.FlagShell + "=fish"},
+		[]string{
+			"clibapp",
+			"--" + complete.FlagInstallCompletion,
+			"--" + complete.FlagShell + "=fish",
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, result)
@@ -167,7 +213,11 @@ func TestHandle_UninstallCompletion(t *testing.T) {
 	}
 	err := cmd.Run(
 		context.Background(),
-		[]string{"clibapp", "--uninstall-completion", "--" + complete.FlagShell + "=fish"},
+		[]string{
+			"clibapp",
+			"--" + complete.FlagUninstallCompletion,
+			"--" + complete.FlagShell + "=fish",
+		},
 	)
 	require.NoError(t, err)
 	require.True(t, result)

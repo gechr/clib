@@ -1,6 +1,7 @@
 package cobra_test
 
 import (
+	"os"
 	"testing"
 
 	cobracli "github.com/gechr/clib/cli/cobra"
@@ -15,7 +16,13 @@ func TestNewCompletion_RegistersFlags(t *testing.T) {
 	require.NotNil(t, c)
 
 	pf := cmd.PersistentFlags()
-	for _, name := range []string{complete.FlagComplete, complete.FlagShell, "install-completion", "uninstall-completion", "print-completion"} {
+	for _, name := range []string{
+		complete.FlagComplete,
+		complete.FlagShell,
+		complete.FlagInstallCompletion,
+		complete.FlagUninstallCompletion,
+		complete.FlagPrintCompletion,
+	} {
 		f := pf.Lookup(name)
 		require.NotNil(t, f, "flag %q should be registered", name)
 	}
@@ -65,6 +72,32 @@ func TestHandle_Complete_NilHandler(t *testing.T) {
 	require.True(t, handled)
 }
 
+func TestHandle_Complete_FromOSArgs(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	c := cobracli.NewCompletion(cmd)
+
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	os.Args = []string{
+		"app",
+		"--" + complete.FlagComplete + "=repo",
+		"--" + complete.FlagShell + "=fish",
+	}
+
+	gen := complete.NewGenerator("app")
+	var gotShell, gotKind string
+	handler := func(shell, kind string, _ []string) {
+		gotShell = shell
+		gotKind = kind
+	}
+
+	handled, err := c.Handle(gen, handler)
+	require.NoError(t, err)
+	require.True(t, handled)
+	require.Equal(t, "fish", gotShell)
+	require.Equal(t, "repo", gotKind)
+}
+
 func TestHandle_Complete_DefaultShell(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	c := cobracli.NewCompletion(cmd)
@@ -84,11 +117,29 @@ func TestHandle_Complete_DefaultShell(t *testing.T) {
 	require.NotEmpty(t, gotShell)
 }
 
+func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	c := cobracli.NewCompletion(cmd)
+
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	os.Args = []string{
+		"app",
+		"--" + complete.FlagInstallCompletion,
+		"--" + complete.FlagShell + "=elvish",
+	}
+
+	gen := complete.NewGenerator("app")
+	handled, err := c.Handle(gen, nil)
+	require.True(t, handled)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+}
+
 func TestHandle_InstallCompletion(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	c := cobracli.NewCompletion(cmd)
 
-	require.NoError(t, cmd.PersistentFlags().Set("install-completion", "true"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagInstallCompletion, "true"))
 	// Use unsupported shell to avoid filesystem writes.
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
 
@@ -102,7 +153,7 @@ func TestHandle_UninstallCompletion(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	c := cobracli.NewCompletion(cmd)
 
-	require.NoError(t, cmd.PersistentFlags().Set("uninstall-completion", "true"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagUninstallCompletion, "true"))
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
 
 	gen := complete.NewGenerator("app")
@@ -115,7 +166,7 @@ func TestHandle_PrintCompletion(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	c := cobracli.NewCompletion(cmd)
 
-	require.NoError(t, cmd.PersistentFlags().Set("print-completion", "true"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagPrintCompletion, "true"))
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
 
 	gen := complete.NewGenerator("app")
@@ -128,7 +179,7 @@ func TestHandle_WithQuiet(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	c := cobracli.NewCompletion(cmd)
 
-	require.NoError(t, cmd.PersistentFlags().Set("install-completion", "true"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagInstallCompletion, "true"))
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
 
 	gen := complete.NewGenerator("app")

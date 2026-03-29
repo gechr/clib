@@ -1,6 +1,8 @@
 package urfave
 
 import (
+	"os"
+
 	"github.com/gechr/clib/complete"
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
@@ -37,19 +39,19 @@ func NewCompletion(cmd *clilib.Command) *Completion {
 			Destination: &c.shell,
 		},
 		&clilib.BoolFlag{
-			Name:        "install-completion",
+			Name:        complete.FlagInstallCompletion,
 			Usage:       "Install shell completions",
 			Hidden:      true,
 			Destination: &c.installCompletion,
 		},
 		&clilib.BoolFlag{
-			Name:        "uninstall-completion",
+			Name:        complete.FlagUninstallCompletion,
 			Usage:       "Uninstall shell completions",
 			Hidden:      true,
 			Destination: &c.uninstallCompletion,
 		},
 		&clilib.BoolFlag{
-			Name:        "print-completion",
+			Name:        complete.FlagPrintCompletion,
 			Usage:       "Print completion script",
 			Hidden:      true,
 			Destination: &c.printCompletion,
@@ -72,19 +74,20 @@ func (c *Completion) Handle(
 		o(&cfg)
 	}
 
-	shell := c.shell
-	if shell == "" {
-		shell = shellpkg.Detect()
-	}
-
-	return complete.HandleAction(complete.Action{
-		Shell:               shell,
+	action := complete.Action{
+		Shell:               c.shell,
 		Complete:            c.complete,
 		Args:                cfg.args,
 		InstallCompletion:   c.installCompletion,
 		UninstallCompletion: c.uninstallCompletion,
 		PrintCompletion:     c.printCompletion,
-	}, gen, handler, cfg.quiet)
+	}
+	complete.ApplyActionArgs(&action, os.Args[1:])
+	if action.Shell == "" {
+		action.Shell = shellpkg.Detect()
+	}
+
+	return complete.HandleAction(action, gen, handler, cfg.quiet)
 }
 
 // Subcommands extracts subcommand completion specs from a urfave command tree.
