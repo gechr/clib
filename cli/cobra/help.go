@@ -19,7 +19,71 @@ func HelpFunc(
 ) func(*cobralib.Command, []string) {
 	return func(cmd *cobralib.Command, _ []string) {
 		w := colorprofile.NewWriter(cmd.OutOrStdout(), os.Environ())
-		_ = r.Render(w, help.Apply(sections(cmd), opts...))
+		renderSections := help.Apply(sections(cmd), opts...)
+		setUsageShowOptions(renderSections)
+		_ = r.Render(w, renderSections)
+	}
+}
+
+type sectionsConfig struct {
+	keepGroupOrder                  bool
+	sortGroupOrder                  bool
+	hideInheritedFlags              bool
+	hideInheritedFlagsOnSubcommands bool
+	showInheritedFlagsOnSubcommands bool
+}
+
+// SectionsOption configures cobra help-section generation.
+type SectionsOption func(*sectionsConfig)
+
+// WithKeepGroupOrder preserves first-seen order of grouped flag sections
+// instead of sorting them alphabetically. This is the default.
+func WithKeepGroupOrder() SectionsOption {
+	return func(c *sectionsConfig) {
+		c.keepGroupOrder = true
+		c.sortGroupOrder = false
+	}
+}
+
+// WithSortedGroupOrder sorts grouped flag sections alphabetically.
+func WithSortedGroupOrder() SectionsOption {
+	return func(c *sectionsConfig) {
+		c.keepGroupOrder = false
+		c.sortGroupOrder = true
+	}
+}
+
+// WithHideInheritedFlags omits inherited/global flags from help output.
+func WithHideInheritedFlags() SectionsOption {
+	return func(c *sectionsConfig) {
+		c.hideInheritedFlags = true
+	}
+}
+
+// WithHideInheritedFlagsOnSubcommands omits inherited/global flags from
+// subcommand help output while leaving root-command help unchanged. This is
+// the default.
+func WithHideInheritedFlagsOnSubcommands() SectionsOption {
+	return func(c *sectionsConfig) {
+		c.hideInheritedFlagsOnSubcommands = true
+		c.showInheritedFlagsOnSubcommands = false
+	}
+}
+
+// WithShowInheritedFlagsOnSubcommands keeps inherited/global flags visible in
+// subcommand help output.
+func WithShowInheritedFlagsOnSubcommands() SectionsOption {
+	return func(c *sectionsConfig) {
+		c.hideInheritedFlagsOnSubcommands = false
+		c.showInheritedFlagsOnSubcommands = true
+	}
+}
+
+// SectionsWithOptions builds standard help sections from a cobra command using
+// configurable flag-section behavior.
+func SectionsWithOptions(opts ...SectionsOption) func(*cobralib.Command) []help.Section {
+	return func(cmd *cobralib.Command) []help.Section {
+		return buildSections(cmd, opts...)
 	}
 }
 
@@ -30,9 +94,21 @@ func HelpFunc(
 // one section per group (alphabetical), with ungrouped local flags under "Flags"
 // and ungrouped inherited flags under "Inherited Flags".
 func Sections(cmd *cobralib.Command) []help.Section {
+	return buildSections(cmd)
+}
+
+func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section {
+	cfg := sectionsConfig{
+		keepGroupOrder:                  true,
+		hideInheritedFlagsOnSubcommands: true,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	var sections []help.Section
 
-	flagSections, hasFlags := buildFlagSections(cmd)
+	flagSections, hasFlags := buildFlagSections(cmd, cfg)
 
 	sections = append(sections, usageSection(cmd, hasFlags))
 
@@ -152,10 +228,26 @@ func formatCommandList(cmds []*cobralib.Command) help.CommandGroup {
 // one section per group (alphabetical order), with ungrouped flags falling
 // through to "Options" (local) or "Inherited Options" (inherited).
 // If no flag has a group, the flat "Options" / "Inherited Options" layout is used.
-func buildFlagSections(cmd *cobralib.Command) ([]help.Section, bool) {
+func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Section, bool) {
 	var classified []help.ClassifiedFlag
+	hideInherited := cfg.hideInheritedFlags ||
+		(cfg.hideInheritedFlagsOnSubcommands && cmd.HasParent())
+
+	sortLocal := cmd.Flags().SortFlags
+	sortPersistent := cmd.PersistentFlags().SortFlags
+	if cfg.keepGroupOrder {
+		cmd.Flags().SortFlags = false
+		cmd.PersistentFlags().SortFlags = false
+		defer func() {
+			cmd.Flags().SortFlags = sortLocal
+			cmd.PersistentFlags().SortFlags = sortPersistent
+		}()
+	}
 
 	classifyFlags := func(flags *pflag.FlagSet, inherited bool) {
+		if inherited && hideInherited {
+			return
+		}
 		flags.VisitAll(func(f *pflag.Flag) {
 			if f.Hidden {
 				return
@@ -174,7 +266,12 @@ func buildFlagSections(cmd *cobralib.Command) ([]help.Section, bool) {
 	classifyFlags(cmd.LocalFlags(), false)
 	classifyFlags(cmd.InheritedFlags(), true)
 
-	sections := help.BuildFlagSections(classified)
+	var opts []help.FlagSectionsOption
+	if cfg.keepGroupOrder && !cfg.sortGroupOrder {
+		opts = append(opts, help.KeepGroupOrder())
+	}
+
+	sections := help.BuildFlagSections(classified, opts...)
 	return sections, len(sections) > 0
 }
 
@@ -237,6 +334,39 @@ func parseUseArgs(use string) []help.Arg {
 		args = append(args, help.ParseArg(p))
 	}
 	return args
+}
+
+func setUsageShowOptions(sections []help.Section) {
+	hasFlags := false
+	for _, section := range sections {
+		if sectionHasFlagContent(section.Content) {
+			hasFlags = true
+			break
+		}
+	}
+	if len(sections) == 0 || len(sections[0].Content) == 0 {
+		return
+	}
+	firstSection := &sections[0]
+	firstContent := firstSection.Content
+	firstItem := firstContent[0]
+
+	usage, ok := firstItem.(help.Usage)
+	if !ok {
+		return
+	}
+	usage.ShowOptions = hasFlags
+	firstContent[0] = usage
+	firstSection.Content = firstContent
+}
+
+func sectionHasFlagContent(content []help.Content) bool {
+	for _, item := range content {
+		if _, ok := item.(help.FlagGroup); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func parseExamples(s string) help.Examples {

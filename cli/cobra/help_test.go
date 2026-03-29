@@ -233,7 +233,7 @@ func TestSections_InheritedFlags(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, titles)
+	require.Equal(t, []string{"Usage", "Options"}, titles)
 }
 
 func TestSections_NoAliases(t *testing.T) {
@@ -258,10 +258,10 @@ func TestSections_NoExamples(t *testing.T) {
 
 func TestSections_GroupedFlags(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
-	cmd.Flags().StringP("repo", "R", "", "Filter by repo")
-	cmd.Flags().StringP("author", "a", "", "Filter by author")
 	cmd.Flags().StringP("output", "o", "", "Output format")
 	cmd.Flags().IntP("limit", "L", 30, "Maximum results")
+	cmd.Flags().StringP("repo", "R", "", "Filter by repo")
+	cmd.Flags().StringP("author", "a", "", "Filter by author")
 
 	cobra.Extend(cmd.Flags().Lookup("repo"), cobra.FlagExtra{Group: "Filters"})
 	cobra.Extend(cmd.Flags().Lookup("author"), cobra.FlagExtra{Group: "Filters"})
@@ -274,8 +274,7 @@ func TestSections_GroupedFlags(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	// Groups should be alphabetical: Filters before Output.
-	require.Equal(t, []string{"Usage", "Filters", "Output"}, titles)
+	require.Equal(t, []string{"Usage", "Output", "Filters"}, titles)
 
 	// Check Filters section has 2 flags.
 	for _, s := range sections {
@@ -285,6 +284,44 @@ func TestSections_GroupedFlags(t *testing.T) {
 			require.Len(t, flags, 2)
 		}
 	}
+}
+
+func TestSectionsWithOptions_KeepGroupOrder(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().String("output", "", "Output format")
+	cmd.Flags().String("repo", "", "Filter by repo")
+	cmd.Flags().String("debug", "", "Debug mode")
+
+	cobra.Extend(cmd.Flags().Lookup("output"), cobra.FlagExtra{Group: "Output"})
+	cobra.Extend(cmd.Flags().Lookup("repo"), cobra.FlagExtra{Group: "Filters"})
+	cobra.Extend(cmd.Flags().Lookup("debug"), cobra.FlagExtra{Group: "Miscellaneous"})
+
+	sections := cobra.SectionsWithOptions(cobra.WithKeepGroupOrder())(cmd)
+
+	var titles []string
+	for _, s := range sections {
+		titles = append(titles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Output", "Filters", "Miscellaneous"}, titles)
+}
+
+func TestSectionsWithOptions_SortedGroupOrder(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().String("output", "", "Output format")
+	cmd.Flags().String("repo", "", "Filter by repo")
+	cmd.Flags().String("debug", "", "Debug mode")
+
+	cobra.Extend(cmd.Flags().Lookup("output"), cobra.FlagExtra{Group: "Output"})
+	cobra.Extend(cmd.Flags().Lookup("repo"), cobra.FlagExtra{Group: "Filters"})
+	cobra.Extend(cmd.Flags().Lookup("debug"), cobra.FlagExtra{Group: "Miscellaneous"})
+
+	sections := cobra.SectionsWithOptions(cobra.WithSortedGroupOrder())(cmd)
+
+	var titles []string
+	for _, s := range sections {
+		titles = append(titles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Filters", "Miscellaneous", "Output"}, titles)
 }
 
 func TestSections_Placeholder_Annotation(t *testing.T) {
@@ -369,7 +406,98 @@ func TestSections_MixedGroupedUngrouped(t *testing.T) {
 		titles = append(titles, s.Title)
 	}
 
-	require.Equal(t, []string{"Usage", "Filters", "Options", "Inherited Options"}, titles)
+	require.Equal(t, []string{"Usage", "Filters", "Options"}, titles)
+}
+
+func TestSectionsWithOptions_HideInheritedFlags(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().Bool("debug", false, "Debug mode")
+
+	sub := &cobralib.Command{Use: "run", RunE: noop}
+	sub.Flags().String("output", "", "Output format")
+	root.AddCommand(sub)
+
+	sections := cobra.SectionsWithOptions(cobra.WithHideInheritedFlags())(sub)
+
+	var titles []string
+	for _, s := range sections {
+		titles = append(titles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Options"}, titles)
+}
+
+func TestSectionsWithOptions_HideInheritedFlagsOnSubcommands(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().Bool("debug", false, "Debug mode")
+	root.Flags().String("output", "", "Output format")
+
+	sub := &cobralib.Command{Use: "run", RunE: noop}
+	sub.Flags().String("repo", "", "Filter by repo")
+	root.AddCommand(sub)
+
+	rootSections := cobra.SectionsWithOptions(cobra.WithHideInheritedFlagsOnSubcommands())(root)
+	subSections := cobra.SectionsWithOptions(cobra.WithHideInheritedFlagsOnSubcommands())(sub)
+
+	var rootTitles []string
+	for _, s := range rootSections {
+		rootTitles = append(rootTitles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Commands", "Options"}, rootTitles)
+
+	var subTitles []string
+	for _, s := range subSections {
+		subTitles = append(subTitles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Options"}, subTitles)
+}
+
+func TestSectionsWithOptions_ShowInheritedFlagsOnSubcommands(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().Bool("debug", false, "Debug mode")
+
+	sub := &cobralib.Command{Use: "run", RunE: noop}
+	sub.Flags().String("output", "", "Output format")
+	root.AddCommand(sub)
+
+	sections := cobra.SectionsWithOptions(cobra.WithShowInheritedFlagsOnSubcommands())(sub)
+
+	var titles []string
+	for _, s := range sections {
+		titles = append(titles, s.Title)
+	}
+	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, titles)
+}
+
+func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {
+	r := help.NewRenderer(theme.Default())
+	cmd := &cobralib.Command{Use: "app"}
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	helpFn := cobra.HelpFunc(
+		r,
+		func(_ *cobralib.Command) []help.Section {
+			return []help.Section{
+				{
+					Title: "Usage",
+					Content: []help.Content{
+						help.Usage{Command: "app"},
+					},
+				},
+			}
+		},
+		help.WithHelpFlagsInSection("Miscellaneous", "Show help", "Show detailed help"),
+	)
+	helpFn(cmd, nil)
+
+	require.Contains(t, buf.String(), "app [options]")
+	require.Contains(t, buf.String(), "Miscellaneous")
 }
 
 func TestHelpFunc_RendersOutput(t *testing.T) {

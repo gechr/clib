@@ -1638,6 +1638,153 @@ func TestWithHelpFlags_NoExistingFlagSections(t *testing.T) {
 	require.Equal(t, "help", helpGroup[1].Long)
 }
 
+func TestWithHelpFlagsInSection(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Output", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "json", Desc: "JSON output"},
+				{Short: "h", Long: "help", Desc: "Print help"},
+			},
+		}},
+		{Title: "Miscellaneous", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "debug", Desc: "Debug mode"},
+			},
+		}},
+	}
+
+	result := help.Apply(
+		sections,
+		help.WithHelpFlagsInSection("Miscellaneous", "Show help", "Show detailed help"),
+	)
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Output", result[0].Title)
+	require.Equal(t, "Miscellaneous", result[1].Title)
+
+	outputGroup, ok := result[0].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, outputGroup, 1)
+	require.Equal(t, "json", outputGroup[0].Long)
+
+	require.Len(t, result[1].Content, 2)
+	helpGroup, ok := result[1].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, helpGroup, 2)
+	require.Equal(t, "h", helpGroup[0].Short)
+	require.Equal(t, "help", helpGroup[1].Long)
+}
+
+func TestWithHelpFlagSection_PreservesCombinedHelpFlag(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Output", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "json", Desc: "JSON output"},
+				{Short: "h", Long: "help", Desc: "Print help"},
+			},
+		}},
+		{Title: "Miscellaneous", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "debug", Desc: "Debug mode"},
+			},
+		}},
+	}
+
+	result := help.Apply(sections, help.WithHelpFlagSection("Miscellaneous"))
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Output", result[0].Title)
+	require.Equal(t, "Miscellaneous", result[1].Title)
+
+	outputGroup, ok := result[0].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, outputGroup, 1)
+	require.Equal(t, "json", outputGroup[0].Long)
+
+	require.Len(t, result[1].Content, 2)
+	helpGroup, ok := result[1].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, helpGroup, 1)
+	require.Equal(t, "help", helpGroup[0].Long)
+	require.Equal(t, "h", helpGroup[0].Short)
+}
+
+func TestWithHelpFlagSection_MovesSplitHelpFlags(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Output", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "json", Desc: "JSON output"},
+			},
+			help.FlagGroup{
+				{Short: "h", Desc: "Show help"},
+				{Long: "help", Desc: "Show detailed help"},
+			},
+		}},
+		{Title: "Miscellaneous", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "debug", Desc: "Debug mode"},
+			},
+		}},
+	}
+
+	result := help.Apply(sections, help.WithHelpFlagSection("Miscellaneous"))
+
+	require.Len(t, result, 2)
+	require.Len(t, result[0].Content, 1)
+
+	miscGroup, ok := result[1].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, miscGroup, 2)
+	require.Equal(t, "h", miscGroup[0].Short)
+	require.Equal(t, "help", miscGroup[1].Long)
+}
+
+func TestWithHelpFlagsInSection_CreatesSection(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app [options]")}},
+	}
+
+	result := help.Apply(
+		sections,
+		help.WithHelpFlagsInSection("Miscellaneous", "Short", "Long"),
+	)
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Usage", result[0].Title)
+	require.Equal(t, "Miscellaneous", result[1].Title)
+
+	helpGroup, ok := result[1].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, helpGroup, 2)
+	require.Equal(t, "h", helpGroup[0].Short)
+	require.Equal(t, "help", helpGroup[1].Long)
+}
+
+func TestWithRenamedSection(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app [options]")}},
+		{Title: "Inherited Options", Content: []help.Content{help.FlagGroup{{Long: "debug"}}}},
+	}
+
+	result := help.Apply(sections, help.WithRenamedSection("Inherited Options", "Global Options"))
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Usage", result[0].Title)
+	require.Equal(t, "Global Options", result[1].Title)
+}
+
+func TestWithoutSection(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app [options]")}},
+		{Title: "Global Options", Content: []help.Content{help.FlagGroup{{Long: "debug"}}}},
+	}
+
+	result := help.Apply(sections, help.WithoutSection("Global Options"))
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Usage", result[0].Title)
+}
+
 func TestBuildFlagSections_InheritedOnly(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", Inherited: true},

@@ -20,6 +20,53 @@ func WithHelpFlags(shortDesc, longDesc string) Option {
 	}
 }
 
+// WithHelpFlagSection moves existing help flags into the named section.
+// It preserves their current rendering shape, whether combined or already
+// split into separate -h and --help entries. If the section does not exist,
+// it is created.
+func WithHelpFlagSection(sectionTitle string) Option {
+	return func(sections []Section) []Section {
+		return MoveHelpFlagsToSection(sections, sectionTitle)
+	}
+}
+
+// WithHelpFlagsInSection replaces any combined help flag (Long=="help") with
+// separate -h and --help entries, then appends them to the named section.
+// When sectionTitle is empty, it uses the last section containing flag content
+// and falls back to "Options" if no flag sections exist.
+func WithHelpFlagsInSection(sectionTitle, shortDesc, longDesc string) Option {
+	return func(sections []Section) []Section {
+		sections = SplitHelpFlags(sections, shortDesc, longDesc)
+		return MoveHelpFlagsToSection(sections, sectionTitle)
+	}
+}
+
+// WithRenamedSection renames any section whose title exactly matches from.
+func WithRenamedSection(from, to string) Option {
+	return func(sections []Section) []Section {
+		for i := range sections {
+			if sections[i].Title == from {
+				sections[i].Title = to
+			}
+		}
+		return sections
+	}
+}
+
+// WithoutSection removes any section whose title exactly matches title.
+func WithoutSection(title string) Option {
+	return func(sections []Section) []Section {
+		out := make([]Section, 0, len(sections))
+		for _, section := range sections {
+			if section.Title == title {
+				continue
+			}
+			out = append(out, section)
+		}
+		return out
+	}
+}
+
 // WithFlagDefault appends a "[default: value]" suffix to the description of
 // the flag with the given Long name. No-op if value is empty or the flag is
 // not found.

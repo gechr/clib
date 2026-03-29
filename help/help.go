@@ -206,25 +206,94 @@ func IsLongHelp(args []string) bool {
 // last section containing flag content. Empty FlagGroups and sections
 // are cleaned up.
 func SplitHelpFlags(sections []Section, shortDesc, longDesc string) []Section {
-	// 1. Remove any Flag with Long == "help" from all sections.
-	for i := range sections {
-		sections[i].Content = removeFlagLong(sections[i].Content, "help")
+	return SplitHelpFlagsInSection(sections, "", shortDesc, longDesc)
+}
+
+// SplitHelpFlagsInSection removes any Flag with Long=="help" from all
+// sections, then appends separate -h and --help entries as a new FlagGroup to
+// sectionTitle. When sectionTitle is empty, the help group is appended to the
+// last section containing flag content and falls back to "Options" if no flag
+// sections exist. Empty FlagGroups and sections are cleaned up.
+func SplitHelpFlagsInSection(
+	sections []Section,
+	sectionTitle, shortDesc, longDesc string,
+) []Section {
+	sections = removeHelpFlags(sections)
+	helpGroup := newHelpFlagGroup(shortDesc, longDesc)
+	return appendFlagGroupToSection(sections, sectionTitle, helpGroup)
+}
+
+// MoveHelpFlagsToSection moves existing help flags into sectionTitle. It
+// preserves whether the help flags are combined or already split. When
+// sectionTitle is empty, help flags are appended to the last section
+// containing flag content and fall back to "Options" if no flag sections
+// exist. Empty FlagGroups and sections are cleaned up.
+func MoveHelpFlagsToSection(sections []Section, sectionTitle string) []Section {
+	remainingSections := make([]Section, 0, len(sections))
+	var movedHelpFlags FlagGroup
+
+	for _, section := range sections {
+		sectionContent := section.Content
+		filteredContent := make([]Content, 0, len(sectionContent))
+		for _, content := range sectionContent {
+			flagGroup, ok := content.(FlagGroup)
+			if !ok {
+				filteredContent = append(filteredContent, content)
+				continue
+			}
+
+			remainingFlags := make(FlagGroup, 0, len(flagGroup))
+			for _, flag := range flagGroup {
+				if isHelpFlag(flag) {
+					movedHelpFlags = append(movedHelpFlags, flag)
+					continue
+				}
+				remainingFlags = append(remainingFlags, flag)
+			}
+			if len(remainingFlags) > 0 {
+				filteredContent = append(filteredContent, remainingFlags)
+			}
+		}
+
+		if len(filteredContent) == 0 {
+			continue
+		}
+		section.Content = filteredContent
+		remainingSections = append(remainingSections, section)
 	}
 
-	// 2. Remove empty FlagGroups and empty sections.
-	sections = cleanEmpty(sections)
-
-	// 3. Build new FlagGroup with separate entries.
-	helpGroup := FlagGroup{
-		{Short: "h", Desc: shortDesc},
-		{Long: "help", Desc: longDesc},
+	if len(movedHelpFlags) == 0 {
+		return cleanEmpty(remainingSections)
 	}
 
-	// 4. Append to last section containing FlagGroup content.
+	return appendFlagGroupToSection(cleanEmpty(remainingSections), sectionTitle, movedHelpFlags)
+}
+
+func appendFlagGroupToSection(
+	sections []Section,
+	sectionTitle string,
+	flagGroup FlagGroup,
+) []Section {
+	if sectionTitle != "" {
+		for i := range sections {
+			section := &sections[i]
+			if section.Title != sectionTitle {
+				continue
+			}
+			section.Content = append(section.Content, flagGroup)
+			return sections
+		}
+		return append(sections, Section{
+			Title:   sectionTitle,
+			Content: []Content{flagGroup},
+		})
+	}
+
 	appended := false
 	for i := len(sections) - 1; i >= 0; i-- {
-		if hasFlagContent(sections[i].Content) {
-			sections[i].Content = append(sections[i].Content, helpGroup)
+		section := &sections[i]
+		if hasFlagContent(section.Content) {
+			section.Content = append(section.Content, flagGroup)
 			appended = true
 			break
 		}
@@ -232,11 +301,22 @@ func SplitHelpFlags(sections []Section, shortDesc, longDesc string) []Section {
 	if !appended {
 		sections = append(sections, Section{
 			Title:   "Options",
-			Content: []Content{helpGroup},
+			Content: []Content{flagGroup},
 		})
 	}
 
 	return sections
+}
+
+func newHelpFlagGroup(shortDesc, longDesc string) FlagGroup {
+	return FlagGroup{
+		{Short: "h", Desc: shortDesc},
+		{Long: "help", Desc: longDesc},
+	}
+}
+
+func isHelpFlag(flag Flag) bool {
+	return flag.Long == "help" || (flag.Long == "" && flag.Short == "h")
 }
 
 // patchFlag walks sections looking for a flag by Long name and applies fn.
@@ -275,6 +355,14 @@ func removeFlagLong(content []Content, name string) []Content {
 		out = append(out, filtered)
 	}
 	return out
+}
+
+func removeHelpFlags(sections []Section) []Section {
+	for i := range sections {
+		section := &sections[i]
+		section.Content = removeFlagLong(section.Content, "help")
+	}
+	return cleanEmpty(sections)
 }
 
 // cleanEmpty removes empty FlagGroups from sections and drops sections
