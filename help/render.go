@@ -24,6 +24,7 @@ type Renderer struct {
 	flagAlign    Alignment // flag name alignment
 	flagPad      int       // padding between flag and description
 	maxWidth     int       // max output width (0 = no wrapping)
+	wrapStyle    WrapStyle // continuation line indent style
 }
 
 // NewRenderer creates a Renderer.
@@ -626,8 +627,9 @@ func (r *Renderer) walkCommands(
 }
 
 // wrapDesc wraps a styled description string to fit within maxWidth,
-// indenting continuation lines to descCol. Returns the input unchanged
-// when maxWidth is 0 or the text fits.
+// indenting continuation lines according to the configured [WrapStyle].
+//
+// Returns the input unchanged when maxWidth is 0 or the text fits.
 func (r *Renderer) wrapDesc(desc string, descCol int) string {
 	if r.maxWidth <= 0 || descCol >= r.maxWidth {
 		return desc
@@ -636,16 +638,156 @@ func (r *Renderer) wrapDesc(desc string, descCol int) string {
 	if visibleWidth(desc) <= avail {
 		return desc
 	}
+
+	// WrapBracketBelow: break before '[' and place bracket content on
+	// the next line at descCol, with continuation at descCol+1.
+	if r.wrapStyle == WrapBracketBelow {
+		if result, ok := r.wrapBracketBelow(desc, descCol, avail); ok {
+			return result
+		}
+	}
+
 	wrapped := ansi.Wordwrap(desc, avail, " ")
 	lines := strings.Split(wrapped, "\n")
 	if len(lines) <= 1 {
 		return desc
 	}
-	pad := strings.Repeat(" ", descCol)
+
+	// WrapBracketAlign: align continuation lines after the unclosed '['.
+	padCol := descCol
+	if r.wrapStyle == WrapBracketAlign {
+		if bc := unclosedBracketCol(lines[0]); bc >= 0 {
+			candidate := descCol + bc
+			if candidate < r.maxWidth {
+				contAvail := r.maxWidth - candidate
+				contText := strings.Join(lines[1:], " ")
+				rewrapped := ansi.Wordwrap(contText, contAvail, " ")
+				lines = append(lines[:1], strings.Split(rewrapped, "\n")...)
+				padCol = candidate
+			}
+		}
+	}
+
+	pad := strings.Repeat(" ", padCol)
 	for i := 1; i < len(lines); i++ {
 		lines[i] = pad + lines[i]
 	}
 	return strings.Join(lines, "\n")
+}
+
+// wrapBracketBelow splits desc before a trailing bracketed list '[...]',
+// wraps each part independently, and returns the assembled result with
+// bracket content indented below the description text.
+func (r *Renderer) wrapBracketBelow(desc string, descCol, avail int) (string, bool) {
+	col := trailingBracketCol(desc)
+	if col <= 0 {
+		return "", false
+	}
+
+	// Split styled text at the bracket position using ANSI-aware utilities.
+	prefix := strings.TrimRight(ansi.Truncate(desc, col, ""), " ")
+	bracket := ansi.Cut(desc, col, visibleWidth(desc))
+	if visibleWidth(prefix) == 0 {
+		return "", false
+	}
+
+	// Wrap prefix at descCol if needed.
+	var lines []string
+	if visibleWidth(prefix) > avail {
+		wrapped := ansi.Wordwrap(prefix, avail, " ")
+		lines = strings.Split(wrapped, "\n")
+	} else {
+		lines = []string{prefix}
+	}
+	descPad := strings.Repeat(" ", descCol)
+	for i := 1; i < len(lines); i++ {
+		lines[i] = descPad + lines[i]
+	}
+
+	// Wrap bracket content. First line starts at descCol (full avail width);
+	// continuation lines start at descCol+1 (one narrower, after '[').
+	bracketWrapped := ansi.Wordwrap(bracket, avail, " ")
+	bracketLines := strings.Split(bracketWrapped, "\n")
+	if len(bracketLines) > 1 {
+		contAvail := avail - 1
+		if contAvail > 0 {
+			contText := strings.Join(bracketLines[1:], " ")
+			rewrapped := ansi.Wordwrap(contText, contAvail, " ")
+			bracketLines = append(bracketLines[:1], strings.Split(rewrapped, "\n")...)
+		}
+	}
+
+	bracketPad := strings.Repeat(" ", descCol+1)
+	lines = append(lines, descPad+bracketLines[0])
+	for _, bl := range bracketLines[1:] {
+		lines = append(lines, bracketPad+bl)
+	}
+
+	return strings.Join(lines, "\n"), true
+}
+
+// unclosedBracketCol returns the visible-width column of the character after
+// the last unclosed '[' in text, or -1 if all brackets are closed. It tracks
+// bracket depth with a stack so nested pairs (e.g. "[default: [a]]") are
+// handled correctly, and uses per-rune display widths so East-Asian wide
+// characters are measured accurately.
+func unclosedBracketCol(text string) int {
+	stripped := ansi.Strip(text)
+	var openStack []int // visible-width positions of unmatched '['
+	col := 0
+	for _, c := range stripped {
+		switch c {
+		case '[':
+			openStack = append(openStack, col)
+		case ']':
+			if len(openStack) > 0 {
+				openStack = openStack[:len(openStack)-1]
+			}
+		}
+		col += lipgloss.Width(string(c))
+	}
+	if len(openStack) > 0 {
+		return openStack[len(openStack)-1] + 1
+	}
+	return -1
+}
+
+// trailingBracketCol returns the visible-width column of a '[' whose matching
+// ']' ends the string. This identifies trailing bracketed lists like enum
+// values "[a, b, c]". Returns -1 when no such bracket exists. Operates on
+// stripped (ANSI-free) text for simplicity.
+func trailingBracketCol(s string) int {
+	stripped := ansi.Strip(s)
+	if !strings.HasSuffix(stripped, "]") {
+		return -1
+	}
+
+	// Pair brackets and find the '[' that matches the trailing ']'.
+	var openStack []int
+	type pair struct{ open, close int }
+	var pairs []pair
+	for i, c := range stripped {
+		switch c {
+		case '[':
+			openStack = append(openStack, i)
+		case ']':
+			if len(openStack) > 0 {
+				pairs = append(pairs, pair{openStack[len(openStack)-1], i})
+				openStack = openStack[:len(openStack)-1]
+			}
+		}
+	}
+
+	lastClose := len(stripped) - 1
+	for _, p := range pairs {
+		if p.close == lastClose {
+			if p.open == 0 {
+				return -1 // entire string is bracketed, no prefix to split
+			}
+			return p.open
+		}
+	}
+	return -1
 }
 
 func (r *Renderer) resolveMaxWidth(w io.Writer) int {

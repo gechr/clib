@@ -18,6 +18,49 @@ func TestHelpContentMarkers(_ *testing.T) {
 	(&Section{}).helpContent()
 }
 
+func TestUnclosedBracketCol(t *testing.T) {
+	tests := []struct {
+		text string
+		want int
+	}{
+		{"no brackets here", -1},
+		{"closed [ok]", -1},
+		{"open [values", 6},
+		{"desc [a, b,", 6},
+		{"nested [a, [b], c", 8}, // outer '[' is unclosed
+		{"[only bracket", 1},     // col after '['
+		{"all closed [a] [b]", -1},
+		{"mixed [a] [b, c", 11}, // second '[' is unclosed
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			got := unclosedBracketCol(tt.text)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestTrailingBracketCol(t *testing.T) {
+	tests := []struct {
+		text string
+		want int
+	}{
+		{"no brackets", -1},
+		{"desc [a, b, c]", 5},
+		{"desc [default: x] [a, b]", 18}, // trailing pair
+		{"[only brackets]", -1},          // entire string is bracket
+		{"desc [a, [b], c]", 5},          // nested, trailing ']' matches outer '['
+		{"desc [a] suffix", -1},          // ']' not at end
+		{"desc text", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			got := trailingBracketCol(tt.text)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestApply(t *testing.T) {
 	sections := []Section{
 		{Title: "A", Content: []Content{Text("hello")}},

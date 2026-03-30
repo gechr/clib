@@ -106,6 +106,27 @@ const (
 	AlignModeGlobal                   // Align across all sections using a shared column.
 )
 
+// WrapStyle controls how wrapped description continuation lines are indented.
+type WrapStyle int
+
+const (
+	// WrapBracketAlign indents continuation lines to the content after an
+	// unclosed '[' on the first line, keeping bracketed lists (like enum
+	// values) visually cohesive. Falls back to WrapFlush when no unclosed
+	// bracket is present.
+	WrapBracketAlign WrapStyle = iota
+
+	// WrapBracketBelow breaks before a trailing '[...]', placing the bracket
+	// content on a new line at the description column. Continuation lines
+	// within the bracket are indented one column further to align with the
+	// content after '['. Falls back to WrapFlush when no trailing bracket
+	// is present.
+	WrapBracketBelow
+
+	// WrapFlush indents all continuation lines to the description column.
+	WrapFlush
+)
+
 // Docopt-style argument syntax tokens.
 const (
 	EllipsisShort = "…"

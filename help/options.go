@@ -142,11 +142,22 @@ func WithCommandAlignMode(m AlignMode) RendererOption {
 }
 
 // WithMaxWidth sets the maximum output width. Descriptions that exceed this
-// width are word-wrapped, with continuation lines indented to the description
-// column. A value of 0 disables wrapping; by default the renderer auto-detects
-// width from the output writer when possible.
+// width are word-wrapped, with continuation lines indented according to the
+// configured [WrapStyle]. A value of 0 disables wrapping; by default the
+// renderer auto-detects width from the output writer when possible.
 func WithMaxWidth(n int) RendererOption {
 	return func(r *Renderer) {
 		r.maxWidth = n
+	}
+}
+
+// WithWrapStyle sets how wrapped description continuation lines are indented.
+// The default is [WrapBracketAlign], which aligns continuation lines to the
+// content after an unclosed '[' on the first line (e.g. for enum value lists).
+// Use [WrapBracketBelow] to break before the bracket, or [WrapFlush] for
+// uniform indentation to the description column.
+func WithWrapStyle(s WrapStyle) RendererOption {
+	return func(r *Renderer) {
+		r.wrapStyle = s
 	}
 }

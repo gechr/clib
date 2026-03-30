@@ -1221,6 +1221,247 @@ func TestWithMaxWidth_WrapsArgDescription(t *testing.T) {
 	require.Greater(t, len(lines), 3, "arg description should wrap")
 }
 
+func TestWrapStyle_BracketAlign_Default(t *testing.T) {
+	// Default WrapBracketAlign: continuation lines align after the '['.
+	r := help.NewRenderer(testTheme(), help.WithMaxWidth(60))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{
+					Long:        "include",
+					Placeholder: "include",
+					Desc:        "Include relationships",
+					Enum: []string{
+						"balances",
+						"details_blob",
+						"access_token",
+						"removal_notice",
+						"migration",
+						"audit_log",
+					},
+				},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	stripped := ansi.Strip(buf.String())
+	lines := strings.Split(stripped, "\n")
+
+	// Find content lines (skip title and blank).
+	var contentLines []string
+	for _, line := range lines {
+		if strings.Contains(line, "--include") ||
+			(len(contentLines) > 0 && strings.TrimSpace(line) != "") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	require.Greater(t, len(contentLines), 1, "should wrap to multiple lines")
+
+	// The '[' should be on the first line.
+	bracketIdx := strings.Index(contentLines[0], "[")
+	require.Positive(t, bracketIdx, "first line should contain '['")
+
+	// Continuation lines should align to bracketIdx+1 (after '[').
+	for _, line := range contentLines[1:] {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		require.Equal(t, bracketIdx+1, indent,
+			"continuation should align after '['")
+	}
+}
+
+func TestWrapStyle_Flush(t *testing.T) {
+	// WrapFlush: continuation lines align to description column.
+	r := help.NewRenderer(testTheme(), help.WithMaxWidth(60), help.WithWrapStyle(help.WrapFlush))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{
+					Long:        "include",
+					Placeholder: "include",
+					Desc:        "Include relationships",
+					Enum: []string{
+						"balances",
+						"details_blob",
+						"access_token",
+						"removal_notice",
+						"migration",
+						"audit_log",
+					},
+				},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	stripped := ansi.Strip(buf.String())
+	lines := strings.Split(stripped, "\n")
+
+	var contentLines []string
+	for _, line := range lines {
+		if strings.Contains(line, "--include") ||
+			(len(contentLines) > 0 && strings.TrimSpace(line) != "") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	require.Greater(t, len(contentLines), 1, "should wrap to multiple lines")
+
+	// Description starts at same column as "Include".
+	descCol := strings.Index(contentLines[0], "Include")
+	require.Positive(t, descCol)
+
+	// Continuation lines should align to descCol, NOT after '['.
+	for _, line := range contentLines[1:] {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		require.Equal(t, descCol, indent,
+			"continuation should align to description column")
+	}
+}
+
+func TestWrapStyle_BracketBelow(t *testing.T) {
+	// WrapBracketBelow: bracket drops to next line.
+	r := help.NewRenderer(
+		testTheme(),
+		help.WithMaxWidth(80),
+		help.WithWrapStyle(help.WrapBracketBelow),
+	)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{
+					Long:        "include",
+					Placeholder: "include",
+					Desc:        "Include relationships",
+					Enum: []string{
+						"balances",
+						"details_blob",
+						"access_token",
+						"removal_notice",
+						"migration",
+						"manual_archive",
+						"review_request",
+						"summary_counts",
+						"audit_log",
+					},
+				},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	stripped := ansi.Strip(buf.String())
+	lines := strings.Split(stripped, "\n")
+
+	var contentLines []string
+	for _, line := range lines {
+		if strings.Contains(line, "--include") ||
+			(len(contentLines) > 0 && strings.TrimSpace(line) != "") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	require.GreaterOrEqual(t, len(contentLines), 3, "should have desc + bracket + continuation")
+
+	// First line should have description but NOT '['.
+	require.NotContains(t, contentLines[0], "[",
+		"first line should not contain bracket")
+	require.Contains(t, contentLines[0], "Include relationships")
+
+	// Second line should start with '[' at descCol.
+	descCol := strings.Index(contentLines[0], "Include")
+	require.Positive(t, descCol)
+	bracketLine := contentLines[1]
+	bracketIndent := len(bracketLine) - len(strings.TrimLeft(bracketLine, " "))
+	require.Equal(t, descCol, bracketIndent,
+		"bracket line should start at description column")
+	require.Equal(t, byte('['), strings.TrimSpace(bracketLine)[0],
+		"bracket line should start with '['")
+
+	// Continuation lines within bracket should align at descCol+1.
+	for _, line := range contentLines[2:] {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		require.Equal(t, descCol+1, indent,
+			"bracket continuation should align after '['")
+	}
+}
+
+func TestWrapStyle_BracketBelow_NoBracket(t *testing.T) {
+	// Without brackets, BracketBelow falls back to flush.
+	r := help.NewRenderer(
+		testTheme(),
+		help.WithMaxWidth(40),
+		help.WithWrapStyle(help.WrapBracketBelow),
+	)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "out", Desc: "A long description that should wrap to the next line"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	stripped := ansi.Strip(buf.String())
+	lines := strings.Split(stripped, "\n")
+
+	var contentLines []string
+	for _, line := range lines {
+		if strings.Contains(line, "--out") ||
+			(len(contentLines) > 0 && strings.TrimSpace(line) != "") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	require.Greater(t, len(contentLines), 1, "should wrap")
+	descCol := strings.Index(contentLines[0], "A long")
+	for _, line := range contentLines[1:] {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		require.Equal(t, descCol, indent,
+			"without bracket, should fall back to flush")
+	}
+}
+
+func TestWrapStyle_BracketAlign_NoBracket(t *testing.T) {
+	// When no unclosed bracket exists, default BracketAlign falls back to flush.
+	r := help.NewRenderer(testTheme(), help.WithMaxWidth(40))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "out", Desc: "A long description that should wrap to the next line"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	stripped := ansi.Strip(buf.String())
+	lines := strings.Split(stripped, "\n")
+
+	var contentLines []string
+	for _, line := range lines {
+		if strings.Contains(line, "--out") ||
+			(len(contentLines) > 0 && strings.TrimSpace(line) != "") {
+			contentLines = append(contentLines, line)
+		}
+	}
+
+	require.Greater(t, len(contentLines), 1, "should wrap")
+
+	descCol := strings.Index(contentLines[0], "A long")
+	require.Positive(t, descCol)
+	for _, line := range contentLines[1:] {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		require.Equal(t, descCol, indent,
+			"without bracket, continuation should align to description column")
+	}
+}
+
 func TestWithCommandAlignMode_Section(t *testing.T) {
 	r := help.NewRenderer(testTheme(),
 		help.WithCommandAlignMode(help.AlignModeSection),
