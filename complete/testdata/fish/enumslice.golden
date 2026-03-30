@@ -1,4 +1,48 @@
 complete -c myapp -f
 
-complete -c myapp -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
-complete -c myapp -s v -l verbose -d "Verbose output"
+# Comma-separated include completion
+function __myapp_complete_include
+    set -l value (string replace -r '^--include=' '' -- (commandline -ct))
+    set -l include "name" "email" "avatar"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $include
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $include
+    end
+end
+
+function __myapp_global_optspecs
+    string join \n -- 'v/verbose'
+end
+
+function __myapp_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        printf '%s\n' $argv
+        return 1
+    end
+    return 0
+end
+
+function __myapp_using_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $argv[1] $cmd
+end
+
+complete -c myapp -n '__myapp_needs_command' -a get -d "Get item"
+complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
+
+complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
+
+complete -c myapp -n '__myapp_using_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_subcommand list' -l limit -r -d "Max results"

@@ -15,10 +15,40 @@ _myapp() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-        '--include=[Fields to include]:include:((name\:Display\ name email\:Email\ address avatar\:Profile\ picture))' \
         '(-v --verbose)-v[Verbose output]' \
         '(-v --verbose)--verbose[Verbose output]' \
+        ':: :_myapp_commands' \
+        '*::: :->myapp' \
     && ret=0
+
+    case $state in
+    (myapp)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:myapp-command-$line[1]:"
+        case $line[1] in
+            (get)
+                _arguments "${_arguments_options[@]}" : \
+                && ret=0
+            ;;
+            (list)
+                _arguments "${_arguments_options[@]}" : \
+                    '--include=[Fields to include]:include:((name\:Display\ name email\:Email\ address avatar\:Profile\ picture))' \
+                    '--limit=[Max results]: :_default' \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_myapp_commands] )) ||
+_myapp_commands() {
+    local commands; commands=(
+        'get:Get item' \
+        'list:List items' \
+    )
+    _describe -t commands 'myapp commands' commands "$@"
 }
 
 if [ "$funcstack[1]" = "_myapp" ]; then

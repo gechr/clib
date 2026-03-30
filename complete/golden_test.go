@@ -44,18 +44,33 @@ func genEnumSlice() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
 		Specs: complete.SortVisibleSpecs(
-			append(
-				complete.SpecsFromFlagMeta(complete.FlagMeta{
-					Name: "include", Terse: "Fields to include", HasArg: true,
-					IsSlice:   true,
-					Enum:      []string{"name", "email", "avatar"},
-					EnumTerse: []string{"Display name", "Email address", "Profile picture"},
-				}),
-				complete.SpecsFromFlagMeta(complete.FlagMeta{
-					Name: "verbose", Short: "v", Terse: "Verbose output",
-				})...,
-			),
+			complete.SpecsFromFlagMeta(complete.FlagMeta{
+				Name: "verbose", Short: "v", Terse: "Verbose output",
+			}),
 		),
+		Subs: []complete.SubSpec{
+			{
+				Name:  "list",
+				Terse: "List items",
+				Specs: complete.SortVisibleSpecs(
+					append(
+						complete.SpecsFromFlagMeta(complete.FlagMeta{
+							Name: "include", Terse: "Fields to include", HasArg: true,
+							IsSlice:   true,
+							Enum:      []string{"name", "email", "avatar"},
+							EnumTerse: []string{"Display name", "Email address", "Profile picture"},
+						}),
+						complete.SpecsFromFlagMeta(complete.FlagMeta{
+							Name: "limit", Terse: "Max results", HasArg: true,
+						})...,
+					),
+				),
+			},
+			{
+				Name:  "get",
+				Terse: "Get item",
+			},
+		},
 	}
 }
 

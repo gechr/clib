@@ -162,7 +162,7 @@ func fishWriteCommaFunctions(
 		if !spec.CommaList || spec.LongFlag == "" {
 			continue
 		}
-		if spec.Dynamic == "" && len(spec.Values) == 0 {
+		if spec.Dynamic == "" && len(spec.Values) == 0 && len(spec.ValueDescs) == 0 {
 			continue
 		}
 		fmt.Fprint(sb, "\n")

@@ -16,6 +16,12 @@ _myapp() {
             ",$1")
                 cmd="myapp"
                 ;;
+            myapp,get)
+                cmd="myapp__get"
+                ;;
+            myapp,list)
+                cmd="myapp__list"
+                ;;
             *)
                 ;;
         esac
@@ -23,8 +29,26 @@ _myapp() {
 
     case "${cmd}" in
         myapp)
-            opts="--include --verbose -v"
+            opts="--verbose -v get list"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        myapp__get)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        myapp__list)
+            opts="--include --limit"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
                 COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
                 return 0
             fi
@@ -58,6 +82,10 @@ _myapp() {
                         COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
                     fi
                     compopt -o nospace
+                    return 0
+                    ;;
+                --limit)
+                    COMPREPLY=()
                     return 0
                     ;;
                 *)
