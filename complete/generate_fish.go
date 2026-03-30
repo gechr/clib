@@ -217,7 +217,7 @@ function %[1]s
     argparse -s (%[2]s) -- $cmd 2>/dev/null
     or return
     if set -q argv[1]
-        echo $argv[1]
+        printf '%%s\n' $argv
         return 1
     end
     return 0
@@ -227,7 +227,7 @@ function %[3]s
     set -l cmd (%[1]s)
     test -z "$cmd"
     and return 1
-    contains -- $cmd[1] $argv
+    contains -- $argv[1] $cmd
 end
 `, needsFn, optspecsFn, usingFn)
 }

@@ -1,0 +1,20 @@
+complete -c myapp -f
+
+# Comma-separated include completion
+function __myapp_complete_include
+    set -l value (string replace -r '^--include=' '' -- (commandline -ct))
+    set -l include "name" "email" "avatar"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $include
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $include
+    end
+end
+
+complete -c myapp -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -s v -l verbose -d "Verbose output"

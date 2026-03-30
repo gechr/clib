@@ -40,6 +40,24 @@ func genEnum() *complete.Generator {
 	}
 }
 
+func genEnumSlice() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: complete.SortVisibleSpecs(
+			append(
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "include", Terse: "Fields to include", HasArg: true,
+					IsSlice: true,
+					Enum:    []string{"name", "email", "avatar"},
+				}),
+				complete.SpecsFromFlagMeta(complete.FlagMeta{
+					Name: "verbose", Short: "v", Terse: "Verbose output",
+				})...,
+			),
+		),
+	}
+}
+
 func genExt() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
@@ -245,6 +263,7 @@ func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
 		"dynamicargs":     genDynamicArgs(),
 		"enum":            genEnum(),
+		"enumslice":       genEnumSlice(),
 		"ext":             genExt(),
 		"flat":            genFlat(),
 		"globalflags":     genGlobalFlags(),

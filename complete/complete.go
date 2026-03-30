@@ -59,6 +59,9 @@ func ApplyMeta(spec *Spec, meta *FlagMeta) {
 	}
 	if len(meta.Enum) > 0 {
 		spec.Values = meta.Enum
+		if meta.IsSlice || meta.IsCSV {
+			spec.CommaList = true
+		}
 	}
 	if meta.Extension != "" {
 		spec.Extension = meta.Extension

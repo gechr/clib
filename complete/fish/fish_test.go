@@ -318,7 +318,7 @@ function __myapp_needs_command
     argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
     or return
     if set -q argv[1]
-        echo $argv[1]
+        printf '%s\n' $argv
         return 1
     end
     return 0
@@ -328,7 +328,7 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $cmd[1] $argv
+    contains -- $argv[1] $cmd
 end
 
 complete -c myapp -n '__myapp_needs_command' -a build -d "Build the project"
@@ -362,7 +362,7 @@ function __myapp_needs_command
     argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
     or return
     if set -q argv[1]
-        echo $argv[1]
+        printf '%s\n' $argv
         return 1
     end
     return 0
@@ -372,7 +372,7 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $cmd[1] $argv
+    contains -- $argv[1] $cmd
 end
 
 complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
@@ -497,7 +497,7 @@ function __myapp_needs_command
     argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
     or return
     if set -q argv[1]
-        echo $argv[1]
+        printf '%s\n' $argv
         return 1
     end
     return 0
@@ -507,7 +507,7 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $cmd[1] $argv
+    contains -- $argv[1] $cmd
 end
 
 complete -c myapp -n '__myapp_needs_command' -a edit -d "Edit files"
@@ -578,7 +578,7 @@ function __my_app_needs_command
     argparse -s (__my_app_global_optspecs) -- $cmd 2>/dev/null
     or return
     if set -q argv[1]
-        echo $argv[1]
+        printf '%s\n' $argv
         return 1
     end
     return 0
@@ -588,7 +588,7 @@ function __my_app_using_subcommand
     set -l cmd (__my_app_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $cmd[1] $argv
+    contains -- $argv[1] $cmd
 end
 
 complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"
