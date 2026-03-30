@@ -748,10 +748,9 @@ func TestRender_FlagEnum_MismatchedHighlightErrors(t *testing.T) {
 	require.EqualError(t, err, "help: EnumHighlight length must match Enum length")
 }
 
-func TestRender_BackticksLeftIntact_WhenNoStyle(t *testing.T) {
+func TestRender_BackticksStyled_ByDefault(t *testing.T) {
 	th := testTheme()
-	// HelpDescBacktick is nil by default - backticks should be preserved.
-	require.Nil(t, th.HelpDescBacktick)
+	require.NotNil(t, th.HelpDescBacktick)
 
 	r := help.NewRenderer(th)
 	var buf bytes.Buffer
@@ -764,9 +763,17 @@ func TestRender_BackticksLeftIntact_WhenNoStyle(t *testing.T) {
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
-	require.Equal(t,
-		"Flags\n\n  --debug  Log HTTP requests to `stderr`\n",
-		ansi.Strip(buf.String()),
+	require.Equal(
+		t,
+		th.HelpSection.Render(
+			"Flags",
+		)+"\n\n  "+th.HelpFlag.Render(
+			"--debug",
+		)+"  Log HTTP requests to "+
+			th.HelpDescBacktick.Render(
+				"stderr",
+			)+"\n",
+		buf.String(),
 	)
 }
 

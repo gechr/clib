@@ -112,6 +112,7 @@ func Default() *Theme {
 		HelpFlagExample:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
 		HelpFlagNote:          new(lipgloss.NewStyle().Faint(true)),
 		HelpFlagDefault:       new(lipgloss.NewStyle().Faint(true)),
+		HelpDescBacktick:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("223"))),
 		HelpKeyValueSeparator: ' ',
 		HelpKeyValueSeparatorStyle: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1")),
