@@ -288,6 +288,23 @@ func TestSubcommands_PathArgs(t *testing.T) {
 	require.True(t, subs[0].PathArgs)
 }
 
+func TestSubcommands_DynamicArgs(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	child := &cobralib.Command{
+		Use:   "resolve",
+		Short: "Resolve alerts",
+		Run:   noop,
+		Annotations: map[string]string{
+			"clib": "dynamic-args='incident, alert'",
+		},
+	}
+	root.AddCommand(child)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Equal(t, []string{"incident", "alert"}, subs[0].DynamicArgs)
+}
+
 func TestSubcommands_Extension(t *testing.T) {
 	root := &cobralib.Command{Use: "myapp"}
 	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}

@@ -133,6 +133,14 @@ func fishWriteDynamicArgsHelper(
 
 		fmt.Fprintf(sb, "            %s --%s=%s -- $positional\n", g.AppName, FlagComplete, da)
 	}
+	fmt.Fprint(sb, "        case '*'\n")
+	fmt.Fprintf(
+		sb,
+		"            %s --%s=%s -- $positional\n",
+		g.AppName,
+		FlagComplete,
+		dynamicArgs[len(dynamicArgs)-1],
+	)
 	fmt.Fprint(sb, "    end\nend\n")
 }
 

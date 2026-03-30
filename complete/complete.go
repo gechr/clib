@@ -102,7 +102,7 @@ type SubSpec struct {
 	Specs       []Spec    // subcommand-specific flag specs
 	Subs        []SubSpec // nested subcommands
 	PathArgs    bool      // enable file completion for positional args
-	DynamicArgs []string  // per-position dynamic completion for positional args
+	DynamicArgs []string  // per-position dynamic completion; final entry repeats for additional positional args
 }
 
 // Value hint constants for completion.
@@ -125,7 +125,7 @@ type ValueDesc struct {
 // Generator generates shell completion scripts.
 type Generator struct {
 	AppName     string
-	DynamicArgs []string // per-position dynamic completion for positional args
+	DynamicArgs []string // per-position dynamic completion; final entry repeats for additional positional args
 	Specs       []Spec
 	Subs        []SubSpec
 }

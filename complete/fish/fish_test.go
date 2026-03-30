@@ -552,6 +552,8 @@ function __myapp_dynamic_args
             myapp --@complete=items
         case 1
             myapp --@complete=subitems -- $positional
+        case '*'
+            myapp --@complete=subitems -- $positional
     end
 end
 

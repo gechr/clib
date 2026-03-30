@@ -19,6 +19,7 @@ _myapp() {
         '(-v --verbose)--verbose[Verbose output]' \
         '1: :->dyn_1' \
         '2: :->dyn_2' \
+        '*: :->dyn_rest' \
     && ret=0
 
     case $state in
@@ -54,6 +55,37 @@ _myapp() {
         compadd -a items
     ;;
     (dyn_2)
+        local -a __pos=()
+        local __skip_next=0
+        local __after_dd=0
+        local token
+        for ((i=2; i<CURRENT; i++)); do
+            token=${words[i]}
+            if (( __after_dd )); then
+                __pos+=("$token")
+                continue
+            fi
+            if (( __skip_next )); then
+                __skip_next=0
+                continue
+            fi
+            if [[ $token == -- ]]; then
+                __after_dd=1
+                continue
+            fi
+            case $token in
+                (-*)
+                    ;;
+                (*)
+                    __pos+=("$token")
+                    ;;
+            esac
+        done
+        local -a items
+        items=(${(f)"$(myapp --@complete=subitems -- "${__pos[@]}" 2>/dev/null)"})
+        compadd -a items
+    ;;
+    (dyn_rest)
         local -a __pos=()
         local __skip_next=0
         local __after_dd=0

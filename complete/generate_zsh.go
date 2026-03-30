@@ -89,6 +89,7 @@ func zshWriteArguments(
 		for i := range dynamicArgs {
 			fmt.Fprintf(sb, "%s'%d: :->dyn_%d' \\\n", specIndent, i+1, i+1)
 		}
+		fmt.Fprintf(sb, "%s'*: :->dyn_rest' \\\n", specIndent)
 	}
 
 	fmt.Fprintf(sb, "%s&& ret=0\n", indent)
@@ -181,6 +182,66 @@ func zshWriteDynamicArgsCases(
 		fmt.Fprintf(sb, "%scompadd -a items\n", inner)
 		fmt.Fprintf(sb, "%s;;\n", indent)
 	}
+	fmt.Fprintf(sb, "%s(dyn_rest)\n", indent)
+	fmt.Fprintf(sb, "%slocal -a __pos=()\n", inner)
+	fmt.Fprintf(sb, "%slocal __skip_next=0\n", inner)
+	fmt.Fprintf(sb, "%slocal __after_dd=0\n", inner)
+	fmt.Fprintf(sb, "%slocal token\n", inner)
+	fmt.Fprintf(sb, "%sfor ((i=2; i<CURRENT; i++)); do\n", inner)
+	fmt.Fprintf(sb, "%s    token=${words[i]}\n", inner)
+	fmt.Fprintf(sb, "%s    if (( __after_dd )); then\n", inner)
+	fmt.Fprintf(sb, "%s        __pos+=(\"$token\")\n", inner)
+	fmt.Fprintf(sb, "%s        continue\n", inner)
+	fmt.Fprintf(sb, "%s    fi\n", inner)
+	fmt.Fprintf(sb, "%s    if (( __skip_next )); then\n", inner)
+	fmt.Fprintf(sb, "%s        __skip_next=0\n", inner)
+	fmt.Fprintf(sb, "%s        continue\n", inner)
+	fmt.Fprintf(sb, "%s    fi\n", inner)
+	fmt.Fprintf(sb, "%s    if [[ $token == -- ]]; then\n", inner)
+	fmt.Fprintf(sb, "%s        __after_dd=1\n", inner)
+	fmt.Fprintf(sb, "%s        continue\n", inner)
+	fmt.Fprintf(sb, "%s    fi\n", inner)
+	fmt.Fprintf(sb, "%s    case $token in\n", inner)
+	if len(exact) > 0 {
+		fmt.Fprintf(
+			sb,
+			"%s        (%s)\n%s            __skip_next=1\n%s            ;;\n",
+			inner,
+			strings.Join(exact, "|"),
+			inner,
+			inner,
+		)
+	}
+	if len(equals) > 0 {
+		fmt.Fprintf(
+			sb,
+			"%s        (%s)\n%s            ;;\n",
+			inner,
+			strings.Join(equals, "|"),
+			inner,
+		)
+	}
+	fmt.Fprintf(sb, "%s        (-*)\n%s            ;;\n", inner, inner)
+	fmt.Fprintf(
+		sb,
+		"%s        (*)\n%s            __pos+=(\"$token\")\n%s            ;;\n",
+		inner,
+		inner,
+		inner,
+	)
+	fmt.Fprintf(sb, "%s    esac\n", inner)
+	fmt.Fprintf(sb, "%sdone\n", inner)
+	fmt.Fprintf(sb, "%slocal -a items\n", inner)
+	fmt.Fprintf(
+		sb,
+		"%sitems=(${(f)\"$(%s --%s=%s -- \"${__pos[@]}\" 2>/dev/null)\"})\n",
+		inner,
+		g.AppName,
+		FlagComplete,
+		dynamicArgs[len(dynamicArgs)-1],
+	)
+	fmt.Fprintf(sb, "%scompadd -a items\n", inner)
+	fmt.Fprintf(sb, "%s;;\n", indent)
 	fmt.Fprintf(sb, "%sesac\n", indent)
 }
 

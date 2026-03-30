@@ -59,6 +59,9 @@ _myapp() {
                 1)
                     COMPREPLY=($(compgen -W "$(myapp --@complete=subitems -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
                     ;;
+                *)
+                    COMPREPLY=($(compgen -W "$(myapp --@complete=subitems -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    ;;
             esac
             return 0
             ;;

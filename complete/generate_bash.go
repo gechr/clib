@@ -191,6 +191,13 @@ func bashWriteCmdCase(
 				da,
 			)
 		}
+		fmt.Fprintf(
+			sb,
+			"                *)\n                    COMPREPLY=($(compgen -W \"$(%s --%s=%s -- \"${__dyn_pos[@]}\" 2>/dev/null)\" -- \"${cur}\"))\n                    ;;\n",
+			g.AppName,
+			FlagComplete,
+			dynamicArgs[len(dynamicArgs)-1],
+		)
 		fmt.Fprint(sb, "            esac\n")
 	default:
 		fmt.Fprint(sb, "            COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")

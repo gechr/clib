@@ -16,6 +16,8 @@ import (
 // pflagTypeBool is the pflag type name for boolean flags.
 const pflagTypeBool = "bool"
 
+const commandDynamicArgsKey = "dynamic-args"
+
 // Completion manages hidden completion flags on a cobra command.
 type Completion struct {
 	cmd                 *cobralib.Command
@@ -152,19 +154,32 @@ func commandSubSpecs(cmd *cobralib.Command) []complete.SubSpec {
 		appendFlags(child.LocalNonPersistentFlags(), false)
 		appendFlags(child.PersistentFlags(), true)
 
-		// PathArgs: check cmd.Annotations["clib"] for complete='path'.
-		if clib, ok := child.Annotations["clib"]; ok {
-			if val, found, err := tag.Parse(
-				clib,
-				tag.Complete,
-			); err != nil {
-				panic(err)
-			} else if found && val == "path" {
-				sub.PathArgs = true
-			}
-		}
+		applyCommandAnnotations(&sub, child)
 		sub.Subs = commandSubSpecs(child)
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+func applyCommandAnnotations(sub *complete.SubSpec, cmd *cobralib.Command) {
+	if sub == nil || cmd == nil {
+		return
+	}
+
+	clib, ok := cmd.Annotations["clib"]
+	if !ok {
+		return
+	}
+
+	if val, found, err := tag.Parse(clib, tag.Complete); err != nil {
+		panic(err)
+	} else if found && val == "path" {
+		sub.PathArgs = true
+	}
+
+	if val, found, err := tag.Parse(clib, commandDynamicArgsKey); err != nil {
+		panic(err)
+	} else if found {
+		sub.DynamicArgs = tag.SplitCSV(val)
+	}
 }

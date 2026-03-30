@@ -58,6 +58,8 @@ function __myapp_resolve_dynamic_args
             myapp --@complete=incident
         case 1
             myapp --@complete=alert -- $positional
+        case '*'
+            myapp --@complete=alert -- $positional
     end
 end
 
