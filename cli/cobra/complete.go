@@ -33,7 +33,7 @@ type Completion struct {
 // --uninstall-completion, --print-completion.
 // It also hides cobra's built-in "completion" subcommand.
 func NewCompletion(cmd *cobralib.Command) *Completion {
-	cmd.CompletionOptions.HiddenDefaultCmd = true
+	cmd.CompletionOptions.DisableDefaultCmd = true
 
 	c := &Completion{cmd: cmd}
 	pf := cmd.PersistentFlags()
