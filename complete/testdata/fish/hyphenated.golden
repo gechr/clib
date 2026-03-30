@@ -20,7 +20,12 @@ function __my_app_using_subcommand
     set -l cmd (__my_app_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"

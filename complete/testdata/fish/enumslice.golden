@@ -4,15 +4,18 @@ complete -c myapp -f
 function __myapp_complete_include
     set -l value (string replace -r '^--include=' '' -- (commandline -ct))
     set -l include "name" "email" "avatar"
+    set -l include_desc "Display name" "Email address" "Profile picture"
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $include
-            if not contains -- $col $selected
-                printf '%s\n' "$prefix$col"
+        for i in (seq (count $include))
+            if not contains -- $include[$i] $selected
+                printf '%s\t%s\n' "$prefix$include[$i]" $include_desc[$i]
             end
         end
     else
-        printf '%s\n' $include
+        for i in (seq (count $include))
+            printf '%s\t%s\n' $include[$i] $include_desc[$i]
+        end
     end
 end
 
@@ -36,7 +39,12 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c myapp -n '__myapp_needs_command' -a get -d "Get item"

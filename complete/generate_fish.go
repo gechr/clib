@@ -227,7 +227,12 @@ function %[3]s
     set -l cmd (%[1]s)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 `, needsFn, optspecsFn, usingFn)
 }
@@ -335,26 +340,45 @@ func fishWriteCommaFunction(
 		"    set -l value (string replace -r '^--%s=' '' -- (commandline -ct))\n",
 		spec.LongFlag,
 	)
-	switch {
-	case spec.Dynamic != "":
-		fmt.Fprintf(
-			sb,
-			"    set -l %s (%s --%s=%s)\n",
-			varName,
-			g.AppName,
-			FlagComplete,
-			spec.Dynamic,
-		)
-	case len(spec.ValueDescs) > 0:
+	if len(spec.ValueDescs) > 0 {
+		// Value-description pairs: store parallel arrays for tab-described output.
 		vals := make([]string, len(spec.ValueDescs))
+		descs := make([]string, len(spec.ValueDescs))
 		for i, vd := range spec.ValueDescs {
 			vals[i] = vd.Value
+			descs[i] = vd.Desc
 		}
 		fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(vals))
-	default:
-		fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(spec.Values))
-	}
-	fmt.Fprintf(sb, `    if string match -qr '^(?<prefix>.*,)' -- $value
+		fmt.Fprintf(sb, "    set -l %s_desc %s\n", varName, fishQuotedWords(descs))
+		fmt.Fprintf(sb, `    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for i in (seq (count $%[1]s))
+            if not contains -- $%[1]s[$i] $selected
+                printf '%%s\t%%s\n' "$prefix$%[1]s[$i]" $%[1]s_desc[$i]
+            end
+        end
+    else
+        for i in (seq (count $%[1]s))
+            printf '%%s\t%%s\n' $%[1]s[$i] $%[1]s_desc[$i]
+        end
+    end
+end
+`, varName)
+	} else {
+		switch {
+		case spec.Dynamic != "":
+			fmt.Fprintf(
+				sb,
+				"    set -l %s (%s --%s=%s)\n",
+				varName,
+				g.AppName,
+				FlagComplete,
+				spec.Dynamic,
+			)
+		default:
+			fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(spec.Values))
+		}
+		fmt.Fprintf(sb, `    if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
         for col in $%[1]s
             if not contains -- $col $selected
@@ -366,6 +390,7 @@ func fishWriteCommaFunction(
     end
 end
 `, varName)
+	}
 }
 
 func fishWriteSubcommand(g *Generator, sb *strings.Builder, name, terse, condition string) {

@@ -328,7 +328,12 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c myapp -n '__myapp_needs_command' -a build -d "Build the project"
@@ -372,7 +377,12 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
@@ -507,7 +517,12 @@ function __myapp_using_subcommand
     set -l cmd (__myapp_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c myapp -n '__myapp_needs_command' -a edit -d "Edit files"
@@ -588,7 +603,12 @@ function __my_app_using_subcommand
     set -l cmd (__my_app_needs_command)
     test -z "$cmd"
     and return 1
-    contains -- $argv[1] $cmd
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
 end
 
 complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"
