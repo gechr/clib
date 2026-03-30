@@ -57,6 +57,7 @@ func pflagToMeta(f *pflag.Flag) complete.FlagMeta {
 		meta.Enum = extra.Enum
 		meta.EnumDefault = extra.EnumDefault
 		meta.EnumHighlight = extra.EnumHighlight
+		meta.EnumTerse = extra.EnumTerse
 		meta.Extension = extra.Extension
 		meta.Group = extra.Group
 		meta.ValueHint = extra.Hint

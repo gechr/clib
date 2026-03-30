@@ -10,6 +10,7 @@ const (
 	Complete    = "complete"
 	Default     = "default"
 	Enum        = "enum"
+	EnumTerse   = "enum-terse"
 	Ext         = "ext"
 	Group       = "group"
 	HideLong    = "hide-long"

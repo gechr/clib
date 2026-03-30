@@ -14,6 +14,7 @@ type FlagMeta struct {
 	Enum                []string // enum values
 	EnumDefault         string   // default value annotation for enum display
 	EnumHighlight       []string // highlight hint substrings (parallel to Enum)
+	EnumTerse           []string // short descriptions for enum values (parallel to Enum)
 	Extension           string   // file extension filter for completion (e.g. "yaml" or "yaml,yml")
 	Group               string   // help section group
 	HasArg              bool     // true if the flag takes a value (non-bool)
@@ -107,6 +108,10 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 			if val != "" {
 				f.Enum = tag.SplitCSV(val)
 			}
+		case tag.EnumTerse:
+			if val != "" {
+				f.EnumTerse = tag.SplitCSV(val)
+			}
 		case tag.Terse:
 			f.Terse = val
 		case tag.Hint:
@@ -152,6 +157,14 @@ func (f *FlagMeta) Validate() error {
 	}
 	if len(f.EnumHighlight) > 0 && len(f.Enum) == 0 {
 		return fmt.Errorf("%shighlight requires enum", p)
+	}
+	if len(f.EnumTerse) > 0 && len(f.EnumTerse) != len(f.Enum) {
+		return fmt.Errorf(
+			"%senum-terse length (%d) must match enum length (%d)",
+			p,
+			len(f.EnumTerse),
+			len(f.Enum),
+		)
 	}
 	if f.EnumDefault != "" && len(f.Enum) == 0 {
 		return fmt.Errorf("%sdefault requires enum", p)

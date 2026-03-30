@@ -335,7 +335,8 @@ func fishWriteCommaFunction(
 		"    set -l value (string replace -r '^--%s=' '' -- (commandline -ct))\n",
 		spec.LongFlag,
 	)
-	if spec.Dynamic != "" {
+	switch {
+	case spec.Dynamic != "":
 		fmt.Fprintf(
 			sb,
 			"    set -l %s (%s --%s=%s)\n",
@@ -344,7 +345,13 @@ func fishWriteCommaFunction(
 			FlagComplete,
 			spec.Dynamic,
 		)
-	} else {
+	case len(spec.ValueDescs) > 0:
+		vals := make([]string, len(spec.ValueDescs))
+		for i, vd := range spec.ValueDescs {
+			vals[i] = vd.Value
+		}
+		fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(vals))
+	default:
 		fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(spec.Values))
 	}
 	fmt.Fprintf(sb, `    if string match -qr '^(?<prefix>.*,)' -- $value
@@ -390,7 +397,7 @@ func fishWriteSpec(g *Generator, sb *strings.Builder, spec Spec, condition strin
 
 	if spec.HasArg {
 		switch {
-		case spec.CommaList && (spec.Dynamic != "" || len(spec.Values) > 0):
+		case spec.CommaList && (spec.Dynamic != "" || len(spec.Values) > 0 || len(spec.ValueDescs) > 0):
 			funcName := fmt.Sprintf(
 				"__%s_complete_%s",
 				fishFuncName(g.AppName),

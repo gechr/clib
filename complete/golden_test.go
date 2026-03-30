@@ -47,8 +47,9 @@ func genEnumSlice() *complete.Generator {
 			append(
 				complete.SpecsFromFlagMeta(complete.FlagMeta{
 					Name: "include", Terse: "Fields to include", HasArg: true,
-					IsSlice: true,
-					Enum:    []string{"name", "email", "avatar"},
+					IsSlice:   true,
+					Enum:      []string{"name", "email", "avatar"},
+					EnumTerse: []string{"Display name", "Email address", "Profile picture"},
 				}),
 				complete.SpecsFromFlagMeta(complete.FlagMeta{
 					Name: "verbose", Short: "v", Terse: "Verbose output",

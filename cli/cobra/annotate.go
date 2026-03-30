@@ -13,6 +13,7 @@ type FlagExtra struct {
 	Enum          []string `json:"enum"`          // enum values
 	EnumDefault   string   `json:"enumDefault"`   // default enum value (highlighted by EnumStyleHighlightDefault)
 	EnumHighlight []string `json:"enumHighlight"` // highlight hints for enum values
+	EnumTerse     []string `json:"enumTerse"`     // short descriptions for enum values (parallel to Enum)
 	Extension     string   `json:"extension"`     // file extension filter for completion (e.g. "yaml" or "yaml,yml")
 	Group         string   `json:"group"`         // help section group
 	HideLong      bool     `json:"hideLong"`      // hide the long flag from help output

@@ -284,6 +284,12 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 		)
 	case spec.CommaList && len(spec.Values) > 0:
 		bashWriteCommaCompletion(sb, strings.Join(spec.Values, " "))
+	case spec.CommaList && len(spec.ValueDescs) > 0:
+		vals := make([]string, len(spec.ValueDescs))
+		for i, vd := range spec.ValueDescs {
+			vals[i] = vd.Value
+		}
+		bashWriteCommaCompletion(sb, strings.Join(vals, " "))
 	case spec.Dynamic != "":
 		fmt.Fprintf(
 			sb,

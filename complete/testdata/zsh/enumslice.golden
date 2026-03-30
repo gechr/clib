@@ -15,7 +15,7 @@ _myapp() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-        '--include=[Fields to include]:include:{_sequence compadd - name email avatar}' \
+        '--include=[Fields to include]:include:((name\:Display\ name email\:Email\ address avatar\:Profile\ picture))' \
         '(-v --verbose)-v[Verbose output]' \
         '(-v --verbose)--verbose[Verbose output]' \
     && ret=0

@@ -14,6 +14,7 @@ type FlagExtra struct {
 	Enum          []string // enum values
 	EnumDefault   string   // default enum value (highlighted by EnumStyleHighlightDefault)
 	EnumHighlight []string // highlight hints for enum values
+	EnumTerse     []string // short descriptions for enum values (parallel to Enum)
 	Extension     string   // file extension filter for completion (e.g. "yaml" or "yaml,yml")
 	Group         string   // help section group
 	HideLong      bool     // hide the long flag from help output

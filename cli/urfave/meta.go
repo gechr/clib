@@ -69,6 +69,7 @@ func flagToMeta(cmd *clilib.Command, f clilib.Flag) complete.FlagMeta {
 		meta.Enum = extra.Enum
 		meta.EnumDefault = extra.EnumDefault
 		meta.EnumHighlight = extra.EnumHighlight
+		meta.EnumTerse = extra.EnumTerse
 		meta.Extension = extra.Extension
 		meta.ValueHint = extra.Hint
 		meta.NegativeDesc = extra.NegativeDesc

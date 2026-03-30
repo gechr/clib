@@ -58,7 +58,14 @@ func ApplyMeta(spec *Spec, meta *FlagMeta) {
 		spec.Terse = meta.Terse
 	}
 	if len(meta.Enum) > 0 {
-		spec.Values = meta.Enum
+		if len(meta.EnumTerse) == len(meta.Enum) {
+			spec.ValueDescs = make([]ValueDesc, len(meta.Enum))
+			for i, v := range meta.Enum {
+				spec.ValueDescs[i] = ValueDesc{Value: v, Desc: meta.EnumTerse[i]}
+			}
+		} else {
+			spec.Values = meta.Enum
+		}
 		if meta.IsSlice || meta.IsCSV {
 			spec.CommaList = true
 		}
@@ -91,7 +98,7 @@ type Spec struct {
 	LongFlag   string      // e.g. "author" (no dashes)
 	Persistent bool        // true if the flag remains available on descendant subcommands
 	ShortFlag  string      // e.g. "a" (no dash)
-	Terse      string      // intentionally short description for tab completion
+	Terse      string      // very short description for tab completion
 	ValueDescs []ValueDesc // static values with descriptions (takes precedence over Values)
 	ValueHint  string      // value type hint: file, dir, command, user, host, url, email
 	Values     []string    // static completion values (from enum)
