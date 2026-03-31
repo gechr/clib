@@ -12,6 +12,8 @@ import (
 
 // HelpFunc returns a cobra-compatible help function that renders themed help.
 // The sections callback receives the command and returns sections to render.
+// By default, examples are hidden on -h and shown last on --help;
+// pass [help.WithAlwaysShowExamples] to disable this.
 func HelpFunc(
 	r *help.Renderer,
 	sections func(cmd *cobralib.Command) []help.Section,
@@ -19,7 +21,11 @@ func HelpFunc(
 ) func(*cobralib.Command, []string) {
 	return func(cmd *cobralib.Command, _ []string) {
 		w := colorprofile.NewWriter(cmd.OutOrStdout(), os.Environ())
+		behavior := help.ResolvePolicy(opts...)
 		renderSections := help.Apply(sections(cmd), opts...)
+		if !behavior.AlwaysShowExamples {
+			renderSections = help.Apply(renderSections, help.WithExamplesOnLongHelp(os.Args))
+		}
 		setUsageShowOptions(renderSections)
 		_ = r.Render(w, renderSections)
 	}

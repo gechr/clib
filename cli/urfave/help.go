@@ -12,19 +12,26 @@ import (
 
 // HelpPrinter returns a func(io.Writer, string, any) suitable for assigning
 // to clilib.HelpPrinter (the global variable). The data parameter is the *Command.
+// By default, examples are hidden on -h and shown last on --help;
+// pass [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinter(
 	r *help.Renderer,
 	sections func(cmd *clilib.Command) []help.Section,
 	opts ...help.Option,
 ) func(io.Writer, string, any) {
+	behavior := help.ResolvePolicy(opts...)
 	return func(w io.Writer, _ string, data any) {
 		cmd, ok := data.(*clilib.Command)
 		if !ok {
 			// Non-*Command data is silently ignored; urfave calls HelpPrinter with various types.
 			return
 		}
+		s := help.Apply(sections(cmd), opts...)
+		if !behavior.AlwaysShowExamples {
+			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
+		}
 		cw := colorprofile.NewWriter(w, os.Environ())
-		_ = r.Render(cw, help.Apply(sections(cmd), opts...))
+		_ = r.Render(cw, s)
 	}
 }
 

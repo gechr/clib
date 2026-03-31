@@ -15,6 +15,8 @@ import (
 
 // HelpPrinter returns a kong.HelpPrinter that renders the sections
 // returned by the provided callback.
+// By default, examples are hidden on -h and shown last on --help;
+// pass [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinter(
 	r *help.Renderer,
 	sections func() ([]help.Section, error),
@@ -25,14 +27,21 @@ func HelpPrinter(
 		if err != nil {
 			return err
 		}
+		behavior := help.ResolvePolicy(opts...)
+		s = help.Apply(s, opts...)
+		if !behavior.AlwaysShowExamples {
+			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
+		}
 		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
-		return r.Render(w, help.Apply(s, opts...))
+		return r.Render(w, s)
 	}
 }
 
 // HelpPrinterFunc returns a context-aware kong.HelpPrinter.
 // The sections callback receives the kong context, allowing help output
 // to vary by subcommand.
+// By default, examples are hidden on -h and shown last on --help;
+// pass [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinterFunc(
 	r *help.Renderer,
 	sections func(*konglib.Context) ([]help.Section, error),
@@ -43,8 +52,13 @@ func HelpPrinterFunc(
 		if err != nil {
 			return err
 		}
+		behavior := help.ResolvePolicy(opts...)
+		s = help.Apply(s, opts...)
+		if !behavior.AlwaysShowExamples {
+			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
+		}
 		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
-		return r.Render(w, help.Apply(s, opts...))
+		return r.Render(w, s)
 	}
 }
 

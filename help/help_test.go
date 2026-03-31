@@ -2033,6 +2033,64 @@ func TestWithoutSection(t *testing.T) {
 	require.Equal(t, "Usage", result[0].Title)
 }
 
+func TestResolvePolicy_Default(t *testing.T) {
+	b := help.ResolvePolicy(
+		help.WithHelpFlags("Short", "Long"),
+		help.WithRenamedSection("A", "B"),
+	)
+	require.False(t, b.AlwaysShowExamples)
+}
+
+func TestResolvePolicy_WithAlwaysShowExamples(t *testing.T) {
+	b := help.ResolvePolicy(
+		help.WithHelpFlags("Short", "Long"),
+		help.WithAlwaysShowExamples(),
+	)
+	require.True(t, b.AlwaysShowExamples)
+}
+
+func TestWithAlwaysShowExamples_IsNoOpTransform(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app")}},
+		{Title: "Examples", Content: []help.Content{help.Text("$ app run")}},
+	}
+	result := help.Apply(sections, help.WithAlwaysShowExamples())
+	require.Equal(t, sections, result)
+}
+
+func TestWithExamplesOnLongHelp_ShortHelp(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app")}},
+		{Title: "Examples", Content: []help.Content{help.Text("$ app run")}},
+		{Title: "Options", Content: []help.Content{help.FlagGroup{{Long: "verbose"}}}},
+	}
+
+	result := help.Apply(sections, help.WithExamplesOnLongHelp([]string{"app", "-h"}))
+
+	titles := make([]string, len(result))
+	for i, s := range result {
+		titles[i] = s.Title
+	}
+	require.Equal(t, []string{"Usage", "Options"}, titles)
+}
+
+func TestWithExamplesOnLongHelp_LongHelp(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Text("app")}},
+		{Title: "Examples", Content: []help.Content{help.Text("$ app run")}},
+		{Title: "Options", Content: []help.Content{help.FlagGroup{{Long: "verbose"}}}},
+	}
+
+	result := help.Apply(sections, help.WithExamplesOnLongHelp([]string{"app", "--help"}))
+
+	titles := make([]string, len(result))
+	for i, s := range result {
+		titles[i] = s.Title
+	}
+	// Examples is moved to the end.
+	require.Equal(t, []string{"Usage", "Options", "Examples"}, titles)
+}
+
 func TestBuildFlagSections_InheritedOnly(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", Inherited: true},

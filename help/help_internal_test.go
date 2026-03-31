@@ -65,9 +65,9 @@ func TestApply(t *testing.T) {
 	sections := []Section{
 		{Title: "A", Content: []Content{Text("hello")}},
 	}
-	addB := func(s []Section) []Section {
+	addB := OptionFunc(func(s []Section) []Section {
 		return append(s, Section{Title: "B", Content: []Content{Text("world")}})
-	}
+	})
 	result := Apply(sections, addB)
 	require.Len(t, result, 2)
 	require.Equal(t, "A", result[0].Title)
@@ -193,7 +193,7 @@ func TestWithFlagDefault(t *testing.T) {
 	}
 
 	opt := WithFlagDefault("org", "myorg")
-	result := opt(sections)
+	result := Apply(sections, opt)
 
 	fg, ok := result[0].Content[0].(FlagGroup)
 	require.True(t, ok)
@@ -209,7 +209,7 @@ func TestWithFlagDefault_EmptyValue(t *testing.T) {
 	}
 
 	opt := WithFlagDefault("org", "")
-	result := opt(sections)
+	result := Apply(sections, opt)
 
 	fg, ok := result[0].Content[0].(FlagGroup)
 	require.True(t, ok)
@@ -224,7 +224,7 @@ func TestWithFlagDefault_NotFound(t *testing.T) {
 	}
 
 	opt := WithFlagDefault("missing", "val")
-	result := opt(sections)
+	result := Apply(sections, opt)
 
 	fg, ok := result[0].Content[0].(FlagGroup)
 	require.True(t, ok)
@@ -236,7 +236,7 @@ func TestWithLongHelp_LongHelp(t *testing.T) {
 	opt := WithLongHelp([]string{"cmd", "--help"}, extra)
 
 	sections := []Section{{Title: "Usage"}}
-	result := opt(sections)
+	result := Apply(sections, opt)
 	require.Len(t, result, 2)
 	require.Equal(t, "Examples", result[1].Title)
 }
@@ -246,6 +246,6 @@ func TestWithLongHelp_ShortHelp(t *testing.T) {
 	opt := WithLongHelp([]string{"cmd", "-h"}, extra)
 
 	sections := []Section{{Title: "Usage"}}
-	result := opt(sections)
+	result := Apply(sections, opt)
 	require.Len(t, result, 1)
 }
