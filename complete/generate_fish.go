@@ -167,14 +167,19 @@ func fishWriteCommaFunctions(
 	funcID string,
 ) {
 	for _, spec := range specs {
-		if !spec.CommaList || spec.LongFlag == "" {
+		if spec.LongFlag == "" {
 			continue
 		}
-		if spec.Dynamic == "" && len(spec.Values) == 0 && len(spec.ValueDescs) == 0 {
-			continue
+		if spec.CommaList {
+			if spec.Dynamic == "" && len(spec.Values) == 0 && len(spec.ValueDescs) == 0 {
+				continue
+			}
+			fmt.Fprint(sb, "\n")
+			fishWriteCommaFunction(g, sb, spec, funcID)
+		} else if len(spec.ValueDescs) > 0 {
+			fmt.Fprint(sb, "\n")
+			fishWriteValueDescsFunction(g, sb, spec, funcID)
 		}
-		fmt.Fprint(sb, "\n")
-		fishWriteCommaFunction(g, sb, spec, funcID)
 	}
 }
 
@@ -403,6 +408,31 @@ end
 	}
 }
 
+func fishWriteValueDescsFunction(
+	g *Generator,
+	sb *strings.Builder,
+	spec Spec,
+	funcID string,
+) {
+	funcName := fmt.Sprintf("__%s_complete_%s", funcID, fishFuncName(spec.LongFlag))
+	varName := fishFuncName(spec.LongFlag)
+
+	vals := make([]string, len(spec.ValueDescs))
+	descs := make([]string, len(spec.ValueDescs))
+	for i, vd := range spec.ValueDescs {
+		vals[i] = vd.Value
+		descs[i] = vd.Desc
+	}
+	fmt.Fprintf(sb, "# %[1]s value completion\nfunction %[2]s\n", spec.LongFlag, funcName)
+	fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(vals))
+	fmt.Fprintf(sb, "    set -l %s_desc %s\n", varName, fishQuotedWords(descs))
+	fmt.Fprintf(sb, `    for i in (seq (count $%[1]s))
+        printf '%%s\t%%s\n' $%[1]s[$i] $%[1]s_desc[$i]
+    end
+end
+`, varName)
+}
+
 func fishWriteSubcommand(g *Generator, sb *strings.Builder, name, terse, condition string) {
 	var parts []string
 	parts = append(parts, fmt.Sprintf("complete -c %s", g.AppName))
@@ -446,16 +476,12 @@ func fishWriteSpec(g *Generator, sb *strings.Builder, spec Spec, condition strin
 				fmt.Sprintf("-a \"(%s --%s=%s)\"", g.AppName, FlagComplete, spec.Dynamic),
 			)
 		case len(spec.ValueDescs) > 0:
-			var vals []string
-			for _, vd := range spec.ValueDescs {
-				value := fishEscapeString(vd.Value)
-				if vd.Desc != "" {
-					vals = append(vals, fmt.Sprintf("%s\t%s", value, fishEscapeDesc(vd.Desc)))
-				} else {
-					vals = append(vals, value)
-				}
-			}
-			parts = append(parts, "-x", fmt.Sprintf("-a \"%s\"", strings.Join(vals, "\n")))
+			funcName := fmt.Sprintf(
+				"__%s_complete_%s",
+				fishFuncName(g.AppName),
+				fishFuncName(spec.LongFlag),
+			)
+			parts = append(parts, "-x", fmt.Sprintf("-ra \"(%s)\"", funcName))
 		case len(spec.Values) > 0:
 			values := make([]string, len(spec.Values))
 			for i, value := range spec.Values {

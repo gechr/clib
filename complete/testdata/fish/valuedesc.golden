@@ -1,5 +1,14 @@
 complete -c myapp -f
 
+# format value completion
+function __myapp_complete_format
+    set -l format "json" "yaml" "text"
+    set -l format_desc "JSON output" "YAML output" "Plain text"
+    for i in (seq (count $format))
+        printf '%s\t%s\n' $format[$i] $format_desc[$i]
+    end
+end
+
 # Comma-separated tags completion
 function __myapp_complete_tags
     set -l value (string replace -r '^--tags=' '' -- (commandline -ct))
@@ -16,8 +25,6 @@ function __myapp_complete_tags
     end
 end
 
-complete -c myapp -s f -l format -x -a "json	JSON output
-yaml	YAML output
-text	Plain text" -d "Output format"
+complete -c myapp -s f -l format -x -ra "(__myapp_complete_format)" -d "Output format"
 complete -c myapp -s t -l tags -x -kra "(__myapp_complete_tags)" -d "Filter tags"
 complete -c myapp -s v -l verbose -d "Verbose output"

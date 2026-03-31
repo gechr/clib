@@ -420,29 +420,37 @@ func TestGenerate_Values(t *testing.T) {
 	out, err := Generate(valuesGen())
 	require.NoError(t, err)
 
-	expected := "complete -c myapp -f\n" +
-		"\n" +
-		"# Comma-separated tags completion\n" +
-		"function __myapp_complete_tags\n" +
-		"    set -l value (string replace -r '^--tags=' '' -- (commandline -ct))\n" +
-		"    set -l tags \"bug\" \"feature\" \"docs\"\n" +
-		"    if string match -qr '^(?<prefix>.*,)' -- $value\n" +
-		"        set -l selected (string split ',' -- $prefix)\n" +
-		"        for col in $tags\n" +
-		"            if not contains -- $col $selected\n" +
-		"                printf '%s\\n' \"$prefix$col\"\n" +
-		"            end\n" +
-		"        end\n" +
-		"    else\n" +
-		"        printf '%s\\n' $tags\n" +
-		"    end\n" +
-		"end\n" +
-		"\n" +
-		"complete -c myapp -s f -l format -x -a \"json\tJSON output\n" +
-		"yaml\tYAML output\n" +
-		"text\tPlain text\" -d \"Output format\"\n" +
-		"complete -c myapp -s t -l tags -x -kra \"(__myapp_complete_tags)\" -d \"Filter tags\"\n" +
-		"complete -c myapp -s v -l verbose -d \"Verbose output\"\n"
+	expected := `complete -c myapp -f
+
+# format value completion
+function __myapp_complete_format
+    set -l format "json" "yaml" "text"
+    set -l format_desc "JSON output" "YAML output" "Plain text"
+    for i in (seq (count $format))
+        printf '%s\t%s\n' $format[$i] $format_desc[$i]
+    end
+end
+
+# Comma-separated tags completion
+function __myapp_complete_tags
+    set -l value (string replace -r '^--tags=' '' -- (commandline -ct))
+    set -l tags "bug" "feature" "docs"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $tags
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $tags
+    end
+end
+
+complete -c myapp -s f -l format -x -ra "(__myapp_complete_format)" -d "Output format"
+complete -c myapp -s t -l tags -x -kra "(__myapp_complete_tags)" -d "Filter tags"
+complete -c myapp -s v -l verbose -d "Verbose output"
+`
 	require.Equal(t, expected, out)
 }
 
