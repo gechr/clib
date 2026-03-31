@@ -237,6 +237,25 @@ func TestFlagMeta_PositiveNegativeDesc(t *testing.T) {
 	require.Equal(t, "Exclude drafts", flags[0].NegativeDesc)
 }
 
+func TestFlagMeta_InheritedFlagExtended(t *testing.T) {
+	// Parent defines --field as a persistent flag with no enum.
+	parent := &cobralib.Command{Use: "root"}
+	parent.PersistentFlags().String("field", "", "Extract a field")
+
+	// Child extends the inherited flag with enum completions.
+	child := &cobralib.Command{Use: "get"}
+	parent.AddCommand(child)
+	cobracli.Extend(child.InheritedFlags().Lookup("field"), cobracli.FlagExtra{
+		Enum: []string{"author", "created_at", "title"},
+	})
+
+	flags := cobracli.FlagMeta(child)
+	f := findMeta(flags, "field")
+	require.NotNil(t, f)
+	require.Equal(t, []string{"author", "created_at", "title"}, f.Enum)
+	require.True(t, f.Persistent)
+}
+
 func findMeta(flags []complete.FlagMeta, name string) *complete.FlagMeta {
 	for i := range flags {
 		if flags[i].Name == name {

@@ -31,6 +31,7 @@ func FlagMeta(cmd *cobralib.Command) []complete.FlagMeta {
 
 	appendFlags(cmd.LocalNonPersistentFlags(), false)
 	appendFlags(cmd.PersistentFlags(), true)
+	appendFlags(cmd.InheritedFlags(), true)
 
 	return flags
 }
