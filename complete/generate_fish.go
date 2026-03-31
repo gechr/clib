@@ -81,10 +81,6 @@ func fishEscapeString(s string) string {
 	return s
 }
 
-func fishEscapeDesc(s string) string {
-	return fishEscapeString(s)
-}
-
 func fishWriteDynamicArgsHelper(
 	g *Generator,
 	sb *strings.Builder,
@@ -178,7 +174,7 @@ func fishWriteCommaFunctions(
 			fishWriteCommaFunction(g, sb, spec, funcID)
 		} else if len(spec.ValueDescs) > 0 {
 			fmt.Fprint(sb, "\n")
-			fishWriteValueDescsFunction(g, sb, spec, funcID)
+			fishWriteValueDescsFunction(sb, spec, funcID)
 		}
 	}
 }
@@ -409,7 +405,6 @@ end
 }
 
 func fishWriteValueDescsFunction(
-	g *Generator,
 	sb *strings.Builder,
 	spec Spec,
 	funcID string,
