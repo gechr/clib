@@ -31,6 +31,7 @@ type sectionsConfig struct {
 	hideInheritedFlags              bool
 	hideInheritedFlagsOnSubcommands bool
 	showInheritedFlagsOnSubcommands bool
+	subcommandOptional              bool
 }
 
 // SectionsOption configures cobra help-section generation.
@@ -68,6 +69,13 @@ func WithHideInheritedFlagsOnSubcommands() SectionsOption {
 		c.hideInheritedFlagsOnSubcommands = true
 		c.showInheritedFlagsOnSubcommands = false
 	}
+}
+
+// WithSubcommandOptional marks the auto-appended subcommand placeholder as
+// optional ([<command>] instead of <command>). Use this when the root command
+// is genuinely runnable without a subcommand.
+func WithSubcommandOptional() SectionsOption {
+	return func(c *sectionsConfig) { c.subcommandOptional = true }
 }
 
 // WithShowInheritedFlagsOnSubcommands keeps inherited/global flags visible in
@@ -110,7 +118,7 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 
 	flagSections, hasFlags := buildFlagSections(cmd, cfg)
 
-	sections = append(sections, usageSection(cmd, hasFlags))
+	sections = append(sections, usageSection(cmd, hasFlags, cfg.subcommandOptional))
 
 	if len(cmd.Aliases) > 0 {
 		sections = append(sections, aliasSection(cmd))
@@ -126,7 +134,7 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 	return sections
 }
 
-func usageSection(cmd *cobralib.Command, hasFlags bool) help.Section {
+func usageSection(cmd *cobralib.Command, hasFlags bool, subcommandOptional bool) help.Section {
 	u := help.Usage{
 		Command:     cmd.CommandPath(),
 		ShowOptions: hasFlags,
@@ -135,7 +143,7 @@ func usageSection(cmd *cobralib.Command, hasFlags bool) help.Section {
 	if len(availableCommands(cmd)) > 0 {
 		u.Args = append(
 			u.Args,
-			help.Arg{Name: "command", Required: !cmd.Runnable(), IsSubcommand: true},
+			help.Arg{Name: "command", Required: !subcommandOptional, IsSubcommand: true},
 		)
 	}
 	return help.Section{

@@ -720,6 +720,58 @@ func TestSections_Flags_EnumDefaultExtraOverridesDefValue(t *testing.T) {
 	require.Equal(t, "open", stateFlag.EnumDefault, "FlagExtra.EnumDefault should take precedence")
 }
 
+func TestSections_Subcommand_RequiredByDefault(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app", RunE: noop}
+	root.AddCommand(&cobralib.Command{Use: "sub", RunE: noop})
+
+	sections := cobra.Sections(root)
+
+	usage, ok := sections[0].Content[0].(help.Usage)
+	require.True(t, ok)
+
+	var subArg *help.Arg
+	for i := range usage.Args {
+		if usage.Args[i].IsSubcommand {
+			subArg = &usage.Args[i]
+			break
+		}
+	}
+	require.NotNil(t, subArg)
+	require.True(
+		t,
+		subArg.Required,
+		"subcommand arg should be required by default even when root is runnable",
+	)
+}
+
+func TestSectionsWithOptions_OptionalSubcommand(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app", RunE: noop}
+	root.AddCommand(&cobralib.Command{Use: "sub", RunE: noop})
+
+	sections := cobra.SectionsWithOptions(cobra.WithSubcommandOptional())(root)
+
+	usage, ok := sections[0].Content[0].(help.Usage)
+	require.True(t, ok)
+
+	var subArg *help.Arg
+	for i := range usage.Args {
+		if usage.Args[i].IsSubcommand {
+			subArg = &usage.Args[i]
+			break
+		}
+	}
+	require.NotNil(t, subArg)
+	require.False(
+		t,
+		subArg.Required,
+		"subcommand arg should be optional with WithSubcommandOptional()",
+	)
+}
+
 func TestSections_SubcommandGroups_AllGrouped(t *testing.T) {
 	noop := func(*cobralib.Command, []string) error { return nil }
 
