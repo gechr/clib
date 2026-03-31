@@ -275,23 +275,54 @@ func genSubDynamicArgs() *complete.Generator {
 	}
 }
 
+func genCollidingSubDynamicArgs() *complete.Generator {
+	return &complete.Generator{
+		AppName: "pdc",
+		Subs: []complete.SubSpec{
+			{
+				Name:  "incident",
+				Terse: "Manage incidents",
+				Subs: []complete.SubSpec{
+					{
+						Name:        "show",
+						Terse:       "Show an incident",
+						DynamicArgs: []string{"incident"},
+					},
+				},
+			},
+			{
+				Name:  "user",
+				Terse: "Manage users",
+				Subs: []complete.SubSpec{
+					{
+						Name:        "show",
+						Terse:       "Show a user",
+						DynamicArgs: []string{"user"},
+					},
+				},
+			},
+		},
+	}
+}
+
 func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
-		"dynamicargs":     genDynamicArgs(),
-		"enum":            genEnum(),
-		"enumslice":       genEnumSlice(),
-		"ext":             genExt(),
-		"flat":            genFlat(),
-		"globalflags":     genGlobalFlags(),
-		"hide":            genHide(),
-		"hints":           genHints(),
-		"hyphenated":      genHyphenated(),
-		"nested":          genNested(),
-		"pathargs":        genPathArgs(),
-		"persistentflags": genPersistentFlags(),
-		"subcommands":     genSubcommands(),
-		"subdynamicargs":  genSubDynamicArgs(),
-		"valuedesc":       genValueDesc(),
+		"collidingsubdynamicargs": genCollidingSubDynamicArgs(),
+		"dynamicargs":             genDynamicArgs(),
+		"enum":                    genEnum(),
+		"enumslice":               genEnumSlice(),
+		"ext":                     genExt(),
+		"flat":                    genFlat(),
+		"globalflags":             genGlobalFlags(),
+		"hide":                    genHide(),
+		"hints":                   genHints(),
+		"hyphenated":              genHyphenated(),
+		"nested":                  genNested(),
+		"pathargs":                genPathArgs(),
+		"persistentflags":         genPersistentFlags(),
+		"subcommands":             genSubcommands(),
+		"subdynamicargs":          genSubDynamicArgs(),
+		"valuedesc":               genValueDesc(),
 	}
 
 	shells := []string{"bash", "zsh", "fish"}

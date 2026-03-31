@@ -43,7 +43,7 @@ func GenerateFish(g *Generator) (string, error) {
 			}
 		}
 
-		fishWriteSubTree(g, &sb, g.Subs, usingSub, "", funcID, persistentSpecs(g.Specs), 1)
+		fishWriteSubTree(g, &sb, g.Subs, usingSub, "", "", funcID, persistentSpecs(g.Specs), 1)
 	} else {
 		fmt.Fprint(&sb, "\n")
 		for _, spec := range rootSpecs {
@@ -61,6 +61,14 @@ func GenerateFish(g *Generator) (string, error) {
 
 func fishFuncName(name string) string {
 	return strings.ReplaceAll(name, "-", "_")
+}
+
+func fishFuncPath(pathPrefix, name string) string {
+	name = fishFuncName(name)
+	if pathPrefix == "" {
+		return name
+	}
+	return pathPrefix + "_" + name
 }
 
 func fishEscapeString(s string) string {
@@ -252,11 +260,12 @@ func fishWriteSubTree(
 	g *Generator,
 	sb *strings.Builder,
 	subs []SubSpec,
-	usingSub, parentCondition, funcID string,
+	usingSub, parentCondition, pathPrefix, funcID string,
 	inheritedSpecs []Spec,
 	depth int,
 ) {
 	for _, sub := range SortSubSpecs(subs) {
+		subPath := fishFuncPath(pathPrefix, sub.Name)
 		allNames := append([]string{sub.Name}, sub.Aliases...)
 		subSeen := usingSub + " " + strings.Join(allNames, " ")
 
@@ -298,7 +307,7 @@ func fishWriteSubTree(
 			fmt.Fprintf(sb, "complete -c %s -n '%s' -F\n", g.AppName, leafCondition)
 		}
 		if hasDynArgs {
-			helperName := fmt.Sprintf("__%s_%s_dynamic_args", funcID, fishFuncName(sub.Name))
+			helperName := fmt.Sprintf("__%s_%s_dynamic_args", funcID, subPath)
 			allSpecs := appendSpecs(inheritedSpecs, sub.Specs)
 			fishWriteDynamicArgsHelper(g, sb, helperName, allSpecs, sub.DynamicArgs, depth)
 			fmt.Fprintf(
@@ -317,6 +326,7 @@ func fishWriteSubTree(
 				sub.Subs,
 				usingSub,
 				seenCondition,
+				subPath,
 				funcID,
 				nextInherited,
 				depth+1,

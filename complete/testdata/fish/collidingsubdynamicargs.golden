@@ -1,0 +1,104 @@
+complete -c pdc -f
+
+function __pdc_global_optspecs
+    string join \n --
+end
+
+function __pdc_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__pdc_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        printf '%s\n' $argv
+        return 1
+    end
+    return 0
+end
+
+function __pdc_using_subcommand
+    set -l cmd (__pdc_needs_command)
+    test -z "$cmd"
+    and return 1
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
+end
+
+complete -c pdc -n '__pdc_needs_command' -a incident -d "Manage incidents"
+complete -c pdc -n '__pdc_needs_command' -a user -d "Manage users"
+
+complete -c pdc -n '__pdc_using_subcommand incident; and not __pdc_using_subcommand show' -a show -d "Show an incident"
+
+
+function __pdc_incident_show_dynamic_args
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 2
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else if not string match -q -- '-*' $t
+            if test $cmd_skip -gt 0
+                set cmd_skip (math $cmd_skip - 1)
+            else
+                set -a positional $t
+            end
+        end
+    end
+    set -l nargs (count $positional)
+    switch $nargs
+        case 0
+            pdc --@complete=incident
+        case '*'
+            pdc --@complete=incident -- $positional
+    end
+end
+
+complete -c pdc -n '__pdc_using_subcommand incident; and __pdc_using_subcommand show' -a "(__pdc_incident_show_dynamic_args)" -f
+
+complete -c pdc -n '__pdc_using_subcommand user; and not __pdc_using_subcommand show' -a show -d "Show a user"
+
+
+function __pdc_user_show_dynamic_args
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 2
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else if not string match -q -- '-*' $t
+            if test $cmd_skip -gt 0
+                set cmd_skip (math $cmd_skip - 1)
+            else
+                set -a positional $t
+            end
+        end
+    end
+    set -l nargs (count $positional)
+    switch $nargs
+        case 0
+            pdc --@complete=user
+        case '*'
+            pdc --@complete=user -- $positional
+    end
+end
+
+complete -c pdc -n '__pdc_using_subcommand user; and __pdc_using_subcommand show' -a "(__pdc_user_show_dynamic_args)" -f

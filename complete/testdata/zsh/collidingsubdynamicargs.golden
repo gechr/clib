@@ -1,0 +1,236 @@
+#compdef pdc
+
+autoload -U is-at-least
+
+_pdc() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        ':: :_pdc_commands' \
+        '*::: :->pdc' \
+    && ret=0
+
+    case $state in
+    (pdc)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:pdc-command-$line[1]:"
+        case $line[1] in
+            (incident)
+                _arguments "${_arguments_options[@]}" : \
+                    ':: :_pdc__incident_commands' \
+                    '*::: :->incident' \
+                && ret=0
+
+                case $state in
+                (incident)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:incident-command-$line[1]:"
+                    case $line[1] in
+                        (show)
+                            _arguments "${_arguments_options[@]}" : \
+                                '1: :->dyn_1' \
+                                '*: :->dyn_rest' \
+                            && ret=0
+
+                            case $state in
+                            (dyn_1)
+                                local -a __pos=()
+                                local __skip_next=0
+                                local __after_dd=0
+                                local token
+                                for ((i=2; i<CURRENT; i++)); do
+                                    token=${words[i]}
+                                    if (( __after_dd )); then
+                                        __pos+=("$token")
+                                        continue
+                                    fi
+                                    if (( __skip_next )); then
+                                        __skip_next=0
+                                        continue
+                                    fi
+                                    if [[ $token == -- ]]; then
+                                        __after_dd=1
+                                        continue
+                                    fi
+                                    case $token in
+                                        (-*)
+                                            ;;
+                                        (*)
+                                            __pos+=("$token")
+                                            ;;
+                                    esac
+                                done
+                                local -a items
+                                items=(${(f)"$(pdc --@complete=incident 2>/dev/null)"})
+                                compadd -a items
+                            ;;
+                            (dyn_rest)
+                                local -a __pos=()
+                                local __skip_next=0
+                                local __after_dd=0
+                                local token
+                                for ((i=2; i<CURRENT; i++)); do
+                                    token=${words[i]}
+                                    if (( __after_dd )); then
+                                        __pos+=("$token")
+                                        continue
+                                    fi
+                                    if (( __skip_next )); then
+                                        __skip_next=0
+                                        continue
+                                    fi
+                                    if [[ $token == -- ]]; then
+                                        __after_dd=1
+                                        continue
+                                    fi
+                                    case $token in
+                                        (-*)
+                                            ;;
+                                        (*)
+                                            __pos+=("$token")
+                                            ;;
+                                    esac
+                                done
+                                local -a items
+                                items=(${(f)"$(pdc --@complete=incident -- "${__pos[@]}" 2>/dev/null)"})
+                                compadd -a items
+                            ;;
+                            esac
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+            (user)
+                _arguments "${_arguments_options[@]}" : \
+                    ':: :_pdc__user_commands' \
+                    '*::: :->user' \
+                && ret=0
+
+                case $state in
+                (user)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:user-command-$line[1]:"
+                    case $line[1] in
+                        (show)
+                            _arguments "${_arguments_options[@]}" : \
+                                '1: :->dyn_1' \
+                                '*: :->dyn_rest' \
+                            && ret=0
+
+                            case $state in
+                            (dyn_1)
+                                local -a __pos=()
+                                local __skip_next=0
+                                local __after_dd=0
+                                local token
+                                for ((i=2; i<CURRENT; i++)); do
+                                    token=${words[i]}
+                                    if (( __after_dd )); then
+                                        __pos+=("$token")
+                                        continue
+                                    fi
+                                    if (( __skip_next )); then
+                                        __skip_next=0
+                                        continue
+                                    fi
+                                    if [[ $token == -- ]]; then
+                                        __after_dd=1
+                                        continue
+                                    fi
+                                    case $token in
+                                        (-*)
+                                            ;;
+                                        (*)
+                                            __pos+=("$token")
+                                            ;;
+                                    esac
+                                done
+                                local -a items
+                                items=(${(f)"$(pdc --@complete=user 2>/dev/null)"})
+                                compadd -a items
+                            ;;
+                            (dyn_rest)
+                                local -a __pos=()
+                                local __skip_next=0
+                                local __after_dd=0
+                                local token
+                                for ((i=2; i<CURRENT; i++)); do
+                                    token=${words[i]}
+                                    if (( __after_dd )); then
+                                        __pos+=("$token")
+                                        continue
+                                    fi
+                                    if (( __skip_next )); then
+                                        __skip_next=0
+                                        continue
+                                    fi
+                                    if [[ $token == -- ]]; then
+                                        __after_dd=1
+                                        continue
+                                    fi
+                                    case $token in
+                                        (-*)
+                                            ;;
+                                        (*)
+                                            __pos+=("$token")
+                                            ;;
+                                    esac
+                                done
+                                local -a items
+                                items=(${(f)"$(pdc --@complete=user -- "${__pos[@]}" 2>/dev/null)"})
+                                compadd -a items
+                            ;;
+                            esac
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_pdc_commands] )) ||
+_pdc_commands() {
+    local commands; commands=(
+        'incident:Manage incidents' \
+        'user:Manage users' \
+    )
+    _describe -t commands 'pdc commands' commands "$@"
+}
+
+(( $+functions[_pdc__incident_commands] )) ||
+_pdc__incident_commands() {
+    local commands; commands=(
+        'show:Show an incident' \
+    )
+    _describe -t commands 'pdc incident commands' commands "$@"
+}
+
+(( $+functions[_pdc__user_commands] )) ||
+_pdc__user_commands() {
+    local commands; commands=(
+        'show:Show a user' \
+    )
+    _describe -t commands 'pdc user commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_pdc" ]; then
+    _pdc "$@"
+else
+    compdef _pdc pdc
+fi
