@@ -42,12 +42,13 @@ type FlagMeta struct {
 }
 
 // Desc returns the Terse description for use in completions.
-// Falls back to Help if Terse is empty.
+// Falls back to Help if Terse is empty. Only the first line of Help is used.
 func (f *FlagMeta) Desc() string {
 	if f.Terse != "" {
 		return f.Terse
 	}
-	return f.Help
+	line, _, _ := strings.Cut(f.Help, "\n")
+	return line
 }
 
 // ParseClibTag parses a clib:"..." struct tag value into meta.

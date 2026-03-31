@@ -651,6 +651,11 @@ func TestFlagMeta_Desc_PreferDescription(t *testing.T) {
 	require.Equal(t, "Description", f.Desc())
 }
 
+func TestFlagMeta_Desc_MultilineHelp(t *testing.T) {
+	f := complete.FlagMeta{Help: "First line.\nSecond line.\nThird line."}
+	require.Equal(t, "First line.", f.Desc())
+}
+
 // --- ParseClibTag ext ---
 
 func TestParseClibTag_Ext(t *testing.T) {
