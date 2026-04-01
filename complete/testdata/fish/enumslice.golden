@@ -3,18 +3,18 @@ complete -c myapp -f
 # Comma-separated include completion
 function __myapp_complete_include
     set -l value (string replace -r '^--include=' '' -- (commandline -ct))
-    set -l include "name" "email" "avatar"
-    set -l include_desc "Display name" "Email address" "Profile picture"
+    set -l _flag_include "name" "email" "avatar"
+    set -l _flag_include_desc "Display name" "Email address" "Profile picture"
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for i in (seq (count $include))
-            if not contains -- $include[$i] $selected
-                printf '%s\t%s\n' "$prefix$include[$i]" $include_desc[$i]
+        for i in (seq (count $_flag_include))
+            if not contains -- $_flag_include[$i] $selected
+                printf '%s\t%s\n' "$prefix$_flag_include[$i]" $_flag_include_desc[$i]
             end
         end
     else
-        for i in (seq (count $include))
-            printf '%s\t%s\n' $include[$i] $include_desc[$i]
+        for i in (seq (count $_flag_include))
+            printf '%s\t%s\n' $_flag_include[$i] $_flag_include_desc[$i]
         end
     end
 end

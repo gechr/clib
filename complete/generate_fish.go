@@ -21,8 +21,8 @@ func GenerateFish(g *Generator) (string, error) {
 
 	fmt.Fprintf(&sb, "complete -c %s -f\n", g.AppName)
 
-	fishWriteCommaFunctions(g, &sb, rootSpecs, funcID)
-	fishWriteCommaFunctionsTree(g, &sb, g.Subs, funcID)
+	resolved, funcLookup := fishBuildFuncPlan(g.AppName, g.Specs, g.Subs)
+	fishWriteCommaFunctions(g, &sb, resolved)
 
 	if len(g.Subs) > 0 {
 		needsCmd := fmt.Sprintf("__%s_needs_command", funcID)
@@ -36,18 +36,29 @@ func GenerateFish(g *Generator) (string, error) {
 		if len(rootPersistent) > 0 || len(rootLocal) > 0 {
 			fmt.Fprint(&sb, "\n")
 			for _, spec := range rootPersistent {
-				fishWriteSpec(g, &sb, spec, "")
+				fishWriteSpec(g, &sb, spec, "", funcLookup, "")
 			}
 			for _, spec := range rootLocal {
-				fishWriteSpec(g, &sb, spec, needsCmd)
+				fishWriteSpec(g, &sb, spec, needsCmd, funcLookup, "")
 			}
 		}
 
-		fishWriteSubTree(g, &sb, g.Subs, usingSub, "", "", funcID, persistentSpecs(g.Specs), 1)
+		fishWriteSubTree(
+			g,
+			&sb,
+			g.Subs,
+			usingSub,
+			"",
+			"",
+			funcID,
+			persistentSpecs(g.Specs),
+			1,
+			funcLookup,
+		)
 	} else {
 		fmt.Fprint(&sb, "\n")
 		for _, spec := range rootSpecs {
-			fishWriteSpec(g, &sb, spec, "")
+			fishWriteSpec(g, &sb, spec, "", funcLookup, "")
 		}
 		if len(g.DynamicArgs) > 0 {
 			helperName := fmt.Sprintf("__%s_dynamic_args", funcID)
@@ -59,8 +70,21 @@ func GenerateFish(g *Generator) (string, error) {
 	return sb.String(), nil
 }
 
+// fishLookupFuncName returns the function name for a flag in the given subcommand
+// path, falling back to the default naming convention if not in the lookup.
+func fishLookupFuncName(lookup map[string]string, subPath, flagName, appName string) string {
+	if fn, ok := lookup[subPath+"/"+flagName]; ok {
+		return fn
+	}
+	return fmt.Sprintf("__%s_complete_%s", fishFuncName(appName), fishFuncName(flagName))
+}
+
 func fishFuncName(name string) string {
 	return strings.ReplaceAll(name, "-", "_")
+}
+
+func fishVarName(name string) string {
+	return "_flag_" + strings.ReplaceAll(name, "-", "_")
 }
 
 func fishFuncPath(pathPrefix, name string) string {
@@ -156,38 +180,126 @@ func fishMatchPatterns(token string, patterns []string) string {
 	return strings.Join(parts, "; or ")
 }
 
+// fishResolvedSpec pairs a Spec with the function name assigned to it.
+type fishResolvedSpec struct {
+	Spec     Spec
+	FuncName string
+}
+
+// fishBuildFuncPlan walks the full spec tree and assigns a helper function name
+// to every spec that needs one (CommaList or ValueDescs). When the same flag
+// name appears with identical completions in multiple subcommands, they share
+// one function. When the same flag name appears with different completions, each
+// variant gets a path-scoped name (e.g. __app_complete_sub_flag) to avoid
+// collision.
+//
+// It returns:
+//   - the deduplicated list of (spec, funcName) to write functions for
+//   - a lookup map "path/flagname" → funcName for use in fishWriteSpec
+func fishBuildFuncPlan(
+	appName string,
+	specs []Spec,
+	subs []SubSpec,
+) ([]fishResolvedSpec, map[string]string) {
+	type item struct {
+		spec Spec
+		path string
+		fp   string
+	}
+	var all []item
+
+	var gather func([]Spec, []SubSpec, string)
+	gather = func(specs []Spec, subs []SubSpec, path string) {
+		for _, spec := range SortVisibleSpecs(specs) {
+			if !fishSpecNeedsFunc(spec) {
+				continue
+			}
+			all = append(all, item{spec, path, fishSpecFingerprint(spec)})
+		}
+		for _, sub := range subs {
+			subPath := fishFuncName(sub.Name)
+			if path != "" {
+				subPath = path + "_" + fishFuncName(sub.Name)
+			}
+			gather(sub.Specs, sub.Subs, subPath)
+		}
+	}
+	gather(specs, subs, "")
+
+	// Group by flag name; detect whether any two entries have different content.
+	type group struct {
+		fp       string
+		conflict bool
+		items    []item
+	}
+	groups := map[string]*group{}
+	var order []string
+
+	for _, it := range all {
+		g, ok := groups[it.spec.LongFlag]
+		if !ok {
+			groups[it.spec.LongFlag] = &group{fp: it.fp, items: []item{it}}
+			order = append(order, it.spec.LongFlag)
+		} else {
+			if g.fp != it.fp {
+				g.conflict = true
+			}
+			g.items = append(g.items, it)
+		}
+	}
+
+	appID := fishFuncName(appName)
+	var resolved []fishResolvedSpec
+	lookup := map[string]string{} // "path/flagname" → funcName
+
+	for _, flagName := range order {
+		g := groups[flagName]
+		flagID := fishFuncName(flagName)
+		seenFuncs := map[string]bool{}
+
+		for _, it := range g.items {
+			var funcName string
+			if g.conflict && it.path != "" {
+				funcName = fmt.Sprintf("__%s_complete_%s_%s", appID, it.path, flagID)
+			} else {
+				funcName = fmt.Sprintf("__%s_complete_%s", appID, flagID)
+			}
+			lookup[it.path+"/"+flagName] = funcName
+			if !seenFuncs[funcName] {
+				seenFuncs[funcName] = true
+				resolved = append(resolved, fishResolvedSpec{it.spec, funcName})
+			}
+		}
+	}
+	return resolved, lookup
+}
+
+func fishSpecNeedsFunc(spec Spec) bool {
+	if spec.LongFlag == "" {
+		return false
+	}
+	if spec.CommaList {
+		return spec.Dynamic != "" || len(spec.Values) > 0 || len(spec.ValueDescs) > 0
+	}
+	return len(spec.ValueDescs) > 0
+}
+
+func fishSpecFingerprint(spec Spec) string {
+	return fmt.Sprintf("dynamic=%s|values=%v|descs=%v", spec.Dynamic, spec.Values, spec.ValueDescs)
+}
+
 func fishWriteCommaFunctions(
 	g *Generator,
 	sb *strings.Builder,
-	specs []Spec,
-	funcID string,
+	resolved []fishResolvedSpec,
 ) {
-	for _, spec := range specs {
-		if spec.LongFlag == "" {
-			continue
+	for _, rs := range resolved {
+		fmt.Fprint(sb, "\n")
+		if rs.Spec.CommaList {
+			fishWriteCommaFunction(g, sb, rs.Spec, rs.FuncName)
+		} else {
+			fishWriteValueDescsFunction(sb, rs.Spec, rs.FuncName)
 		}
-		if spec.CommaList {
-			if spec.Dynamic == "" && len(spec.Values) == 0 && len(spec.ValueDescs) == 0 {
-				continue
-			}
-			fmt.Fprint(sb, "\n")
-			fishWriteCommaFunction(g, sb, spec, funcID)
-		} else if len(spec.ValueDescs) > 0 {
-			fmt.Fprint(sb, "\n")
-			fishWriteValueDescsFunction(sb, spec, funcID)
-		}
-	}
-}
-
-func fishWriteCommaFunctionsTree(
-	g *Generator,
-	sb *strings.Builder,
-	subs []SubSpec,
-	funcID string,
-) {
-	for _, sub := range subs {
-		fishWriteCommaFunctions(g, sb, SortVisibleSpecs(sub.Specs), funcID)
-		fishWriteCommaFunctionsTree(g, sb, sub.Subs, funcID)
 	}
 }
 
@@ -264,6 +376,7 @@ func fishWriteSubTree(
 	usingSub, parentCondition, pathPrefix, funcID string,
 	inheritedSpecs []Spec,
 	depth int,
+	funcLookup map[string]string,
 ) {
 	for _, sub := range SortSubSpecs(subs) {
 		subPath := fishFuncPath(pathPrefix, sub.Name)
@@ -299,10 +412,10 @@ func fishWriteSubTree(
 			fishWriteSubEntries(g, sb, sub.Subs, leafCondition)
 		}
 		for _, spec := range subPersistent {
-			fishWriteSpec(g, sb, spec, seenCondition)
+			fishWriteSpec(g, sb, spec, seenCondition, funcLookup, subPath)
 		}
 		for _, spec := range subLocal {
-			fishWriteSpec(g, sb, spec, leafCondition)
+			fishWriteSpec(g, sb, spec, leafCondition, funcLookup, subPath)
 		}
 		if sub.PathArgs {
 			fmt.Fprintf(sb, "complete -c %s -n '%s' -F\n", g.AppName, leafCondition)
@@ -331,6 +444,7 @@ func fishWriteSubTree(
 				funcID,
 				nextInherited,
 				depth+1,
+				funcLookup,
 			)
 		}
 	}
@@ -340,10 +454,9 @@ func fishWriteCommaFunction(
 	g *Generator,
 	sb *strings.Builder,
 	spec Spec,
-	funcID string,
+	funcName string,
 ) {
-	funcName := fmt.Sprintf("__%s_complete_%s", funcID, fishFuncName(spec.LongFlag))
-	varName := fishFuncName(spec.LongFlag)
+	varName := fishVarName(spec.LongFlag)
 
 	fmt.Fprintf(sb, "# Comma-separated %[1]s completion\nfunction %[2]s\n", spec.LongFlag, funcName)
 	fmt.Fprintf(
@@ -407,10 +520,9 @@ end
 func fishWriteValueDescsFunction(
 	sb *strings.Builder,
 	spec Spec,
-	funcID string,
+	funcName string,
 ) {
-	funcName := fmt.Sprintf("__%s_complete_%s", funcID, fishFuncName(spec.LongFlag))
-	varName := fishFuncName(spec.LongFlag)
+	varName := fishVarName(spec.LongFlag)
 
 	vals := make([]string, len(spec.ValueDescs))
 	descs := make([]string, len(spec.ValueDescs))
@@ -441,7 +553,14 @@ func fishWriteSubcommand(g *Generator, sb *strings.Builder, name, terse, conditi
 	fmt.Fprintf(sb, "%s\n", strings.Join(parts, " "))
 }
 
-func fishWriteSpec(g *Generator, sb *strings.Builder, spec Spec, condition string) {
+func fishWriteSpec(
+	g *Generator,
+	sb *strings.Builder,
+	spec Spec,
+	condition string,
+	funcLookup map[string]string,
+	subPath string,
+) {
 	var parts []string
 	parts = append(parts, fmt.Sprintf("complete -c %s", g.AppName))
 
@@ -458,11 +577,7 @@ func fishWriteSpec(g *Generator, sb *strings.Builder, spec Spec, condition strin
 	if spec.HasArg {
 		switch {
 		case spec.CommaList && (spec.Dynamic != "" || len(spec.Values) > 0 || len(spec.ValueDescs) > 0):
-			funcName := fmt.Sprintf(
-				"__%s_complete_%s",
-				fishFuncName(g.AppName),
-				fishFuncName(spec.LongFlag),
-			)
+			funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
 			parts = append(parts, "-x", fmt.Sprintf("-kra \"(%s)\"", funcName))
 		case spec.Dynamic != "":
 			parts = append(
@@ -471,11 +586,7 @@ func fishWriteSpec(g *Generator, sb *strings.Builder, spec Spec, condition strin
 				fmt.Sprintf("-a \"(%s --%s=%s)\"", g.AppName, FlagComplete, spec.Dynamic),
 			)
 		case len(spec.ValueDescs) > 0:
-			funcName := fmt.Sprintf(
-				"__%s_complete_%s",
-				fishFuncName(g.AppName),
-				fishFuncName(spec.LongFlag),
-			)
+			funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
 			parts = append(parts, "-x", fmt.Sprintf("-ra \"(%s)\"", funcName))
 		case len(spec.Values) > 0:
 			values := make([]string, len(spec.Values))

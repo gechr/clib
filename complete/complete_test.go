@@ -239,16 +239,16 @@ func TestGenerator_Print_DefaultShell(t *testing.T) {
 # Comma-separated columns completion
 function __clibapp_complete_columns
     set -l value (string replace -r '^--columns=' '' -- (commandline -ct))
-    set -l columns (clibapp --@complete=columns)
+    set -l _flag_columns (clibapp --@complete=columns)
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $columns
+        for col in $_flag_columns
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $columns
+        printf '%s\n' $_flag_columns
     end
 end
 
@@ -290,16 +290,16 @@ func TestGenerator_Install_Fish(t *testing.T) {
 # Comma-separated columns completion
 function __clibapp_complete_columns
     set -l value (string replace -r '^--columns=' '' -- (commandline -ct))
-    set -l columns (clibapp --@complete=columns)
+    set -l _flag_columns (clibapp --@complete=columns)
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $columns
+        for col in $_flag_columns
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $columns
+        printf '%s\n' $_flag_columns
     end
 end
 

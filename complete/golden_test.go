@@ -252,6 +252,57 @@ func genValueDesc() *complete.Generator {
 	}
 }
 
+func genSharedFlags() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Subs: []complete.SubSpec{
+			{
+				Name:  "list",
+				Terse: "List items",
+				Specs: []complete.Spec{
+					// --include: same values in both subcommands → shared function
+					{
+						LongFlag:  "include",
+						Terse:     "Fields to include",
+						HasArg:    true,
+						CommaList: true,
+						Values:    []string{"name", "email"},
+					},
+					// --status: different values per subcommand → path-scoped functions
+					{
+						LongFlag:  "status",
+						Terse:     "Filter by status",
+						HasArg:    true,
+						CommaList: true,
+						Values:    []string{"active", "inactive"},
+					},
+					{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+				},
+			},
+			{
+				Name:  "get",
+				Terse: "Get item",
+				Specs: []complete.Spec{
+					{
+						LongFlag:  "include",
+						Terse:     "Fields to include",
+						HasArg:    true,
+						CommaList: true,
+						Values:    []string{"name", "email"},
+					},
+					{
+						LongFlag:  "status",
+						Terse:     "Filter by status",
+						HasArg:    true,
+						CommaList: true,
+						Values:    []string{"draft", "published"},
+					},
+				},
+			},
+		},
+	}
+}
+
 func genSubDynamicArgs() *complete.Generator {
 	return &complete.Generator{
 		AppName: "myapp",
@@ -320,6 +371,7 @@ func TestGolden(t *testing.T) {
 		"nested":                  genNested(),
 		"pathargs":                genPathArgs(),
 		"persistentflags":         genPersistentFlags(),
+		"sharedflags":             genSharedFlags(),
 		"subcommands":             genSubcommands(),
 		"subdynamicargs":          genSubDynamicArgs(),
 		"valuedesc":               genValueDesc(),

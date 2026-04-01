@@ -277,16 +277,16 @@ func TestGenerate_Flat(t *testing.T) {
 # Comma-separated columns completion
 function __clibapp_complete_columns
     set -l value (string replace -r '^--columns=' '' -- (commandline -ct))
-    set -l columns (clibapp --@complete=columns)
+    set -l _flag_columns (clibapp --@complete=columns)
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $columns
+        for col in $_flag_columns
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $columns
+        printf '%s\n' $_flag_columns
     end
 end
 
@@ -424,26 +424,26 @@ func TestGenerate_Values(t *testing.T) {
 
 # format value completion
 function __myapp_complete_format
-    set -l format "json" "yaml" "text"
-    set -l format_desc "JSON output" "YAML output" "Plain text"
-    for i in (seq (count $format))
-        printf '%s\t%s\n' $format[$i] $format_desc[$i]
+    set -l _flag_format "json" "yaml" "text"
+    set -l _flag_format_desc "JSON output" "YAML output" "Plain text"
+    for i in (seq (count $_flag_format))
+        printf '%s\t%s\n' $_flag_format[$i] $_flag_format_desc[$i]
     end
 end
 
 # Comma-separated tags completion
 function __myapp_complete_tags
     set -l value (string replace -r '^--tags=' '' -- (commandline -ct))
-    set -l tags "bug" "feature" "docs"
+    set -l _flag_tags "bug" "feature" "docs"
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $tags
+        for col in $_flag_tags
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $tags
+        printf '%s\n' $_flag_tags
     end
 end
 
@@ -463,32 +463,32 @@ func TestGenerate_CommaList(t *testing.T) {
 # Comma-separated labels completion
 function __myapp_complete_labels
     set -l value (string replace -r '^--labels=' '' -- (commandline -ct))
-    set -l labels (myapp --@complete=labels)
+    set -l _flag_labels (myapp --@complete=labels)
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $labels
+        for col in $_flag_labels
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $labels
+        printf '%s\n' $_flag_labels
     end
 end
 
 # Comma-separated tags completion
 function __myapp_complete_tags
     set -l value (string replace -r '^--tags=' '' -- (commandline -ct))
-    set -l tags "bug" "feature" "docs"
+    set -l _flag_tags "bug" "feature" "docs"
     if string match -qr '^(?<prefix>.*,)' -- $value
         set -l selected (string split ',' -- $prefix)
-        for col in $tags
+        for col in $_flag_tags
             if not contains -- $col $selected
                 printf '%s\n' "$prefix$col"
             end
         end
     else
-        printf '%s\n' $tags
+        printf '%s\n' $_flag_tags
     end
 end
 

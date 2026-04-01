@@ -1,0 +1,87 @@
+complete -c myapp -f
+
+# Comma-separated include completion
+function __myapp_complete_include
+    set -l value (string replace -r '^--include=' '' -- (commandline -ct))
+    set -l _flag_include "name" "email"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $_flag_include
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $_flag_include
+    end
+end
+
+# Comma-separated status completion
+function __myapp_complete_list_status
+    set -l value (string replace -r '^--status=' '' -- (commandline -ct))
+    set -l _flag_status "active" "inactive"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $_flag_status
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $_flag_status
+    end
+end
+
+# Comma-separated status completion
+function __myapp_complete_get_status
+    set -l value (string replace -r '^--status=' '' -- (commandline -ct))
+    set -l _flag_status "draft" "published"
+    if string match -qr '^(?<prefix>.*,)' -- $value
+        set -l selected (string split ',' -- $prefix)
+        for col in $_flag_status
+            if not contains -- $col $selected
+                printf '%s\n' "$prefix$col"
+            end
+        end
+    else
+        printf '%s\n' $_flag_status
+    end
+end
+
+function __myapp_global_optspecs
+    string join \n --
+end
+
+function __myapp_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        printf '%s\n' $argv
+        return 1
+    end
+    return 0
+end
+
+function __myapp_using_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
+end
+
+complete -c myapp -n '__myapp_needs_command' -a get -d "Get item"
+complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
+
+complete -c myapp -n '__myapp_using_subcommand get' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_subcommand get' -l status -x -kra "(__myapp_complete_get_status)" -d "Filter by status"
+
+complete -c myapp -n '__myapp_using_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_subcommand list' -l status -x -kra "(__myapp_complete_list_status)" -d "Filter by status"
+complete -c myapp -n '__myapp_using_subcommand list' -s v -l verbose -d "Verbose output"
