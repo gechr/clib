@@ -305,6 +305,38 @@ func TestSubcommands_DynamicArgs(t *testing.T) {
 	require.Equal(t, []string{"incident", "alert"}, subs[0].DynamicArgs)
 }
 
+func TestSubcommands_MaxPositionalArgs_ExactArgs(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	child := &cobralib.Command{
+		Use:   "find <user>",
+		Short: "Find a user",
+		Run:   noop,
+		Args:  cobralib.ExactArgs(1),
+	}
+	root.AddCommand(child)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.True(t, subs[0].HasMaxPositionalArgs)
+	require.Equal(t, 1, subs[0].MaxPositionalArgs)
+}
+
+func TestSubcommands_MaxPositionalArgs_MaximumNArgs(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	child := &cobralib.Command{
+		Use:   "tail [files]",
+		Short: "Tail files",
+		Run:   noop,
+		Args:  cobralib.MaximumNArgs(2),
+	}
+	root.AddCommand(child)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.True(t, subs[0].HasMaxPositionalArgs)
+	require.Equal(t, 2, subs[0].MaxPositionalArgs)
+}
+
 func TestSubcommands_Extension(t *testing.T) {
 	root := &cobralib.Command{Use: "myapp"}
 	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}

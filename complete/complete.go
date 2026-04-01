@@ -106,13 +106,15 @@ type Spec struct {
 
 // SubSpec describes a subcommand for shell completion generation.
 type SubSpec struct {
-	Name        string    // subcommand name (e.g. "bump")
-	Aliases     []string  // command aliases (e.g. ["up"] for "update")
-	Terse       string    // short description for tab completion
-	Specs       []Spec    // subcommand-specific flag specs
-	Subs        []SubSpec // nested subcommands
-	PathArgs    bool      // enable file completion for positional args
-	DynamicArgs []string  // per-position dynamic completion; final entry repeats for additional positional args
+	Name                 string    // subcommand name (e.g. "bump")
+	Aliases              []string  // command aliases (e.g. ["up"] for "update")
+	Terse                string    // short description for tab completion
+	Specs                []Spec    // subcommand-specific flag specs
+	Subs                 []SubSpec // nested subcommands
+	PathArgs             bool      // enable file completion for positional args
+	DynamicArgs          []string  // per-position dynamic completion; final entry repeats for additional positional args
+	MaxPositionalArgs    int
+	HasMaxPositionalArgs bool
 }
 
 // Value hint constants for completion.
@@ -134,10 +136,12 @@ type ValueDesc struct {
 
 // Generator generates shell completion scripts.
 type Generator struct {
-	AppName     string
-	DynamicArgs []string // per-position dynamic completion; final entry repeats for additional positional args
-	Specs       []Spec
-	Subs        []SubSpec
+	AppName              string
+	DynamicArgs          []string // per-position dynamic completion; final entry repeats for additional positional args
+	Specs                []Spec
+	Subs                 []SubSpec
+	MaxPositionalArgs    int
+	HasMaxPositionalArgs bool
 }
 
 // NewGenerator creates a Generator for the named application.

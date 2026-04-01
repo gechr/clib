@@ -51,7 +51,18 @@ func GenerateBash(g *Generator) (string, error) {
     case "${cmd}" in
 `)
 
-	bashWriteCmdCase(g, &sb, cmdName, rootSpecs, g.Subs, false, g.DynamicArgs, 1)
+	bashWriteCmdCase(
+		g,
+		&sb,
+		cmdName,
+		rootSpecs,
+		g.Subs,
+		false,
+		g.DynamicArgs,
+		g.HasMaxPositionalArgs,
+		g.MaxPositionalArgs,
+		1,
+	)
 	if len(g.Subs) > 0 {
 		bashWriteSubcmdCases(
 			g,
@@ -122,6 +133,8 @@ func bashWriteCmdCase(
 	subs []SubSpec,
 	pathArgs bool,
 	dynamicArgs []string,
+	hasMaxPositionalArgs bool,
+	maxPositionalArgs int,
 	depth int,
 ) {
 	opts := bashOptsString(specs, subs)
@@ -165,9 +178,30 @@ func bashWriteCmdCase(
 
 	switch {
 	case pathArgs:
+		if hasMaxPositionalArgs {
+			bashWriteDynamicArgsParser(sb, specs, depth)
+			fmt.Fprintf(
+				sb,
+				"            if [[ ${#__dyn_pos[@]} -ge %d ]]; then\n",
+				maxPositionalArgs,
+			)
+			fmt.Fprint(sb, "                COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
+			fmt.Fprint(sb, "                return 0\n")
+			fmt.Fprint(sb, "            fi\n")
+		}
 		WriteIndented(sb, "            ", bashFileCompletionBlock)
 	case len(dynamicArgs) > 0:
 		bashWriteDynamicArgsParser(sb, specs, depth)
+		if hasMaxPositionalArgs {
+			fmt.Fprintf(
+				sb,
+				"            if [[ ${#__dyn_pos[@]} -ge %d ]]; then\n",
+				maxPositionalArgs,
+			)
+			fmt.Fprint(sb, "                COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
+			fmt.Fprint(sb, "                return 0\n")
+			fmt.Fprint(sb, "            fi\n")
+		}
 		fmt.Fprint(sb, "            case ${#__dyn_pos[@]} in\n")
 		for i, da := range dynamicArgs {
 			if i == 0 {
@@ -429,6 +463,8 @@ func bashWriteSubcmdCases(
 			sub.Subs,
 			sub.PathArgs,
 			sub.DynamicArgs,
+			sub.HasMaxPositionalArgs,
+			sub.MaxPositionalArgs,
 			depth,
 		)
 

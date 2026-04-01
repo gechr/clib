@@ -341,6 +341,39 @@ func TestSubcommands_PathArgs(t *testing.T) {
 	require.True(t, subs[0].PathArgs)
 }
 
+func TestSubcommands_MaxPositionalArgs(t *testing.T) {
+	child := &clilib.Command{
+		Name:      "find",
+		Usage:     "Find a user",
+		Arguments: []clilib.Argument{&clilib.StringArg{Name: "user"}},
+	}
+	root := &clilib.Command{
+		Name:     "myapp",
+		Commands: []*clilib.Command{child},
+	}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.True(t, subs[0].HasMaxPositionalArgs)
+	require.Equal(t, 1, subs[0].MaxPositionalArgs)
+}
+
+func TestSubcommands_MaxPositionalArgs_UnlimitedSlice(t *testing.T) {
+	child := &clilib.Command{
+		Name:      "tail",
+		Usage:     "Tail files",
+		Arguments: []clilib.Argument{&clilib.StringArgs{Name: "file", Max: -1}},
+	}
+	root := &clilib.Command{
+		Name:     "myapp",
+		Commands: []*clilib.Command{child},
+	}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.False(t, subs[0].HasMaxPositionalArgs)
+}
+
 func TestSubcommands_Extension(t *testing.T) {
 	configFlag := &clilib.StringFlag{Name: "config", Usage: "Config file"}
 	urfavecli.Extend(configFlag, urfavecli.FlagExtra{

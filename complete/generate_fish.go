@@ -24,7 +24,8 @@ func GenerateFish(g *Generator) (string, error) {
 	resolved, funcLookup := fishBuildFuncPlan(g.AppName, g.Specs, g.Subs)
 	fishWriteCommaFunctions(g, &sb, resolved)
 
-	if len(g.Subs) > 0 {
+	hasSubs := len(g.Subs) > 0
+	if hasSubs {
 		needsCmd := fmt.Sprintf("__%s_needs_command", funcID)
 		usingSub := fmt.Sprintf("__%s_using_subcommand", funcID)
 
@@ -55,7 +56,8 @@ func GenerateFish(g *Generator) (string, error) {
 			1,
 			funcLookup,
 		)
-	} else {
+	}
+	if !hasSubs {
 		fmt.Fprint(&sb, "\n")
 		for _, spec := range rootSpecs {
 			fishWriteSpec(g, &sb, spec, "", funcLookup, "")
@@ -63,7 +65,19 @@ func GenerateFish(g *Generator) (string, error) {
 		if len(g.DynamicArgs) > 0 {
 			helperName := fmt.Sprintf("__%s_dynamic_args", funcID)
 			fishWriteDynamicArgsHelper(g, &sb, helperName, g.Specs, g.DynamicArgs, 0)
-			fmt.Fprintf(&sb, "\ncomplete -c %s -a \"(%s)\" -f\n", g.AppName, helperName)
+			if g.HasMaxPositionalArgs {
+				guardName := fmt.Sprintf("__%s_accepts_positional", funcID)
+				fishWritePositionalCountHelper(&sb, guardName, g.Specs, 0, g.MaxPositionalArgs)
+				fmt.Fprintf(
+					&sb,
+					"\ncomplete -c %s -n '%s' -a \"(%s)\" -f\n",
+					g.AppName,
+					guardName,
+					helperName,
+				)
+			} else {
+				fmt.Fprintf(&sb, "\ncomplete -c %s -a \"(%s)\" -f\n", g.AppName, helperName)
+			}
 		}
 	}
 
@@ -170,6 +184,54 @@ func fishWriteDynamicArgsHelper(
 		dynamicArgs[len(dynamicArgs)-1],
 	)
 	fmt.Fprint(sb, "    end\nend\n")
+}
+
+func fishWritePositionalCountHelper(
+	sb *strings.Builder,
+	helperName string,
+	specs []Spec,
+	cmdSkip int,
+	maxPositionalArgs int,
+) {
+	exact, equals := argValuePatterns(specs)
+	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
+	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
+	fmt.Fprint(sb, "    set -e tokens[1]\n")
+	fmt.Fprint(sb, "    set -l positional\n")
+	fmt.Fprint(sb, "    set -l skip_next 0\n")
+	fmt.Fprint(sb, "    set -l dashdash 0\n")
+	if cmdSkip > 0 {
+		fmt.Fprintf(sb, "    set -l cmd_skip %d\n", cmdSkip)
+	}
+	fmt.Fprint(sb, "    for t in $tokens\n")
+	fmt.Fprint(sb, "        if test $dashdash -eq 1\n")
+	fmt.Fprint(sb, "            set -a positional $t\n")
+	fmt.Fprint(sb, "        else if test $skip_next -eq 1\n")
+	fmt.Fprint(sb, "            set skip_next 0\n")
+	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
+	fmt.Fprint(sb, "            set dashdash 1\n")
+	if len(exact) > 0 {
+		fmt.Fprintf(sb, "        else if contains -- $t %s\n", strings.Join(exact, " "))
+		fmt.Fprint(sb, "            set skip_next 1\n")
+	}
+	if len(equals) > 0 {
+		fmt.Fprintf(sb, "        else if %s\n", fishMatchPatterns("$t", equals))
+		fmt.Fprint(sb, "            true\n")
+	}
+	fmt.Fprint(sb, "        else if not string match -q -- '-*' $t\n")
+	if cmdSkip > 0 {
+		fmt.Fprint(sb, "            if test $cmd_skip -gt 0\n")
+		fmt.Fprint(sb, "                set cmd_skip (math $cmd_skip - 1)\n")
+		fmt.Fprint(sb, "            else\n")
+		fmt.Fprint(sb, "                set -a positional $t\n")
+		fmt.Fprint(sb, "            end\n")
+	} else {
+		fmt.Fprint(sb, "            set -a positional $t\n")
+	}
+	fmt.Fprint(sb, "        end\n")
+	fmt.Fprint(sb, "    end\n")
+	fmt.Fprintf(sb, "    test (count $positional) -lt %d\n", maxPositionalArgs)
+	fmt.Fprint(sb, "end\n")
 }
 
 func fishMatchPatterns(token string, patterns []string) string {
@@ -417,8 +479,19 @@ func fishWriteSubTree(
 		for _, spec := range subLocal {
 			fishWriteSpec(g, sb, spec, leafCondition, funcLookup, subPath)
 		}
+		positionalCondition := leafCondition
+		if sub.HasMaxPositionalArgs {
+			guardName := fmt.Sprintf("__%s_%s_accepts_positional", funcID, subPath)
+			allSpecs := appendSpecs(inheritedSpecs, sub.Specs)
+			fishWritePositionalCountHelper(sb, guardName, allSpecs, depth, sub.MaxPositionalArgs)
+			if positionalCondition != "" {
+				positionalCondition += "; and " + guardName
+			} else {
+				positionalCondition = guardName
+			}
+		}
 		if sub.PathArgs {
-			fmt.Fprintf(sb, "complete -c %s -n '%s' -F\n", g.AppName, leafCondition)
+			fmt.Fprintf(sb, "complete -c %s -n '%s' -F\n", g.AppName, positionalCondition)
 		}
 		if hasDynArgs {
 			helperName := fmt.Sprintf("__%s_%s_dynamic_args", funcID, subPath)
@@ -428,7 +501,7 @@ func fishWriteSubTree(
 				sb,
 				"\ncomplete -c %s -n '%s' -a \"(%s)\" -f\n",
 				g.AppName,
-				leafCondition,
+				positionalCondition,
 				helperName,
 			)
 		}

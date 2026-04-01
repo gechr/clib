@@ -111,11 +111,31 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 				}
 			}
 		}
+		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		// Recurse into nested subcommands.
 		sub.Subs = nodeSubSpecs(child)
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+func positionalLimit(node *konglib.Node) (int, bool) {
+	if node == nil {
+		return 0, false
+	}
+
+	count := 0
+	for _, arg := range node.Positional {
+		if arg == nil {
+			continue
+		}
+		if arg.IsSlice() {
+			return 0, false
+		}
+		count++
+	}
+
+	return count, true
 }
 
 func flagMeta(flag *konglib.Flag) complete.FlagMeta {

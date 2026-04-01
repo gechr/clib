@@ -2,6 +2,9 @@ package cobra
 
 import (
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/gechr/clib/complete"
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
@@ -155,10 +158,101 @@ func commandSubSpecs(cmd *cobralib.Command) []complete.SubSpec {
 		appendFlags(child.PersistentFlags(), true)
 
 		applyCommandAnnotations(&sub, child)
+		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = commandPositionalLimit(child)
 		sub.Subs = commandSubSpecs(child)
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+var (
+	cobraExactArgsRe   = regexp.MustCompile(`accepts (\d+) arg\(s\), received \d+`)
+	cobraMaximumArgsRe = regexp.MustCompile(`accepts at most (\d+) arg\(s\), received \d+`)
+	cobraRangeArgsRe   = regexp.MustCompile(`accepts between \d+ and (\d+) arg\(s\), received \d+`)
+)
+
+func commandPositionalLimit(cmd *cobralib.Command) (int, bool) {
+	if cmd == nil {
+		return 0, false
+	}
+	if limit, ok := limitFromArgsValidator(cmd); ok {
+		return limit, true
+	}
+	return limitFromUse(cmd.Use)
+}
+
+func limitFromArgsValidator(cmd *cobralib.Command) (int, bool) {
+	if cmd == nil || cmd.Args == nil {
+		return 0, false
+	}
+
+	sample := "x"
+	if len(cmd.ValidArgs) > 0 {
+		sample, _, _ = strings.Cut(cmd.ValidArgs[0], "\t")
+	}
+
+	for n := range 33 {
+		args := make([]string, n)
+		for i := range args {
+			args[i] = sample
+		}
+
+		err := cmd.Args(cmd, args)
+		if err == nil {
+			continue
+		}
+
+		msg := err.Error()
+		for _, re := range []*regexp.Regexp{cobraMaximumArgsRe, cobraExactArgsRe, cobraRangeArgsRe} {
+			matches := re.FindStringSubmatch(msg)
+			if len(matches) != 1+1 {
+				continue
+			}
+			limit, convErr := strconv.Atoi(matches[1])
+			if convErr == nil {
+				return limit, true
+			}
+		}
+	}
+
+	return 0, false
+}
+
+func limitFromUse(use string) (int, bool) {
+	fields := strings.Fields(use)
+	if len(fields) <= 1 {
+		return 0, false
+	}
+
+	count := 0
+	sawPositional := false
+	for _, field := range fields[1:] {
+		switch {
+		case field == "[flags]", field == "[flag]":
+			continue
+		case strings.ContainsAny(field, "|{}()"):
+			return 0, false
+		}
+
+		token := strings.Trim(field, ",")
+		repeatable := strings.Contains(token, "...") || strings.Contains(token, "…")
+		token = strings.TrimSuffix(token, "...")
+		token = strings.TrimSuffix(token, "…")
+		token = strings.TrimPrefix(token, "[")
+		token = strings.TrimSuffix(token, "]")
+		token = strings.TrimPrefix(token, "<")
+		token = strings.TrimSuffix(token, ">")
+		if token == "" || strings.HasPrefix(token, "-") {
+			continue
+		}
+		sawPositional = true
+		if repeatable {
+			return 0, false
+		}
+		count++
+	}
+
+	return count, sawPositional
 }
 
 func applyCommandAnnotations(sub *complete.SubSpec, cmd *cobralib.Command) {

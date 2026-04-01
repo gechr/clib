@@ -244,6 +244,18 @@ func dynamicArgsGen() *complete.Generator {
 	}
 }
 
+func limitedDynamicArgsGen() *complete.Generator {
+	return &complete.Generator{
+		AppName:              "myapp",
+		DynamicArgs:          []string{"email"},
+		HasMaxPositionalArgs: true,
+		MaxPositionalArgs:    1,
+		Specs: []complete.Spec{
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+	}
+}
+
 func hyphenatedGen() *complete.Generator {
 	return &complete.Generator{
 		AppName: "my-app",
@@ -583,6 +595,13 @@ end
 complete -c myapp -a "(__myapp_dynamic_args)" -f
 `
 	require.Equal(t, expected, out)
+}
+
+func TestGenerate_LimitedDynamicArgs(t *testing.T) {
+	out, err := Generate(limitedDynamicArgsGen())
+	require.NoError(t, err)
+	require.Contains(t, out, "function __myapp_accepts_positional")
+	require.Contains(t, out, "test (count $positional) -lt 1")
 }
 
 func TestGenerate_Hyphenated(t *testing.T) {

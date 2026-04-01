@@ -68,6 +68,9 @@ func ValidateSubs(subs []SubSpec) error {
 		if err := ValidateShellSafe(sub.Name, "SubcommandName"); err != nil {
 			return err
 		}
+		if sub.HasMaxPositionalArgs && sub.MaxPositionalArgs < 0 {
+			return fmt.Errorf("MaxPositionalArgs must be >= 0")
+		}
 		for _, alias := range sub.Aliases {
 			if err := ValidateShellSafe(alias, "SubcommandAlias"); err != nil {
 				return err
@@ -92,6 +95,9 @@ func ValidateSubs(subs []SubSpec) error {
 func ValidateGenerator(g *Generator) error {
 	if err := ValidateShellSafe(g.AppName, "AppName"); err != nil {
 		return err
+	}
+	if g.HasMaxPositionalArgs && g.MaxPositionalArgs < 0 {
+		return fmt.Errorf("MaxPositionalArgs must be >= 0")
 	}
 	for _, da := range g.DynamicArgs {
 		if err := ValidateShellSafe(da, "DynamicArgs"); err != nil {

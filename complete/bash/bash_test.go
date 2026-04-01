@@ -107,6 +107,18 @@ func dynamicArgsGen() *complete.Generator {
 	}
 }
 
+func limitedDynamicArgsGen() *complete.Generator {
+	return &complete.Generator{
+		AppName:              "testapp",
+		DynamicArgs:          []string{"email"},
+		HasMaxPositionalArgs: true,
+		MaxPositionalArgs:    1,
+		Specs: []complete.Spec{
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose"},
+		},
+	}
+}
+
 func hyphenatedGen() *complete.Generator {
 	return &complete.Generator{
 		AppName: "my-app", Specs: []complete.Spec{{LongFlag: "verbose", Terse: "Verbose"}},
@@ -250,6 +262,13 @@ else
 fi
 `
 	require.Equal(t, expected, out)
+}
+
+func TestGenerate_LimitedDynamicArgs(t *testing.T) {
+	out, err := Generate(limitedDynamicArgsGen())
+	require.NoError(t, err)
+	require.Contains(t, out, "if [[ ${#__dyn_pos[@]} -ge 1 ]]; then")
+	require.Contains(t, out, "--@complete=email")
 }
 
 func TestGenerate_Nested(t *testing.T) {

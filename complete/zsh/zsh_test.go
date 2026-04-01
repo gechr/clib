@@ -111,6 +111,15 @@ func dynamicArgsGen() *complete.Generator {
 	}
 }
 
+func limitedDynamicArgsGen() *complete.Generator {
+	return &complete.Generator{
+		AppName:              "testapp",
+		DynamicArgs:          []string{"email"},
+		HasMaxPositionalArgs: true,
+		MaxPositionalArgs:    1,
+	}
+}
+
 func hyphenatedGen() *complete.Generator {
 	return &complete.Generator{
 		AppName: "my-app",
@@ -595,6 +604,73 @@ else
 fi
 `
 	out, err := Generate(dynamicArgsGen())
+	require.NoError(t, err)
+	require.Equal(t, expected, out)
+}
+
+func TestGenerate_LimitedDynamicArgs(t *testing.T) {
+	expected := `#compdef testapp
+
+autoload -U is-at-least
+
+_testapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '1: :->dyn_1' \
+    && ret=0
+
+    case $state in
+    (dyn_1)
+        local -a __pos=()
+        local __skip_next=0
+        local __after_dd=0
+        local token
+        for ((i=2; i<CURRENT; i++)); do
+            token=${words[i]}
+            if (( __after_dd )); then
+                __pos+=("$token")
+                continue
+            fi
+            if (( __skip_next )); then
+                __skip_next=0
+                continue
+            fi
+            if [[ $token == -- ]]; then
+                __after_dd=1
+                continue
+            fi
+            case $token in
+                (-*)
+                    ;;
+                (*)
+                    __pos+=("$token")
+                    ;;
+            esac
+        done
+        local -a items
+        items=(${(f)"$(testapp --@complete=email 2>/dev/null)"})
+        compadd -a items
+    ;;
+    esac
+}
+
+if [ "$funcstack[1]" = "_testapp" ]; then
+    _testapp "$@"
+else
+    compdef _testapp testapp
+fi
+`
+	out, err := Generate(limitedDynamicArgsGen())
 	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }

@@ -2,6 +2,7 @@ package urfave
 
 import (
 	"os"
+	"reflect"
 
 	"github.com/gechr/clib/complete"
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
@@ -127,8 +128,53 @@ func commandSubSpecs(cmd *clilib.Command) []complete.SubSpec {
 		if extra := getCommandExtra(child); extra != nil && extra.PathArgs {
 			sub.PathArgs = true
 		}
+		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		sub.Subs = commandSubSpecs(child)
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+func positionalLimit(cmd *clilib.Command) (int, bool) {
+	if cmd == nil {
+		return 0, false
+	}
+
+	if len(cmd.Arguments) == 0 {
+		return 0, true
+	}
+
+	total := 0
+	for _, arg := range cmd.Arguments {
+		if arg == nil {
+			continue
+		}
+		v := reflect.ValueOf(arg)
+		if !v.IsValid() {
+			continue
+		}
+		if v.Kind() == reflect.Pointer {
+			if v.IsNil() {
+				continue
+			}
+			v = v.Elem()
+		}
+		if v.Kind() != reflect.Struct {
+			return 0, false
+		}
+
+		maxField := v.FieldByName("Max")
+		if maxField.IsValid() && maxField.Kind() == reflect.Int {
+			limit := int(maxField.Int())
+			if limit < 0 {
+				return 0, false
+			}
+			total += limit
+			continue
+		}
+
+		total++
+	}
+
+	return total, true
 }

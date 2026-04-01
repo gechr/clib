@@ -323,6 +323,37 @@ func TestSubcommands_PathArgs_ClibAnnotation(t *testing.T) {
 	require.True(t, subs[0].PathArgs)
 }
 
+func TestSubcommands_MaxPositionalArgs(t *testing.T) {
+	type Cmd struct {
+		User string `name:"user" arg:""`
+	}
+	var cli struct {
+		Find Cmd `help:"Find" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.True(t, subs[0].HasMaxPositionalArgs)
+	require.Equal(t, 1, subs[0].MaxPositionalArgs)
+}
+
+func TestSubcommands_MaxPositionalArgs_UnlimitedSlice(t *testing.T) {
+	type Cmd struct {
+		Files []string `name:"file" arg:"" optional:""`
+	}
+	var cli struct {
+		Tail Cmd `help:"Tail" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.False(t, subs[0].HasMaxPositionalArgs)
+}
+
 func TestSubcommands_FlagTerse(t *testing.T) {
 	type Cmd struct {
 		Output string `name:"output"  help:"Output format for results"                      short:"o" clib:"terse='Output format'"`

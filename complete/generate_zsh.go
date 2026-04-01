@@ -36,10 +36,32 @@ _%[2]s() {
 `, g.AppName, funcName)
 
 	if len(sortedSubs) > 0 {
-		zshWriteArguments(g, &sb, rootSpecs, false, g.DynamicArgs, funcName, g.AppName, "    ")
+		zshWriteArguments(
+			g,
+			&sb,
+			rootSpecs,
+			false,
+			g.DynamicArgs,
+			g.HasMaxPositionalArgs,
+			g.MaxPositionalArgs,
+			funcName,
+			g.AppName,
+			"    ",
+		)
 		zshWriteSubcommandCase(g, &sb, sortedSubs, inheritedSpecs, funcName, g.AppName, "    ")
 	} else {
-		zshWriteArguments(g, &sb, rootSpecs, false, g.DynamicArgs, "", "", "    ")
+		zshWriteArguments(
+			g,
+			&sb,
+			rootSpecs,
+			false,
+			g.DynamicArgs,
+			g.HasMaxPositionalArgs,
+			g.MaxPositionalArgs,
+			"",
+			"",
+			"    ",
+		)
 	}
 
 	fmt.Fprint(&sb, "}\n")
@@ -65,6 +87,8 @@ func zshWriteArguments(
 	specs []Spec,
 	pathArgs bool,
 	dynamicArgs []string,
+	hasMaxPositionalArgs bool,
+	maxPositionalArgs int,
 	funcName, stateName, indent string,
 ) {
 	fmt.Fprintf(sb, "%s_arguments \"${_arguments_options[@]}\" : \\\n", indent)
@@ -84,18 +108,38 @@ func zshWriteArguments(
 			stateName,
 		)
 	case pathArgs:
-		fmt.Fprintf(sb, "%s'*:file:_files' \\\n", specIndent)
+		if hasMaxPositionalArgs {
+			for i := range maxPositionalArgs {
+				fmt.Fprintf(sb, "%s'%d:file:_files' \\\n", specIndent, i+1)
+			}
+		} else {
+			fmt.Fprintf(sb, "%s'*:file:_files' \\\n", specIndent)
+		}
 	case len(dynamicArgs) > 0:
-		for i := range dynamicArgs {
+		limit := len(dynamicArgs)
+		if hasMaxPositionalArgs && maxPositionalArgs < limit {
+			limit = maxPositionalArgs
+		}
+		for i := range limit {
 			fmt.Fprintf(sb, "%s'%d: :->dyn_%d' \\\n", specIndent, i+1, i+1)
 		}
-		fmt.Fprintf(sb, "%s'*: :->dyn_rest' \\\n", specIndent)
+		if !hasMaxPositionalArgs {
+			fmt.Fprintf(sb, "%s'*: :->dyn_rest' \\\n", specIndent)
+		}
 	}
 
 	fmt.Fprintf(sb, "%s&& ret=0\n", indent)
 
 	if funcName == "" && !pathArgs && len(dynamicArgs) > 0 {
-		zshWriteDynamicArgsCases(g, sb, specs, dynamicArgs, indent)
+		zshWriteDynamicArgsCases(
+			g,
+			sb,
+			specs,
+			dynamicArgs,
+			hasMaxPositionalArgs,
+			maxPositionalArgs,
+			indent,
+		)
 	}
 }
 
@@ -104,12 +148,19 @@ func zshWriteDynamicArgsCases(
 	sb *strings.Builder,
 	specs []Spec,
 	dynamicArgs []string,
+	hasMaxPositionalArgs bool,
+	maxPositionalArgs int,
 	indent string,
 ) {
 	inner := indent + "    "
 	exact, equals := argValuePatterns(specs)
 	fmt.Fprintf(sb, "\n%scase $state in\n", indent)
-	for i, da := range dynamicArgs {
+	limit := len(dynamicArgs)
+	if hasMaxPositionalArgs && maxPositionalArgs < limit {
+		limit = maxPositionalArgs
+	}
+	for i := range limit {
+		da := dynamicArgs[i]
 		fmt.Fprintf(sb, "%s(dyn_%d)\n", indent, i+1)
 		fmt.Fprintf(sb, "%slocal -a __pos=()\n", inner)
 		fmt.Fprintf(sb, "%slocal __skip_next=0\n", inner)
@@ -182,66 +233,68 @@ func zshWriteDynamicArgsCases(
 		fmt.Fprintf(sb, "%scompadd -a items\n", inner)
 		fmt.Fprintf(sb, "%s;;\n", indent)
 	}
-	fmt.Fprintf(sb, "%s(dyn_rest)\n", indent)
-	fmt.Fprintf(sb, "%slocal -a __pos=()\n", inner)
-	fmt.Fprintf(sb, "%slocal __skip_next=0\n", inner)
-	fmt.Fprintf(sb, "%slocal __after_dd=0\n", inner)
-	fmt.Fprintf(sb, "%slocal token\n", inner)
-	fmt.Fprintf(sb, "%sfor ((i=2; i<CURRENT; i++)); do\n", inner)
-	fmt.Fprintf(sb, "%s    token=${words[i]}\n", inner)
-	fmt.Fprintf(sb, "%s    if (( __after_dd )); then\n", inner)
-	fmt.Fprintf(sb, "%s        __pos+=(\"$token\")\n", inner)
-	fmt.Fprintf(sb, "%s        continue\n", inner)
-	fmt.Fprintf(sb, "%s    fi\n", inner)
-	fmt.Fprintf(sb, "%s    if (( __skip_next )); then\n", inner)
-	fmt.Fprintf(sb, "%s        __skip_next=0\n", inner)
-	fmt.Fprintf(sb, "%s        continue\n", inner)
-	fmt.Fprintf(sb, "%s    fi\n", inner)
-	fmt.Fprintf(sb, "%s    if [[ $token == -- ]]; then\n", inner)
-	fmt.Fprintf(sb, "%s        __after_dd=1\n", inner)
-	fmt.Fprintf(sb, "%s        continue\n", inner)
-	fmt.Fprintf(sb, "%s    fi\n", inner)
-	fmt.Fprintf(sb, "%s    case $token in\n", inner)
-	if len(exact) > 0 {
+	if !hasMaxPositionalArgs {
+		fmt.Fprintf(sb, "%s(dyn_rest)\n", indent)
+		fmt.Fprintf(sb, "%slocal -a __pos=()\n", inner)
+		fmt.Fprintf(sb, "%slocal __skip_next=0\n", inner)
+		fmt.Fprintf(sb, "%slocal __after_dd=0\n", inner)
+		fmt.Fprintf(sb, "%slocal token\n", inner)
+		fmt.Fprintf(sb, "%sfor ((i=2; i<CURRENT; i++)); do\n", inner)
+		fmt.Fprintf(sb, "%s    token=${words[i]}\n", inner)
+		fmt.Fprintf(sb, "%s    if (( __after_dd )); then\n", inner)
+		fmt.Fprintf(sb, "%s        __pos+=(\"$token\")\n", inner)
+		fmt.Fprintf(sb, "%s        continue\n", inner)
+		fmt.Fprintf(sb, "%s    fi\n", inner)
+		fmt.Fprintf(sb, "%s    if (( __skip_next )); then\n", inner)
+		fmt.Fprintf(sb, "%s        __skip_next=0\n", inner)
+		fmt.Fprintf(sb, "%s        continue\n", inner)
+		fmt.Fprintf(sb, "%s    fi\n", inner)
+		fmt.Fprintf(sb, "%s    if [[ $token == -- ]]; then\n", inner)
+		fmt.Fprintf(sb, "%s        __after_dd=1\n", inner)
+		fmt.Fprintf(sb, "%s        continue\n", inner)
+		fmt.Fprintf(sb, "%s    fi\n", inner)
+		fmt.Fprintf(sb, "%s    case $token in\n", inner)
+		if len(exact) > 0 {
+			fmt.Fprintf(
+				sb,
+				"%s        (%s)\n%s            __skip_next=1\n%s            ;;\n",
+				inner,
+				strings.Join(exact, "|"),
+				inner,
+				inner,
+			)
+		}
+		if len(equals) > 0 {
+			fmt.Fprintf(
+				sb,
+				"%s        (%s)\n%s            ;;\n",
+				inner,
+				strings.Join(equals, "|"),
+				inner,
+			)
+		}
+		fmt.Fprintf(sb, "%s        (-*)\n%s            ;;\n", inner, inner)
 		fmt.Fprintf(
 			sb,
-			"%s        (%s)\n%s            __skip_next=1\n%s            ;;\n",
+			"%s        (*)\n%s            __pos+=(\"$token\")\n%s            ;;\n",
 			inner,
-			strings.Join(exact, "|"),
 			inner,
 			inner,
 		)
-	}
-	if len(equals) > 0 {
+		fmt.Fprintf(sb, "%s    esac\n", inner)
+		fmt.Fprintf(sb, "%sdone\n", inner)
+		fmt.Fprintf(sb, "%slocal -a items\n", inner)
 		fmt.Fprintf(
 			sb,
-			"%s        (%s)\n%s            ;;\n",
+			"%sitems=(${(f)\"$(%s --%s=%s -- \"${__pos[@]}\" 2>/dev/null)\"})\n",
 			inner,
-			strings.Join(equals, "|"),
-			inner,
+			g.AppName,
+			FlagComplete,
+			dynamicArgs[len(dynamicArgs)-1],
 		)
+		fmt.Fprintf(sb, "%scompadd -a items\n", inner)
+		fmt.Fprintf(sb, "%s;;\n", indent)
 	}
-	fmt.Fprintf(sb, "%s        (-*)\n%s            ;;\n", inner, inner)
-	fmt.Fprintf(
-		sb,
-		"%s        (*)\n%s            __pos+=(\"$token\")\n%s            ;;\n",
-		inner,
-		inner,
-		inner,
-	)
-	fmt.Fprintf(sb, "%s    esac\n", inner)
-	fmt.Fprintf(sb, "%sdone\n", inner)
-	fmt.Fprintf(sb, "%slocal -a items\n", inner)
-	fmt.Fprintf(
-		sb,
-		"%sitems=(${(f)\"$(%s --%s=%s -- \"${__pos[@]}\" 2>/dev/null)\"})\n",
-		inner,
-		g.AppName,
-		FlagComplete,
-		dynamicArgs[len(dynamicArgs)-1],
-	)
-	fmt.Fprintf(sb, "%scompadd -a items\n", inner)
-	fmt.Fprintf(sb, "%s;;\n", indent)
 	fmt.Fprintf(sb, "%sesac\n", indent)
 }
 
@@ -369,7 +422,18 @@ func zshWriteSubcommandCase(
 		childFuncName := parentFuncName + "__" + zshFuncName(sub.Name)
 
 		if len(sortedChildSubs) > 0 {
-			zshWriteArguments(g, sb, allSpecs, false, nil, childFuncName, sub.Name, bodyIndent)
+			zshWriteArguments(
+				g,
+				sb,
+				allSpecs,
+				false,
+				nil,
+				false,
+				0,
+				childFuncName,
+				sub.Name,
+				bodyIndent,
+			)
 			zshWriteSubcommandCase(
 				g,
 				sb,
@@ -380,7 +444,18 @@ func zshWriteSubcommandCase(
 				bodyIndent,
 			)
 		} else {
-			zshWriteArguments(g, sb, allSpecs, sub.PathArgs, sub.DynamicArgs, "", "", bodyIndent)
+			zshWriteArguments(
+				g,
+				sb,
+				allSpecs,
+				sub.PathArgs,
+				sub.DynamicArgs,
+				sub.HasMaxPositionalArgs,
+				sub.MaxPositionalArgs,
+				"",
+				"",
+				bodyIndent,
+			)
 		}
 
 		fmt.Fprintf(sb, "%s;;\n", caseIndent)
