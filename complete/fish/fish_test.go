@@ -577,8 +577,13 @@ function __myapp_dynamic_args
             set skip_next 0
         else if test "$t" = --
             set dashdash 1
-        else if not string match -q -- '-*' $t
-            set -a positional $t
+        else
+            switch $t
+            case '-*'
+                true
+            case '*'
+                set -a positional $t
+            end
         end
     end
     set -l nargs (count $positional)

@@ -240,12 +240,30 @@ func TestArgValuePatterns(t *testing.T) {
 	}
 }
 
-func TestFishMatchPatterns(t *testing.T) {
-	got := fishMatchPatterns("$tok", []string{"*.go"})
-	require.Equal(t, "string match -q -- '*.go' $tok", got)
-
-	got = fishMatchPatterns("$tok", []string{"*.go", "*.txt"})
-	require.Equal(t, "string match -q -- '*.go' $tok; or string match -q -- '*.txt' $tok", got)
+func TestFishWriteTokenClassifier(t *testing.T) {
+	var sb strings.Builder
+	fishWriteTokenClassifier(
+		&sb,
+		[]string{"--output", "-o"},
+		[]string{"--output=*", "-o=*"},
+		1,
+		"    ",
+	)
+	require.Equal(t, `    switch $t
+    case --output -o
+        set skip_next 1
+    case '--output=*' '-o=*'
+        true
+    case '-*'
+        true
+    case '*'
+        if test $cmd_skip -gt 0
+            set cmd_skip (math $cmd_skip - 1)
+        else
+            set -a positional $t
+        end
+    end
+`, sb.String())
 }
 
 func TestZshHelpers(t *testing.T) {

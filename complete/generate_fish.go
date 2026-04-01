@@ -144,24 +144,8 @@ func fishWriteDynamicArgsHelper(
 	fmt.Fprint(sb, "            set skip_next 0\n")
 	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
 	fmt.Fprint(sb, "            set dashdash 1\n")
-	if len(exact) > 0 {
-		fmt.Fprintf(sb, "        else if contains -- $t %s\n", strings.Join(exact, " "))
-		fmt.Fprint(sb, "            set skip_next 1\n")
-	}
-	if len(equals) > 0 {
-		fmt.Fprintf(sb, "        else if %s\n", fishMatchPatterns("$t", equals))
-		fmt.Fprint(sb, "            true\n")
-	}
-	fmt.Fprint(sb, "        else if not string match -q -- '-*' $t\n")
-	if cmdSkip > 0 {
-		fmt.Fprint(sb, "            if test $cmd_skip -gt 0\n")
-		fmt.Fprint(sb, "                set cmd_skip (math $cmd_skip - 1)\n")
-		fmt.Fprint(sb, "            else\n")
-		fmt.Fprint(sb, "                set -a positional $t\n")
-		fmt.Fprint(sb, "            end\n")
-	} else {
-		fmt.Fprint(sb, "            set -a positional $t\n")
-	}
+	fmt.Fprint(sb, "        else\n")
+	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
 	fmt.Fprint(sb, "        end\n")
 	fmt.Fprint(sb, "    end\n")
 	fmt.Fprint(sb, "    set -l nargs (count $positional)\n")
@@ -210,36 +194,46 @@ func fishWritePositionalCountHelper(
 	fmt.Fprint(sb, "            set skip_next 0\n")
 	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
 	fmt.Fprint(sb, "            set dashdash 1\n")
-	if len(exact) > 0 {
-		fmt.Fprintf(sb, "        else if contains -- $t %s\n", strings.Join(exact, " "))
-		fmt.Fprint(sb, "            set skip_next 1\n")
-	}
-	if len(equals) > 0 {
-		fmt.Fprintf(sb, "        else if %s\n", fishMatchPatterns("$t", equals))
-		fmt.Fprint(sb, "            true\n")
-	}
-	fmt.Fprint(sb, "        else if not string match -q -- '-*' $t\n")
-	if cmdSkip > 0 {
-		fmt.Fprint(sb, "            if test $cmd_skip -gt 0\n")
-		fmt.Fprint(sb, "                set cmd_skip (math $cmd_skip - 1)\n")
-		fmt.Fprint(sb, "            else\n")
-		fmt.Fprint(sb, "                set -a positional $t\n")
-		fmt.Fprint(sb, "            end\n")
-	} else {
-		fmt.Fprint(sb, "            set -a positional $t\n")
-	}
+	fmt.Fprint(sb, "        else\n")
+	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
 	fmt.Fprint(sb, "        end\n")
 	fmt.Fprint(sb, "    end\n")
 	fmt.Fprintf(sb, "    test (count $positional) -lt %d\n", maxPositionalArgs)
 	fmt.Fprint(sb, "end\n")
 }
 
-func fishMatchPatterns(token string, patterns []string) string {
-	parts := make([]string, 0, len(patterns))
-	for _, pattern := range patterns {
-		parts = append(parts, fmt.Sprintf("string match -q -- '%s' %s", pattern, token))
+func fishWriteTokenClassifier(
+	sb *strings.Builder,
+	exact, equals []string,
+	cmdSkip int,
+	indent string,
+) {
+	fmt.Fprintf(sb, "%sswitch $t\n", indent)
+	if len(exact) > 0 {
+		fmt.Fprintf(sb, "%scase %s\n", indent, strings.Join(exact, " "))
+		fmt.Fprintf(sb, "%s    set skip_next 1\n", indent)
 	}
-	return strings.Join(parts, "; or ")
+	if len(equals) > 0 {
+		quoted := make([]string, len(equals))
+		for i, pattern := range equals {
+			quoted[i] = "'" + pattern + "'"
+		}
+		fmt.Fprintf(sb, "%scase %s\n", indent, strings.Join(quoted, " "))
+		fmt.Fprintf(sb, "%s    true\n", indent)
+	}
+	fmt.Fprintf(sb, "%scase '-*'\n", indent)
+	fmt.Fprintf(sb, "%s    true\n", indent)
+	fmt.Fprintf(sb, "%scase '*'\n", indent)
+	if cmdSkip > 0 {
+		fmt.Fprintf(sb, "%s    if test $cmd_skip -gt 0\n", indent)
+		fmt.Fprintf(sb, "%s        set cmd_skip (math $cmd_skip - 1)\n", indent)
+		fmt.Fprintf(sb, "%s    else\n", indent)
+		fmt.Fprintf(sb, "%s        set -a positional $t\n", indent)
+		fmt.Fprintf(sb, "%s    end\n", indent)
+	} else {
+		fmt.Fprintf(sb, "%s    set -a positional $t\n", indent)
+	}
+	fmt.Fprintf(sb, "%send\n", indent)
 }
 
 // fishResolvedSpec pairs a Spec with the function name assigned to it.
