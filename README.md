@@ -37,6 +37,13 @@ w := ansi.Never()                         // plain text only
 w := ansi.New(ansi.WithTerminal(true))    // manual configuration
 
 w.Hyperlink("https://example.com", "click here")  // OSC 8 hyperlink
+
+// Control how hyperlinks render in non-terminal output:
+w = ansi.New(ansi.WithHyperlinkFallback(ansi.HyperlinkFallbackMarkdown))
+// HyperlinkFallbackExpanded (default) → "text (url)"
+// HyperlinkFallbackMarkdown           → "[text](url)"
+// HyperlinkFallbackText               → "text"
+// HyperlinkFallbackURL                → "url"
 ```
 
 ### Terminal Detection
@@ -45,6 +52,8 @@ w.Hyperlink("https://example.com", "click here")  // OSC 8 hyperlink
 if terminal.Is(os.Stdout) {
     // stdout is a terminal
 }
+
+width := terminal.Width(os.Stdout)  // column count, 0 if not a terminal
 ```
 
 ### Theme
@@ -208,8 +217,15 @@ The `terse` key provides a very short description for completions (falls back to
 ### Time-Ago
 
 ```go
-styled := th.RenderTimeAgo(someTime, true)  // colored based on thresholds
-plain  := human.FormatTimeAgo(someTime)     // "3 hours ago"
+styled  := th.RenderTimeAgo(someTime, true)     // colored based on thresholds
+plain   := human.FormatTimeAgo(someTime)        // "3 hours ago"
+compact := human.FormatTimeAgoCompact(someTime) // "3h ago"
+```
+
+### Path Formatting
+
+```go
+human.ContractHome("/Users/alice/Documents")  // "~/Documents"
 ```
 
 ### Enum Formatting
