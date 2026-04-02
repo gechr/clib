@@ -2,6 +2,7 @@ package kong
 
 import (
 	"maps"
+	"os"
 	"slices"
 
 	konglib "github.com/alecthomas/kong"
@@ -26,6 +27,52 @@ type CompletionFlags struct {
 	InstallCompletion   bool   `name:"install-completion"   help:"Install shell completions"   hidden:""`
 	UninstallCompletion bool   `name:"uninstall-completion" help:"Uninstall shell completions" hidden:""`
 	PrintCompletion     bool   `name:"print-completion"     help:"Print completion script"     hidden:""`
+}
+
+// Preflight scans os.Args for completion flags, allowing completion to be
+// handled before the CLI parser. This is useful for subcommand-based CLIs
+// where the parser requires a subcommand but completion flags are standalone.
+//
+// Returns a populated CompletionFlags, any positional args found after "--",
+// and true if a completion flag was found. When ok is false, the caller should
+// proceed with normal CLI parsing.
+//
+// Usage:
+//
+//	if f, args, ok := clib.Preflight(); ok {
+//	    gen := complete.NewGenerator("myapp").FromFlags(flags)
+//	    gen.Subs = clib.Subcommands(parser)
+//	    f.Handle(gen, handler, clib.WithArgs(args))
+//	    return
+//	}
+func Preflight() (CompletionFlags, []string, bool) {
+	args := os.Args[1:]
+
+	var action complete.Action
+	complete.ApplyActionArgs(&action, args)
+
+	if !action.InstallCompletion && !action.UninstallCompletion &&
+		!action.PrintCompletion && action.Complete == "" {
+		return CompletionFlags{}, nil, false
+	}
+
+	// Extract positional args after "--" for dynamic completion handlers.
+	var positional []string
+	for i, arg := range args {
+		if arg == "--" {
+			positional = args[i+1:]
+			break
+		}
+	}
+
+	f := CompletionFlags{
+		Complete:            action.Complete,
+		Shell:               action.Shell,
+		InstallCompletion:   action.InstallCompletion,
+		UninstallCompletion: action.UninstallCompletion,
+		PrintCompletion:     action.PrintCompletion,
+	}
+	return f, positional, true
 }
 
 // Handle checks whether a completion action was requested and executes it.
@@ -102,14 +149,16 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 				sub.PathArgs = true
 			}
 		}
-		if !sub.PathArgs {
-			for _, arg := range child.Positional {
-				if arg.Tag != nil && arg.Tag.Has(tagPredictor) &&
-					arg.Tag.Get(tagPredictor) == predictorPath {
-					sub.PathArgs = true
-					break
-				}
+		for _, arg := range child.Positional {
+			if arg.Tag == nil || !arg.Tag.Has(tagPredictor) {
+				break
 			}
+			predictor := arg.Tag.Get(tagPredictor)
+			if predictor == predictorPath {
+				sub.PathArgs = true
+				break
+			}
+			sub.DynamicArgs = append(sub.DynamicArgs, predictor)
 		}
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		// Recurse into nested subcommands.

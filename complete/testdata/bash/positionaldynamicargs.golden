@@ -1,0 +1,166 @@
+# acme-plugin bash completion
+_acme_plugin() {
+    local i cur prev opts cmd
+    COMPREPLY=()
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${COMP_WORDS[COMP_CWORD]}"
+    fi
+    prev="$3"
+    cmd=""
+    opts=""
+
+    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
+        case "${cmd},${i}" in
+            ",$1")
+                cmd="acme__plugin"
+                ;;
+            acme__plugin,complete)
+                cmd="acme__plugin__complete"
+                ;;
+            acme__plugin,resolve)
+                cmd="acme__plugin__resolve"
+                ;;
+            acme__plugin,send)
+                cmd="acme__plugin__send"
+                ;;
+            *)
+                ;;
+        esac
+    done
+
+    case "${cmd}" in
+        acme__plugin)
+            opts="--verbose -v complete resolve send"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        acme__plugin__complete)
+            opts=""
+            if [[ ${cur} == -* ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            local -a __dyn_pos=()
+            local __skip_next=0
+            local __after_dd=0
+            local __cmd_skip=1
+            for ((j=1; j<COMP_CWORD; j++)); do
+                if [[ "${__after_dd}" -eq 1 ]]; then
+                    __dyn_pos+=("${COMP_WORDS[j]}")
+                    continue
+                fi
+                if [[ "${__skip_next}" -eq 1 ]]; then
+                    __skip_next=0
+                    continue
+                fi
+                if [[ "${COMP_WORDS[j]}" == "--" ]]; then
+                    __after_dd=1
+                    continue
+                fi
+                case "${COMP_WORDS[j]}" in
+                    -*)
+                        ;;
+                    *)
+                        if [[ $__cmd_skip -gt 0 ]]; then
+                            ((__cmd_skip--))
+                        else
+                            __dyn_pos+=("${COMP_WORDS[j]}")
+                        fi
+                        ;;
+                esac
+            done
+            if [[ ${#__dyn_pos[@]} -ge 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            case ${#__dyn_pos[@]} in
+                0)
+                    COMPREPLY=($(compgen -W "${opts} $(acme-plugin --@complete=complete-kind 2>/dev/null)" -- "${cur}"))
+                    ;;
+                *)
+                    COMPREPLY=($(compgen -W "$(acme-plugin --@complete=complete-kind -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    ;;
+            esac
+            return 0
+            ;;
+        acme__plugin__resolve)
+            opts=""
+            if [[ ${cur} == -* ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            local -a __dyn_pos=()
+            local __skip_next=0
+            local __after_dd=0
+            local __cmd_skip=1
+            for ((j=1; j<COMP_CWORD; j++)); do
+                if [[ "${__after_dd}" -eq 1 ]]; then
+                    __dyn_pos+=("${COMP_WORDS[j]}")
+                    continue
+                fi
+                if [[ "${__skip_next}" -eq 1 ]]; then
+                    __skip_next=0
+                    continue
+                fi
+                if [[ "${COMP_WORDS[j]}" == "--" ]]; then
+                    __after_dd=1
+                    continue
+                fi
+                case "${COMP_WORDS[j]}" in
+                    -*)
+                        ;;
+                    *)
+                        if [[ $__cmd_skip -gt 0 ]]; then
+                            ((__cmd_skip--))
+                        else
+                            __dyn_pos+=("${COMP_WORDS[j]}")
+                        fi
+                        ;;
+                esac
+            done
+            if [[ ${#__dyn_pos[@]} -ge 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            case ${#__dyn_pos[@]} in
+                0)
+                    COMPREPLY=($(compgen -W "${opts} $(acme-plugin --@complete=resolve-kind 2>/dev/null)" -- "${cur}"))
+                    ;;
+                *)
+                    COMPREPLY=($(compgen -W "$(acme-plugin --@complete=resolve-kind -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    ;;
+            esac
+            return 0
+            ;;
+        acme__plugin__send)
+            opts="--to"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            case "${prev}" in
+                --to)
+                    COMPREPLY=()
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+    esac
+}
+
+if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
+    complete -F _acme_plugin -o nosort -o bashdefault -o default acme-plugin
+else
+    complete -F _acme_plugin -o bashdefault -o default acme-plugin
+fi

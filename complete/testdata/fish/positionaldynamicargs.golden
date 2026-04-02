@@ -1,0 +1,175 @@
+complete -c acme-plugin -f
+
+function __acme_plugin_global_optspecs
+    string join \n -- 'v/verbose'
+end
+
+function __acme_plugin_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__acme_plugin_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        printf '%s\n' $argv
+        return 1
+    end
+    return 0
+end
+
+function __acme_plugin_using_subcommand
+    set -l cmd (__acme_plugin_needs_command)
+    test -z "$cmd"
+    and return 1
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
+end
+
+complete -c acme-plugin -n '__acme_plugin_needs_command' -a complete -d "Tab completions"
+complete -c acme-plugin -n '__acme_plugin_needs_command' -a resolve -d "Resolve values"
+complete -c acme-plugin -n '__acme_plugin_needs_command' -a send -d "Send notifications"
+
+complete -c acme-plugin -n '__acme_plugin_needs_command' -s v -l verbose -d "Verbose output"
+
+
+function __acme_plugin_complete_accepts_positional
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 1
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else
+            switch $t
+            case '-*'
+                true
+            case '*'
+                if test $cmd_skip -gt 0
+                    set cmd_skip (math $cmd_skip - 1)
+                else
+                    set -a positional $t
+                end
+            end
+        end
+    end
+    test (count $positional) -lt 1
+end
+
+function __acme_plugin_complete_dynamic_args
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 1
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else
+            switch $t
+            case '-*'
+                true
+            case '*'
+                if test $cmd_skip -gt 0
+                    set cmd_skip (math $cmd_skip - 1)
+                else
+                    set -a positional $t
+                end
+            end
+        end
+    end
+    set -l nargs (count $positional)
+    switch $nargs
+        case 0
+            acme-plugin --@complete=complete-kind
+        case '*'
+            acme-plugin --@complete=complete-kind -- $positional
+    end
+end
+
+complete -c acme-plugin -n '__acme_plugin_using_subcommand complete; and __acme_plugin_complete_accepts_positional' -a "(__acme_plugin_complete_dynamic_args)" -f
+
+
+function __acme_plugin_resolve_accepts_positional
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 1
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else
+            switch $t
+            case '-*'
+                true
+            case '*'
+                if test $cmd_skip -gt 0
+                    set cmd_skip (math $cmd_skip - 1)
+                else
+                    set -a positional $t
+                end
+            end
+        end
+    end
+    test (count $positional) -lt 2
+end
+
+function __acme_plugin_resolve_dynamic_args
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l cmd_skip 1
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else
+            switch $t
+            case '-*'
+                true
+            case '*'
+                if test $cmd_skip -gt 0
+                    set cmd_skip (math $cmd_skip - 1)
+                else
+                    set -a positional $t
+                end
+            end
+        end
+    end
+    set -l nargs (count $positional)
+    switch $nargs
+        case 0
+            acme-plugin --@complete=resolve-kind
+        case '*'
+            acme-plugin --@complete=resolve-kind -- $positional
+    end
+end
+
+complete -c acme-plugin -n '__acme_plugin_using_subcommand resolve; and __acme_plugin_resolve_accepts_positional' -a "(__acme_plugin_resolve_dynamic_args)" -f
+
+complete -c acme-plugin -n '__acme_plugin_using_subcommand send' -l to -r -d "Recipient"

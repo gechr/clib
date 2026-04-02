@@ -356,6 +356,38 @@ func genCollidingSubDynamicArgs() *complete.Generator {
 	}
 }
 
+func genPositionalDynamicArgs() *complete.Generator {
+	return &complete.Generator{
+		AppName: "acme-plugin",
+		Specs: []complete.Spec{
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+		Subs: []complete.SubSpec{
+			{
+				Name:                 "complete",
+				Terse:                "Tab completions",
+				DynamicArgs:          []string{"complete-kind"},
+				MaxPositionalArgs:    1,
+				HasMaxPositionalArgs: true,
+			},
+			{
+				Name:                 "resolve",
+				Terse:                "Resolve values",
+				DynamicArgs:          []string{"resolve-kind"},
+				MaxPositionalArgs:    2,
+				HasMaxPositionalArgs: true,
+			},
+			{
+				Name:  "send",
+				Terse: "Send notifications",
+				Specs: []complete.Spec{
+					{LongFlag: "to", Terse: "Recipient", HasArg: true},
+				},
+			},
+		},
+	}
+}
+
 func TestGolden(t *testing.T) {
 	scenarios := map[string]*complete.Generator{
 		"collidingsubdynamicargs": genCollidingSubDynamicArgs(),
@@ -371,6 +403,7 @@ func TestGolden(t *testing.T) {
 		"nested":                  genNested(),
 		"pathargs":                genPathArgs(),
 		"persistentflags":         genPersistentFlags(),
+		"positionaldynamicargs":   genPositionalDynamicArgs(),
 		"sharedflags":             genSharedFlags(),
 		"subcommands":             genSubcommands(),
 		"subdynamicargs":          genSubDynamicArgs(),

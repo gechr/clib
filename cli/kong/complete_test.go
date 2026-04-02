@@ -27,6 +27,59 @@ func testGenerator() *complete.Generator {
 	})
 }
 
+func TestPreflight_NoMatch(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "complete", "author"}
+	_, _, ok := kong.Preflight()
+	require.False(t, ok)
+}
+
+func TestPreflight_InstallCompletion(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--install-completion"}
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.True(t, f.InstallCompletion)
+	require.Nil(t, args)
+}
+
+func TestPreflight_PrintCompletion(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--print-completion"}
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.True(t, f.PrintCompletion)
+	require.Nil(t, args)
+}
+
+func TestPreflight_UninstallCompletion(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--uninstall-completion"}
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.True(t, f.UninstallCompletion)
+	require.Nil(t, args)
+}
+
+func TestPreflight_Complete(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--@complete=author", "--@shell=fish"}
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.Equal(t, "author", f.Complete)
+	require.Equal(t, "fish", f.Shell)
+	require.Nil(t, args)
+}
+
+func TestPreflight_CompleteWithPositionalArgs(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--@complete=resolve-kind", "--@shell=fish", "--", "team"}
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.Equal(t, "resolve-kind", f.Complete)
+	require.Equal(t, []string{"team"}, args)
+}
+
 func TestCompletionFlags_Handle_NoAction(t *testing.T) {
 	f := kong.CompletionFlags{}
 	handled, err := f.Handle(testGenerator(), nil)
@@ -515,6 +568,41 @@ func TestCompletionFlags_Handle_Complete_WithArgs(t *testing.T) {
 	require.Equal(t, "fish", gotShell)
 	require.Equal(t, "namespaces", gotKind)
 	require.Equal(t, []string{"colima"}, gotArgs)
+}
+
+func TestSubcommands_DynamicArgs_Predictor(t *testing.T) {
+	type CompleteCmd struct {
+		Kind string `arg:"" predictor:"complete-kind"`
+	}
+	type ResolveCmd struct {
+		Kind  string `arg:"" predictor:"resolve-kind"`
+		Value string `arg:""`
+	}
+	var cli struct {
+		Complete CompleteCmd `help:"Tab completions" cmd:""`
+		Resolve  ResolveCmd  `help:"Resolution"      cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	subMap := map[string]complete.SubSpec{}
+	for _, s := range subs {
+		subMap[s.Name] = s
+	}
+
+	// complete <kind>: single positional with predictor.
+	comp := subMap["complete"]
+	require.Equal(t, []string{"complete-kind"}, comp.DynamicArgs)
+	require.True(t, comp.HasMaxPositionalArgs)
+	require.Equal(t, 1, comp.MaxPositionalArgs)
+
+	// resolve <kind> <value>: first positional has predictor, second does not.
+	// DynamicArgs should stop at the first arg without a predictor.
+	res := subMap["resolve"]
+	require.Equal(t, []string{"resolve-kind"}, res.DynamicArgs)
+	require.True(t, res.HasMaxPositionalArgs)
+	require.Equal(t, 2, res.MaxPositionalArgs)
 }
 
 func TestSubcommands_Nested(t *testing.T) {

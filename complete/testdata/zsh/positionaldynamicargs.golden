@@ -1,0 +1,132 @@
+#compdef acme-plugin
+
+autoload -U is-at-least
+
+_acme_plugin() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+        ':: :_acme_plugin_commands' \
+        '*::: :->acme-plugin' \
+    && ret=0
+
+    case $state in
+    (acme-plugin)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:acme-plugin-command-$line[1]:"
+        case $line[1] in
+            (complete)
+                _arguments "${_arguments_options[@]}" : \
+                    '1: :->dyn_1' \
+                && ret=0
+
+                case $state in
+                (dyn_1)
+                    local -a __pos=()
+                    local __skip_next=0
+                    local __after_dd=0
+                    local token
+                    for ((i=2; i<CURRENT; i++)); do
+                        token=${words[i]}
+                        if (( __after_dd )); then
+                            __pos+=("$token")
+                            continue
+                        fi
+                        if (( __skip_next )); then
+                            __skip_next=0
+                            continue
+                        fi
+                        if [[ $token == -- ]]; then
+                            __after_dd=1
+                            continue
+                        fi
+                        case $token in
+                            (-*)
+                                ;;
+                            (*)
+                                __pos+=("$token")
+                                ;;
+                        esac
+                    done
+                    local -a items
+                    items=(${(f)"$(acme-plugin --@complete=complete-kind 2>/dev/null)"})
+                    compadd -a items
+                ;;
+                esac
+            ;;
+            (resolve)
+                _arguments "${_arguments_options[@]}" : \
+                    '1: :->dyn_1' \
+                && ret=0
+
+                case $state in
+                (dyn_1)
+                    local -a __pos=()
+                    local __skip_next=0
+                    local __after_dd=0
+                    local token
+                    for ((i=2; i<CURRENT; i++)); do
+                        token=${words[i]}
+                        if (( __after_dd )); then
+                            __pos+=("$token")
+                            continue
+                        fi
+                        if (( __skip_next )); then
+                            __skip_next=0
+                            continue
+                        fi
+                        if [[ $token == -- ]]; then
+                            __after_dd=1
+                            continue
+                        fi
+                        case $token in
+                            (-*)
+                                ;;
+                            (*)
+                                __pos+=("$token")
+                                ;;
+                        esac
+                    done
+                    local -a items
+                    items=(${(f)"$(acme-plugin --@complete=resolve-kind 2>/dev/null)"})
+                    compadd -a items
+                ;;
+                esac
+            ;;
+            (send)
+                _arguments "${_arguments_options[@]}" : \
+                    '--to=[Recipient]: :_default' \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_acme_plugin_commands] )) ||
+_acme_plugin_commands() {
+    local commands; commands=(
+        'complete:Tab completions' \
+        'resolve:Resolve values' \
+        'send:Send notifications' \
+    )
+    _describe -t commands 'acme-plugin commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_acme_plugin" ]; then
+    _acme_plugin "$@"
+else
+    compdef _acme_plugin acme-plugin
+fi
