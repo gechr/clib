@@ -461,30 +461,53 @@ func (r *Renderer) renderDesc(desc string) string {
 	return desc
 }
 
-// renderBackticks replaces `text` with styled text (backticks removed).
-// When HelpDescBacktick is nil, backticks are left intact.
+// renderBackticks replaces `text` and 'text' with styled text (delimiters removed).
+// Single-quoted strings are only matched when not preceded/followed by a letter,
+// so contractions like "don't" are left intact.
+// When HelpDescBacktick is nil, delimiters are left intact.
 func (r *Renderer) renderBackticks(s string) string {
 	if r.Theme.HelpDescBacktick == nil {
 		return s
 	}
 	var sb strings.Builder
-	for {
-		open := strings.IndexByte(s, '`')
-		if open < 0 {
-			sb.WriteString(s)
-			break
+	for i := 0; i < len(s); {
+		switch {
+		case s[i] == '`':
+			end := strings.IndexByte(s[i+1:], '`')
+			if end < 0 {
+				sb.WriteString(s[i:])
+				return sb.String()
+			}
+			end += i + 1
+			sb.WriteString(r.Theme.HelpDescBacktick.Render(s[i+1 : end]))
+			i = end + 1
+
+		case s[i] == '\'' && !isLetterAt(s, i-1):
+			end := strings.IndexByte(s[i+1:], '\'')
+			if end < 0 || isLetterAt(s, i+1+end+1) {
+				sb.WriteByte(s[i])
+				i++
+				continue
+			}
+			end += i + 1
+			sb.WriteString(r.Theme.HelpDescBacktick.Render(s[i+1 : end]))
+			i = end + 1
+
+		default:
+			sb.WriteByte(s[i])
+			i++
 		}
-		end := strings.IndexByte(s[open+1:], '`')
-		if end < 0 {
-			sb.WriteString(s)
-			break
-		}
-		end += open + 1
-		sb.WriteString(s[:open])
-		sb.WriteString(r.Theme.HelpDescBacktick.Render(s[open+1 : end]))
-		s = s[end+1:]
 	}
 	return sb.String()
+}
+
+// isLetterAt reports whether s[i] is an ASCII letter. Returns false if i is out of bounds.
+func isLetterAt(s string, i int) bool {
+	if i < 0 || i >= len(s) {
+		return false
+	}
+	c := s[i]
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 func (r *Renderer) styledSuffix(

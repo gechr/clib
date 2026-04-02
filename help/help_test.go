@@ -947,6 +947,51 @@ func TestRender_BackticksUnclosed(t *testing.T) {
 	)
 }
 
+func TestRender_SingleQuotesStyled(t *testing.T) {
+	th := testTheme()
+	s := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	th.HelpDescBacktick = &s
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Commands", Content: []help.Content{
+			help.CommandGroup{
+				{Name: "resolve", Desc: "Runtime resolution for 'prl' filters"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Commands")+"\n\n  "+
+			th.HelpSubcommand.Render(
+				"resolve",
+			)+"  Runtime resolution for "+s.Render("prl")+" filters\n",
+		buf.String(),
+	)
+}
+
+func TestRender_SingleQuotesContraction(t *testing.T) {
+	th := testTheme()
+	s := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	th.HelpDescBacktick = &s
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "x", Desc: "don't do that"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	// Contractions must not be styled.
+	require.Equal(t, "Flags\n\n  --x  don't do that\n", ansi.Strip(buf.String()))
+}
+
 func TestRender_FlagShortOnly(t *testing.T) {
 	r := help.NewRenderer(testTheme())
 	var buf bytes.Buffer
