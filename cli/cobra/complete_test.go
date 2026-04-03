@@ -1,6 +1,7 @@
 package cobra_test
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -636,4 +637,61 @@ func TestGenerator_PersistentFlagsPropagateToNestedSubcommands(t *testing.T) {
 			},
 		},
 	}, gen.Subs)
+}
+
+// --- CompletionCommand tests ---
+
+func TestCompletionCommand_Fish(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	gen := complete.NewGenerator("myapp")
+	cmd := cobracli.CompletionCommand(root, func() *complete.Generator { return gen })
+	root.AddCommand(cmd)
+
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetArgs([]string{"completion", "fish"})
+	require.NoError(t, root.Execute())
+	require.Contains(t, buf.String(), "complete -c myapp")
+}
+
+func TestCompletionCommand_Bash(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	gen := complete.NewGenerator("myapp")
+	cmd := cobracli.CompletionCommand(root, func() *complete.Generator { return gen })
+	root.AddCommand(cmd)
+
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetArgs([]string{"completion", "bash"})
+	require.NoError(t, root.Execute())
+	require.Contains(t, buf.String(), "_myapp()")
+}
+
+func TestCompletionCommand_Zsh(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	gen := complete.NewGenerator("myapp")
+	cmd := cobracli.CompletionCommand(root, func() *complete.Generator { return gen })
+	root.AddCommand(cmd)
+
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetArgs([]string{"completion", "zsh"})
+	require.NoError(t, root.Execute())
+	require.Contains(t, buf.String(), "#compdef myapp")
+}
+
+func TestCompletionCommand_DisablesDefault(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	gen := complete.NewGenerator("myapp")
+	cobracli.CompletionCommand(root, func() *complete.Generator { return gen })
+
+	require.True(t, root.CompletionOptions.DisableDefaultCmd)
+}
+
+func TestCompletionCommand_Hidden(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	gen := complete.NewGenerator("myapp")
+	cmd := cobracli.CompletionCommand(root, func() *complete.Generator { return gen })
+
+	require.True(t, cmd.Hidden)
 }

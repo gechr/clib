@@ -622,3 +622,53 @@ func TestSubcommands_Nested(t *testing.T) {
 	logoutSub := childMap["logout"]
 	require.Equal(t, "Log out", logoutSub.Terse)
 }
+
+// --- CompletionCommand tests ---
+
+func completionRoot(genFunc func() *complete.Generator) *clilib.Command {
+	return &clilib.Command{
+		Name:     "myapp",
+		Commands: []*clilib.Command{urfavecli.CompletionCommand(genFunc)},
+	}
+}
+
+func runCompletionCommand(t *testing.T, sh, contains string) {
+	t.Helper()
+	gen := complete.NewGenerator("myapp")
+	root := completionRoot(func() *complete.Generator { return gen })
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStdout := os.Stdout
+	os.Stdout = w
+
+	err = root.Run(context.Background(), []string{"myapp", "completion", sh})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+
+	require.NoError(t, err)
+	require.Contains(t, buf.String(), contains)
+}
+
+func TestCompletionCommand_Fish(t *testing.T) {
+	runCompletionCommand(t, "fish", "complete -c myapp")
+}
+
+func TestCompletionCommand_Bash(t *testing.T) {
+	runCompletionCommand(t, "bash", "_myapp()")
+}
+
+func TestCompletionCommand_Zsh(t *testing.T) {
+	runCompletionCommand(t, "zsh", "#compdef myapp")
+}
+
+func TestCompletionCommand_Hidden(t *testing.T) {
+	gen := complete.NewGenerator("myapp")
+	cmd := urfavecli.CompletionCommand(func() *complete.Generator { return gen })
+
+	require.True(t, cmd.Hidden)
+}

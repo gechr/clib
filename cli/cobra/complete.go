@@ -1,6 +1,7 @@
 package cobra
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
 	"github.com/gechr/clib/internal/tag"
-	shellpkg "github.com/gechr/clib/shell"
+	"github.com/gechr/clib/shell"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -110,7 +111,7 @@ func (c *Completion) action(args []string) complete.Action {
 		complete.ApplyActionArgs(&action, os.Args[1:])
 	}
 	if action.Shell == "" {
-		action.Shell = shellpkg.Detect()
+		action.Shell = shell.Detect()
 	}
 
 	return action
@@ -266,6 +267,50 @@ func limitFromUse(use string) (int, bool) {
 	}
 
 	return count, sawPositional
+}
+
+// CompletionCommand returns a cobra subcommand that replaces cobra's built-in
+// "completion" command with one powered by clib. It disables cobra's default
+// completion subcommand on parent and generates scripts via [complete.Generator].
+//
+// The genFunc is called at run time to build the generator, so the full command
+// tree is available.
+//
+// Usage:
+//
+//	cmd.AddCommand(clib.CompletionCommand(cmd, func() *complete.Generator {
+//	    gen := complete.NewGenerator("myapp").FromFlags(clib.FlagMeta(cmd))
+//	    gen.Subs = clib.Subcommands(cmd)
+//	    return gen
+//	}))
+func CompletionCommand(
+	parent *cobralib.Command,
+	genFunc func() *complete.Generator,
+) *cobralib.Command {
+	parent.CompletionOptions.DisableDefaultCmd = true
+
+	shellCmd := func(sh string) *cobralib.Command {
+		return &cobralib.Command{
+			Use:   sh,
+			Short: fmt.Sprintf("Print %s completion script", sh),
+			Args:  cobralib.NoArgs,
+			RunE: func(_ *cobralib.Command, _ []string) error {
+				return genFunc().Print(parent.OutOrStdout(), sh)
+			},
+		}
+	}
+
+	cmd := &cobralib.Command{
+		Use:    "completion",
+		Short:  "Print completion script",
+		Hidden: true,
+	}
+	cmd.AddCommand(
+		shellCmd(shell.Bash),
+		shellCmd(shell.Fish),
+		shellCmd(shell.Zsh),
+	)
+	return cmd
 }
 
 func applyCommandAnnotations(sub *complete.SubSpec, cmd *cobralib.Command) {

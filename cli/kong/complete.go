@@ -2,6 +2,7 @@ package kong
 
 import (
 	"maps"
+	"os"
 	"slices"
 
 	konglib "github.com/alecthomas/kong"
@@ -71,6 +72,27 @@ func Preflight() (CompletionFlags, []string, bool) {
 		UninstallCompletion: cf.UninstallCompletion,
 		PrintCompletion:     cf.PrintCompletion,
 	}, positional, true
+}
+
+// completionCmd is the struct registered via [CompletionCommand] as a kong
+// dynamic command. It accepts a shell name as a positional arg.
+type completionCmd struct {
+	Shell   string `help:"Shell type" arg:"" enum:"bash,zsh,fish"`
+	genFunc func() *complete.Generator
+}
+
+func (c *completionCmd) Run() error {
+	return c.genFunc().Print(os.Stdout, c.Shell)
+}
+
+// CompletionCommand returns a [konglib.Option] that registers a hidden
+// "completion" subcommand powered by clib. Pass this to [konglib.New].
+//
+// The genFunc is called at run time to build the generator, so the full
+// parser model is available.
+func CompletionCommand(genFunc func() *complete.Generator) konglib.Option {
+	cmd := &completionCmd{genFunc: genFunc}
+	return konglib.DynamicCommand("completion", "Print completion script", "", cmd, `hidden:""`)
 }
 
 // Subcommands extracts subcommand completion specs from a kong parser's model.

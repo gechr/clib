@@ -639,3 +639,126 @@ func TestSubcommands_Nested(t *testing.T) {
 	logout := childMap["logout"]
 	require.Equal(t, "Log out", logout.Terse)
 }
+
+// --- CompletionCommand tests ---
+
+func TestCompletionCommand_Fish(t *testing.T) {
+	gen := complete.NewGenerator("myapp")
+
+	var cli struct{}
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	parser, err := konglib.New(&cli,
+		konglib.Name("myapp"),
+		kong.CompletionCommand(func() *complete.Generator { return gen }),
+		konglib.Exit(func(int) {}),
+	)
+	require.NoError(t, err)
+
+	kctx, err := parser.Parse([]string{"completion", "fish"})
+	require.NoError(t, err)
+	require.NoError(t, kctx.Run())
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	require.Contains(t, buf.String(), "complete -c myapp")
+}
+
+func TestCompletionCommand_Bash(t *testing.T) {
+	gen := complete.NewGenerator("myapp")
+
+	var cli struct{}
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	parser, err := konglib.New(&cli,
+		konglib.Name("myapp"),
+		kong.CompletionCommand(func() *complete.Generator { return gen }),
+		konglib.Exit(func(int) {}),
+	)
+	require.NoError(t, err)
+
+	kctx, err := parser.Parse([]string{"completion", "bash"})
+	require.NoError(t, err)
+	require.NoError(t, kctx.Run())
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	require.Contains(t, buf.String(), "_myapp()")
+}
+
+func TestCompletionCommand_Zsh(t *testing.T) {
+	gen := complete.NewGenerator("myapp")
+
+	var cli struct{}
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	parser, err := konglib.New(&cli,
+		konglib.Name("myapp"),
+		kong.CompletionCommand(func() *complete.Generator { return gen }),
+		konglib.Exit(func(int) {}),
+	)
+	require.NoError(t, err)
+
+	kctx, err := parser.Parse([]string{"completion", "zsh"})
+	require.NoError(t, err)
+	require.NoError(t, kctx.Run())
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	require.Contains(t, buf.String(), "#compdef myapp")
+}
+
+func TestCompletionCommand_InvalidShell(t *testing.T) {
+	var cli struct{}
+	parser, err := konglib.New(&cli,
+		konglib.Name("myapp"),
+		kong.CompletionCommand(func() *complete.Generator {
+			return complete.NewGenerator("myapp")
+		}),
+		konglib.Exit(func(int) {}),
+	)
+	require.NoError(t, err)
+
+	_, err = parser.Parse([]string{"completion", "elvish"})
+	require.Error(t, err)
+}
+
+func TestCompletionCommand_Hidden(t *testing.T) {
+	var cli struct{}
+	parser, err := konglib.New(&cli,
+		konglib.Name("myapp"),
+		kong.CompletionCommand(func() *complete.Generator {
+			return complete.NewGenerator("myapp")
+		}),
+		konglib.Exit(func(int) {}),
+	)
+	require.NoError(t, err)
+
+	// The completion command should not appear in visible children.
+	for _, child := range parser.Model.Children {
+		if child.Name == "completion" {
+			require.True(t, child.Hidden)
+		}
+	}
+}

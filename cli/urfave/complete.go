@@ -1,6 +1,8 @@
 package urfave
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"reflect"
 
@@ -8,7 +10,7 @@ import (
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
-	shellpkg "github.com/gechr/clib/shell"
+	"github.com/gechr/clib/shell"
 	clilib "github.com/urfave/cli/v3"
 )
 
@@ -98,7 +100,7 @@ func (c *Completion) Handle(
 	}
 	complete.ApplyActionArgs(&action, os.Args[1:])
 	if action.Shell == "" {
-		action.Shell = shellpkg.Detect()
+		action.Shell = shell.Detect()
 	}
 
 	return complete.HandleAction(action, gen, handler, cfg.quiet)
@@ -146,6 +148,34 @@ func commandSubSpecs(cmd *clilib.Command) []complete.SubSpec {
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+// CompletionCommand returns a hidden urfave subcommand that prints clib-powered
+// completion scripts. It replaces urfave's default shell completion behavior.
+//
+// The genFunc is called at run time to build the generator, so the full command
+// tree is available.
+func CompletionCommand(genFunc func() *complete.Generator) *clilib.Command {
+	shellCmd := func(sh string) *clilib.Command {
+		return &clilib.Command{
+			Name:  sh,
+			Usage: fmt.Sprintf("Print %s completion script", sh),
+			Action: func(_ context.Context, _ *clilib.Command) error {
+				return genFunc().Print(os.Stdout, sh)
+			},
+		}
+	}
+
+	return &clilib.Command{
+		Name:   "completion",
+		Usage:  "Print completion script",
+		Hidden: true,
+		Commands: []*clilib.Command{
+			shellCmd(shell.Bash),
+			shellCmd(shell.Fish),
+			shellCmd(shell.Zsh),
+		},
+	}
 }
 
 func positionalLimit(cmd *clilib.Command) (int, bool) {
