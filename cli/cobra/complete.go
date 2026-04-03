@@ -21,6 +21,19 @@ const pflagTypeBool = "bool"
 
 const commandDynamicArgsKey = "dynamic-args"
 
+// CompletionFlags is an alias for [complete.CompletionFlags].
+// See [Preflight] for pre-parse usage.
+type CompletionFlags = complete.CompletionFlags
+
+// Preflight scans os.Args for completion flags, allowing completion to be
+// handled before the CLI parser. This is useful for subcommand-based CLIs
+// where the parser requires a subcommand but completion flags are standalone.
+//
+// Returns a populated CompletionFlags, any positional args found after "--",
+// and true if a completion flag was found. When ok is false, the caller should
+// proceed with normal CLI parsing.
+var Preflight = complete.Preflight
+
 // Completion manages hidden completion flags on a cobra command.
 type Completion struct {
 	cmd                 *cobralib.Command

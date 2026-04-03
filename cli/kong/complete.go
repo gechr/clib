@@ -2,7 +2,6 @@ package kong
 
 import (
 	"maps"
-	"os"
 	"slices"
 
 	konglib "github.com/alecthomas/kong"
@@ -10,23 +9,38 @@ import (
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
-	shellpkg "github.com/gechr/clib/shell"
 )
-
-type config struct {
-	quiet bool
-	args  []string
-}
 
 // CompletionFlags provides embeddable Kong flags for shell completion management.
 // Embed this in your CLI struct to get --@complete, --@shell, --install-completion,
 // --uninstall-completion, and --print-completion flags automatically.
+//
+// For pre-parse usage, see [Preflight].
 type CompletionFlags struct {
 	Complete            string `name:"@complete"            help:"Dynamic completion type"     hidden:""`
 	Shell               string `name:"@shell"               help:"Shell type for completions"  hidden:""`
 	InstallCompletion   bool   `name:"install-completion"   help:"Install shell completions"   hidden:""`
 	UninstallCompletion bool   `name:"uninstall-completion" help:"Uninstall shell completions" hidden:""`
 	PrintCompletion     bool   `name:"print-completion"     help:"Print completion script"     hidden:""`
+}
+
+// Handle checks whether a completion action was requested and executes it.
+// Returns true if a completion action was handled (caller should exit).
+// The handler callback is invoked for --@complete=<type> requests;
+// it receives the completion type and resolved shell name.
+func (f *CompletionFlags) Handle(
+	gen *complete.Generator,
+	handler complete.Handler,
+	opts ...complete.PreflightOption,
+) (bool, error) {
+	cf := complete.CompletionFlags{
+		Complete:            f.Complete,
+		Shell:               f.Shell,
+		InstallCompletion:   f.InstallCompletion,
+		UninstallCompletion: f.UninstallCompletion,
+		PrintCompletion:     f.PrintCompletion,
+	}
+	return cf.Handle(gen, handler, opts...)
 }
 
 // Preflight scans os.Args for completion flags, allowing completion to be
@@ -42,66 +56,21 @@ type CompletionFlags struct {
 //	if f, args, ok := clib.Preflight(); ok {
 //	    gen := complete.NewGenerator("myapp").FromFlags(flags)
 //	    gen.Subs = clib.Subcommands(parser)
-//	    f.Handle(gen, handler, clib.WithArgs(args))
+//	    f.Handle(gen, handler, complete.WithArgs(args))
 //	    return
 //	}
 func Preflight() (CompletionFlags, []string, bool) {
-	args := os.Args[1:]
-
-	var action complete.Action
-	complete.ApplyActionArgs(&action, args)
-
-	if !action.InstallCompletion && !action.UninstallCompletion &&
-		!action.PrintCompletion && action.Complete == "" {
+	cf, positional, ok := complete.Preflight()
+	if !ok {
 		return CompletionFlags{}, nil, false
 	}
-
-	// Extract positional args after "--" for dynamic completion handlers.
-	var positional []string
-	for i, arg := range args {
-		if arg == "--" {
-			positional = args[i+1:]
-			break
-		}
-	}
-
-	f := CompletionFlags{
-		Complete:            action.Complete,
-		Shell:               action.Shell,
-		InstallCompletion:   action.InstallCompletion,
-		UninstallCompletion: action.UninstallCompletion,
-		PrintCompletion:     action.PrintCompletion,
-	}
-	return f, positional, true
-}
-
-// Handle checks whether a completion action was requested and executes it.
-// Returns true if a completion action was handled (caller should exit).
-// The handler callback is invoked for --@complete=<type> requests;
-// it receives the completion type and resolved shell name.
-func (f *CompletionFlags) Handle(
-	gen *complete.Generator,
-	handler complete.Handler,
-	opts ...Option,
-) (bool, error) {
-	var cfg config
-	for _, o := range opts {
-		o(&cfg)
-	}
-
-	shell := f.Shell
-	if shell == "" {
-		shell = shellpkg.Detect()
-	}
-
-	return complete.HandleAction(complete.Action{
-		Shell:               shell,
-		Complete:            f.Complete,
-		Args:                cfg.args,
-		InstallCompletion:   f.InstallCompletion,
-		UninstallCompletion: f.UninstallCompletion,
-		PrintCompletion:     f.PrintCompletion,
-	}, gen, handler, cfg.quiet)
+	return CompletionFlags{
+		Complete:            cf.Complete,
+		Shell:               cf.Shell,
+		InstallCompletion:   cf.InstallCompletion,
+		UninstallCompletion: cf.UninstallCompletion,
+		PrintCompletion:     cf.PrintCompletion,
+	}, positional, true
 }
 
 // Subcommands extracts subcommand completion specs from a kong parser's model.
