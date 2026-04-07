@@ -3,6 +3,8 @@ package human
 import (
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseByteSize(t *testing.T) {
@@ -40,9 +42,7 @@ func TestParseByteSize(t *testing.T) {
 			t.Parallel()
 
 			got := ParseByteSize(test.s)
-			if math.Abs(got-test.want) > 0.01 {
-				t.Fatalf("ParseByteSize(%q) = %v, want %v", test.s, got, test.want)
-			}
+			require.InDelta(t, test.want, got, math.Max(test.want*1e-9, 0.01))
 		})
 	}
 }
@@ -73,9 +73,38 @@ func TestFormatIECBytes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := FormatIECBytes(test.b); got != test.want {
-				t.Fatalf("FormatIECBytes(%v) = %q, want %q", test.b, got, test.want)
-			}
+			require.Equal(t, test.want, FormatIECBytes(test.b))
+		})
+	}
+}
+
+func TestFormatSIBytes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		b    float64
+		want string
+	}{
+		{name: "zero", b: 0, want: "0 B"},
+		{name: "bytes", b: 512, want: "512 B"},
+		{name: "one KB", b: KB, want: "1.00 KB"},
+		{name: "KB", b: 2.5 * KB, want: "2.50 KB"},
+		{name: "one MB", b: MB, want: "1.00 MB"},
+		{name: "MB", b: 27.61 * MB, want: "27.61 MB"},
+		{name: "one GB", b: GB, want: "1.00 GB"},
+		{name: "GB", b: 3.5 * GB, want: "3.50 GB"},
+		{name: "one TB", b: TB, want: "1.00 TB"},
+		{name: "TB", b: 1.25 * TB, want: "1.25 TB"},
+		{name: "one PB", b: PB, want: "1.00 PB"},
+		{name: "one EB", b: EB, want: "1.00 EB"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.want, FormatSIBytes(test.b))
 		})
 	}
 }
