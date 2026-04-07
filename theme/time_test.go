@@ -87,7 +87,7 @@ func TestRenderTimeAgo_NilRed_DoesNotPanic(t *testing.T) {
 }
 
 func TestRenderTimeAgo_NoThresholds_AlwaysRed(t *testing.T) {
-	th := theme.New(theme.WithTimeAgoThresholds(nil))
+	th := theme.Default().With(theme.WithTimeAgoThresholds(nil))
 	got := th.RenderTimeAgo(time.Now().UTC().Add(-5*time.Second), true)
 	plain := ansi.Strip(got)
 	require.NotEmpty(t, plain)

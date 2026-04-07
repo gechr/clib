@@ -66,14 +66,14 @@ func TestDefaultTheme_EnumStyleDefault(t *testing.T) {
 	require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
 }
 
-func TestNewTheme_WithEnumStyle(t *testing.T) {
-	th := theme.New(theme.WithEnumStyle(theme.EnumStyleHighlightPrefix))
+func TestWith_EnumStyle(t *testing.T) {
+	th := theme.Default().With(theme.WithEnumStyle(theme.EnumStyleHighlightPrefix))
 	require.Equal(t, theme.EnumStyleHighlightPrefix, th.EnumStyle)
 }
 
-func TestNewTheme_AppliesOptions(t *testing.T) {
+func TestWith_AppliesOptions(t *testing.T) {
 	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
-	th := theme.New(theme.WithRed(custom))
+	th := theme.Default().With(theme.WithRed(custom))
 	require.Equal(t, custom.Render("x"), th.Red.Render("x"))
 
 	// Other fields retain defaults.
@@ -81,7 +81,7 @@ func TestNewTheme_AppliesOptions(t *testing.T) {
 	require.Equal(t, def.Bold.Render("x"), th.Bold.Render("x"))
 }
 
-func TestNewTheme_WithAllOptions(t *testing.T) {
+func TestWith_AllOptions(t *testing.T) {
 	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
 	def := theme.Default()
 
@@ -329,7 +329,7 @@ func TestNewTheme_WithAllOptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			th := theme.New(tt.opt)
+			th := theme.Default().With(tt.opt)
 			tt.check(t, th)
 			// Verify the default theme is unaffected (option was applied correctly).
 			_ = def
@@ -337,10 +337,10 @@ func TestNewTheme_WithAllOptions(t *testing.T) {
 	}
 }
 
-func TestNewTheme_MultipleOptions(t *testing.T) {
+func TestWith_MultipleOptions(t *testing.T) {
 	custom1 := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
 	custom2 := lipgloss.NewStyle().Foreground(lipgloss.Color("88"))
-	th := theme.New(
+	th := theme.Default().With(
 		theme.WithBold(custom1),
 		theme.WithDim(custom2),
 	)
@@ -348,15 +348,19 @@ func TestNewTheme_MultipleOptions(t *testing.T) {
 	require.Equal(t, custom2.Render("x"), th.Dim.Render("x"))
 }
 
-func TestNewTheme_NoOptions(t *testing.T) {
-	th := theme.New()
-	def := theme.Default()
-	require.Equal(t, def.Bold.Render("x"), th.Bold.Render("x"))
-	require.Equal(t, def.Red.Render("x"), th.Red.Render("x"))
+func TestWith_DoesNotMutateOriginal(t *testing.T) {
+	original := theme.Dracula()
+	originalRed := original.Red.Render("x")
+
+	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
+	modified := original.With(theme.WithRed(custom))
+
+	require.Equal(t, custom.Render("x"), modified.Red.Render("x"))
+	require.Equal(t, originalRed, original.Red.Render("x"))
 }
 
-func TestWithHelpEnumDefault(t *testing.T) {
+func TestWith_HelpEnumDefault(t *testing.T) {
 	s := lipgloss.NewStyle().Italic(true)
-	th := theme.New(theme.WithHelpEnumDefault(s))
+	th := theme.Default().With(theme.WithHelpEnumDefault(s))
 	require.Equal(t, s.Render("x"), th.HelpEnumDefault.Render("x"))
 }

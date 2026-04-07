@@ -65,7 +65,7 @@ Create a theme with defaults or customize individual styles:
 th := theme.Default()
 
 // Or customize with options.
-th := theme.New(
+th := theme.Default().With(
     theme.WithRed(lipgloss.NewStyle().Foreground(lipgloss.Color("9"))),
     theme.WithEntityColors([]lipgloss.Color{"208", "51", "226"}),
 )

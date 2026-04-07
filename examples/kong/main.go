@@ -45,7 +45,7 @@ type CLI struct {
 }
 
 func main() {
-	th := theme.New(
+	th := theme.Default().With(
 		theme.WithHelpDescBacktick(*theme.Default().Magenta),
 	)
 	r := help.NewRenderer(th)

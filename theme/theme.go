@@ -174,13 +174,13 @@ func Default() *Theme {
 	}
 }
 
-// New creates a Theme starting from Default, then applies options.
-func New(opts ...Option) *Theme {
-	t := Default()
+// With returns a copy of t with the given options applied.
+func (t *Theme) With(opts ...Option) *Theme {
+	n := *t
 	for _, opt := range opts {
-		opt(t)
+		opt(&n)
 	}
-	return t
+	return &n
 }
 
 // Init returns a copy of t with nil styles replaced by zero-value styles

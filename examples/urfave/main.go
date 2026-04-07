@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	th := theme.New(theme.WithHelpDescBacktick(*theme.Default().Magenta))
+	th := theme.Default().With(theme.WithHelpDescBacktick(*theme.Default().Magenta))
 	r := help.NewRenderer(th)
 
 	// Filters
