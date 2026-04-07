@@ -78,3 +78,53 @@ func TestPresets_WithApplies(t *testing.T) {
 	th := theme.Monokai().With(theme.WithHelpKeyValueSeparator('='))
 	require.Equal(t, '=', th.HelpKeyValueSeparator)
 }
+
+func TestThemeUnmarshalText(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  func() *theme.Theme
+	}{
+		{name: "default", input: "default", want: theme.Default},
+		{name: "monochrome", input: "monochrome", want: theme.Monochrome},
+		{name: "monokai", input: "MONOKAI", want: theme.Monokai},
+		{name: "catppuccin hyphen", input: "catppuccin-mocha", want: theme.CatppuccinMocha},
+		{
+			name:  "catppuccin underscore",
+			input: "catppuccin_macchiato",
+			want:  theme.CatppuccinMacchiato,
+		},
+		{name: "catppuccin compact", input: "catppuccinfrappe", want: theme.CatppuccinFrappe},
+		{name: "dracula", input: "dracula", want: theme.Dracula},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got theme.Theme
+			require.NoError(t, got.UnmarshalText([]byte(tt.input)))
+			require.Equal(t, tt.want().String(), got.String())
+			require.Equal(t, tt.want().HelpSection.Render("x"), got.HelpSection.Render("x"))
+			require.Equal(t, tt.want().HelpFlag.Render("x"), got.HelpFlag.Render("x"))
+			require.Equal(t, tt.want().MarkdownCode.Render("x"), got.MarkdownCode.Render("x"))
+		})
+	}
+}
+
+func TestThemeMarshalText(t *testing.T) {
+	got, err := theme.Dracula().MarshalText()
+	require.NoError(t, err)
+	require.Equal(t, "dracula", string(got))
+}
+
+func TestThemeMarshalTextCustom(t *testing.T) {
+	_, err := theme.Default().With(theme.WithHelpKeyValueSeparator('=')).MarshalText()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "custom theme")
+}
+
+func TestThemeUnmarshalTextInvalid(t *testing.T) {
+	var got theme.Theme
+	err := got.UnmarshalText([]byte("bogus"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown theme")
+}

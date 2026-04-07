@@ -282,6 +282,17 @@ func TestHelpPrinter(t *testing.T) {
 	require.Empty(t, buf.String())
 }
 
+func TestHelpNewRendererNilUsesDefaultTheme(t *testing.T) {
+	t.Setenv("CLIB_THEME", "monochrome")
+	theme.SetEnvPrefix("")
+	t.Cleanup(func() {
+		theme.SetEnvPrefix("")
+	})
+
+	r := help.NewRenderer(nil)
+	require.Equal(t, theme.Monochrome().HelpSection.Render("x"), r.Theme.HelpSection.Render("x"))
+}
+
 func TestHelpPrinter_WithCommand(t *testing.T) {
 	th := theme.Default()
 	r := help.NewRenderer(th)

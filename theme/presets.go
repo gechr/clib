@@ -20,8 +20,9 @@ type palette struct {
 }
 
 // fromPalette builds a full [Theme] from a [palette].
-func fromPalette(p palette) *Theme {
+func fromPalette(name string, p palette) *Theme {
 	return &Theme{
+		name:      name,
 		Bold:      new(lipgloss.NewStyle().Bold(true)),
 		Dim:       new(lipgloss.NewStyle().Faint(true)),
 		Red:       new(lipgloss.NewStyle().Foreground(p.flag)),
@@ -128,6 +129,7 @@ func Monochrome() *Theme {
 	plain := lipgloss.NewStyle()
 
 	return &Theme{
+		name:      "monochrome",
 		Bold:      new(bold),
 		Dim:       new(dim),
 		Red:       new(plain),
@@ -175,7 +177,7 @@ func Monochrome() *Theme {
 
 // Monokai returns a theme inspired by the Monokai color scheme.
 func Monokai() *Theme {
-	return fromPalette(palette{
+	return fromPalette("monokai", palette{
 		accent:    lipgloss.Color("#66d9ef"), // cyan
 		key:       lipgloss.Color("#ae81ff"), // purple
 		secondary: lipgloss.Color("#fd971f"), // orange
@@ -187,7 +189,7 @@ func Monokai() *Theme {
 
 // CatppuccinLatte returns a theme based on the Catppuccin Latte (light) palette.
 func CatppuccinLatte() *Theme {
-	return fromPalette(palette{
+	return fromPalette("catppuccin-latte", palette{
 		accent:    lipgloss.Color("#179299"), // teal
 		key:       lipgloss.Color("#1e66f5"), // blue
 		secondary: lipgloss.Color("#dc8a78"), // rosewater
@@ -199,7 +201,7 @@ func CatppuccinLatte() *Theme {
 
 // CatppuccinFrappe returns a theme based on the Catppuccin Frappé (dark) palette.
 func CatppuccinFrappe() *Theme {
-	return fromPalette(palette{
+	return fromPalette("catppuccin-frappe", palette{
 		accent:    lipgloss.Color("#81c8be"), // teal
 		key:       lipgloss.Color("#8caaee"), // blue
 		secondary: lipgloss.Color("#f2d5cf"), // rosewater
@@ -211,7 +213,7 @@ func CatppuccinFrappe() *Theme {
 
 // CatppuccinMacchiato returns a theme based on the Catppuccin Macchiato (dark) palette.
 func CatppuccinMacchiato() *Theme {
-	return fromPalette(palette{
+	return fromPalette("catppuccin-macchiato", palette{
 		accent:    lipgloss.Color("#8bd5ca"), // teal
 		key:       lipgloss.Color("#8aadf4"), // blue
 		secondary: lipgloss.Color("#f4dbd6"), // rosewater
@@ -223,7 +225,7 @@ func CatppuccinMacchiato() *Theme {
 
 // CatppuccinMocha returns a theme based on the Catppuccin Mocha (dark) palette.
 func CatppuccinMocha() *Theme {
-	return fromPalette(palette{
+	return fromPalette("catppuccin-mocha", palette{
 		accent:    lipgloss.Color("#94e2d5"), // teal
 		key:       lipgloss.Color("#89b4fa"), // blue
 		secondary: lipgloss.Color("#f5e0dc"), // rosewater
@@ -235,7 +237,7 @@ func CatppuccinMocha() *Theme {
 
 // Dracula returns a theme based on the Dracula color scheme.
 func Dracula() *Theme {
-	return fromPalette(palette{
+	return fromPalette("dracula", palette{
 		accent:    lipgloss.Color("#8be9fd"), // cyan
 		key:       lipgloss.Color("#bd93f9"), // purple
 		secondary: lipgloss.Color("#ffb86c"), // orange

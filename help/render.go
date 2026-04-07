@@ -28,9 +28,13 @@ type Renderer struct {
 }
 
 // NewRenderer creates a Renderer.
-func NewRenderer(theme *theme.Theme, opts ...RendererOption) *Renderer {
+func NewRenderer(th *theme.Theme, opts ...RendererOption) *Renderer {
+	if th == nil {
+		th = theme.Default()
+	}
+
 	r := &Renderer{
-		Theme:    theme.Init(),
+		Theme:    th.Init(),
 		argPad:   defaultArgPad,
 		cmdAlign: AlignLeft,
 		cmdPad:   defaultCmdPad,

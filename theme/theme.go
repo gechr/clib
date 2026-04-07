@@ -2,6 +2,7 @@ package theme
 
 import (
 	"image/color"
+	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -30,6 +31,8 @@ type TimeAgoThreshold struct {
 // Use [Default] or [New] to construct a Theme, or [Init] to fill nil
 // fields on an existing theme.
 type Theme struct {
+	name string
+
 	// Base styles.
 	Bold *lipgloss.Style
 	Dim  *lipgloss.Style
@@ -80,7 +83,18 @@ type Option func(*Theme)
 
 // Default returns the default theme matching prl's hardcoded styles.
 func Default() *Theme {
+	if name := strings.TrimSpace(getEnv(envTheme)); name != "" {
+		var th Theme
+		if err := th.UnmarshalText([]byte(name)); err == nil {
+			return &th
+		}
+	}
+	return defaultTheme()
+}
+
+func defaultTheme() *Theme {
 	return &Theme{
+		name:      "default",
 		Bold:      new(lipgloss.NewStyle().Bold(true)),
 		Dim:       new(lipgloss.NewStyle().Faint(true)),
 		Red:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
@@ -177,6 +191,7 @@ func Default() *Theme {
 // With returns a copy of t with the given options applied.
 func (t *Theme) With(opts ...Option) *Theme {
 	n := *t
+	n.name = ""
 	for _, opt := range opts {
 		opt(&n)
 	}

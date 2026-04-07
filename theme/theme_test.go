@@ -9,7 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func resetThemeEnvPrefix(t *testing.T) {
+	t.Helper()
+	theme.SetEnvPrefix("")
+	t.Cleanup(func() {
+		theme.SetEnvPrefix("")
+	})
+}
+
 func TestDefaultTheme_StyleValues(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME", "")
+
 	th := theme.Default()
 
 	// Verify base styles produce expected ANSI output.
@@ -62,8 +73,45 @@ func TestDefaultTheme_StyleValues(t *testing.T) {
 }
 
 func TestDefaultTheme_EnumStyleDefault(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME", "")
+
 	th := theme.Default()
 	require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
+}
+
+func TestDefaultTheme_UsesEnv(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME", "dracula")
+
+	th := theme.Default()
+	want := theme.Dracula()
+	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
+	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
+}
+
+func TestDefaultTheme_CustomEnvPrefixTakesPrecedence(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	theme.SetEnvPrefix("MYAPP")
+	t.Setenv("MYAPP_THEME", "monochrome")
+	t.Setenv("CLIB_THEME", "dracula")
+
+	th := theme.Default()
+	want := theme.Monochrome()
+	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
+	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
+}
+
+func TestDefaultTheme_CustomEnvPrefixFallsBackToClib(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	theme.SetEnvPrefix("MYAPP")
+	t.Setenv("MYAPP_THEME", "")
+	t.Setenv("CLIB_THEME", "monokai")
+
+	th := theme.Default()
+	want := theme.Monokai()
+	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
+	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
 }
 
 func TestWith_EnumStyle(t *testing.T) {
