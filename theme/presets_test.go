@@ -64,7 +64,7 @@ func TestPresets(t *testing.T) {
 func TestMonochrome_NoColors(t *testing.T) {
 	th := theme.Monochrome()
 
-	// Semantic color styles should render without any ANSI color codes —
+	// Semantic color styles should render without any ANSI color codes -
 	// they use only bold/dim/plain formatting.
 	require.Equal(t, "x", th.Red.Render("x"))
 	require.Equal(t, "x", th.Green.Render("x"))

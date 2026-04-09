@@ -22,19 +22,20 @@ type FlagMeta struct {
 	Hidden              bool     // hidden flag
 	HideLong            bool     // hide the long flag from help output
 	HideShort           bool     // hide the short flag from help output
+	Order               Order    // completion ordering mode
+	InversePrefix       string   // prefix for negated flag (default "no-")
 	IsArg               bool     // true if this is a positional argument
 	IsCSV               bool     // true if the field type is CSVFlag or *CSVFlag
 	IsSlice             bool     // true if the field type is a slice
 	Name                string   // flag name
-	NoIndent            bool     // suppress short-flag alignment indent in help
-	InversePrefix       string   // prefix for negated flag (default "no-")
 	Negatable           bool     // true if the flag supports --no- prefix
 	NegativeDesc        string   // explicit description for --no- variant
+	NoIndent            bool     // suppress short-flag alignment indent in help
 	Optional            bool     // true if arg is optional
 	Origin              string   // where this metadata came from (e.g. struct field name)
+	Persistent          bool     // true if the flag remains available on descendant subcommands
 	Placeholder         string   // placeholder like <value>
 	PlaceholderOverride bool     // true if placeholder was set via clib tag
-	Persistent          bool     // true if the flag remains available on descendant subcommands
 	PositiveDesc        string   // explicit description for positive variant (negatable flags)
 	Short               string   // short flag letter
 	Terse               string   // very short description for completions
@@ -59,7 +60,8 @@ func (f *FlagMeta) Desc() string {
 //
 //	clib:"terse='Draft filter',complete='predictor=repo',group='filters'"
 //
-// Supported keys: complete, enum, group, inverse, negatable, negative, placeholder, positive, terse.
+// Supported keys: complete, enum, group, inverse, negatable, negative, order,
+// placeholder, positive, terse.
 func (f *FlagMeta) ParseClibTag(t string) error {
 	if t == "" {
 		return nil
@@ -88,6 +90,8 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 			f.HideLong = true
 		case tag.HideShort:
 			f.HideShort = true
+		case tag.Order:
+			f.Order = Order(val)
 		case tag.NoIndent:
 			f.NoIndent = true
 		case tag.Highlight:
@@ -129,6 +133,9 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 func (f *FlagMeta) validateTagOnly() error {
 	if f.HideLong && f.HideShort {
 		return fmt.Errorf("%s: hide-long and hide-short are mutually exclusive", f.flagLabel())
+	}
+	if f.Order != "" && f.Order != OrderKeep && f.Order != OrderShell {
+		return fmt.Errorf("%s: unsupported order %q", f.flagLabel(), f.Order)
 	}
 	return nil
 }

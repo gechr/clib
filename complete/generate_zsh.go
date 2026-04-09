@@ -383,7 +383,7 @@ func zshCompleter(g *Generator, spec Spec) string {
 		}
 		return "(" + strings.Join(escaped, " ") + ")"
 	case spec.Extension != "":
-		return "_files -g \"" + zshExtGlob(spec.Extension) + "\""
+		return `_files -g "` + zshExtGlob(spec.Extension) + `"`
 	case spec.ValueHint != "":
 		return zshHintCompleter(spec.ValueHint)
 	default:

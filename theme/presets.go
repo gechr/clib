@@ -121,7 +121,7 @@ func defaultEntityColors() []color.Color {
 	}
 }
 
-// Monochrome returns a theme with no colors — only bold and dim.
+// Monochrome returns a theme with no colors - only bold and dim.
 func Monochrome() *Theme {
 	bold := lipgloss.NewStyle().Bold(true)
 	dim := lipgloss.NewStyle().Faint(true)

@@ -73,6 +73,7 @@ func flagToMeta(cmd *clilib.Command, f clilib.Flag) complete.FlagMeta {
 		meta.Extension = extra.Extension
 		meta.ValueHint = extra.Hint
 		meta.NegativeDesc = extra.NegativeDesc
+		meta.Order = extra.Order
 		meta.Placeholder = extra.Placeholder
 		meta.PlaceholderOverride = extra.Placeholder != ""
 		meta.PositiveDesc = extra.PositiveDesc

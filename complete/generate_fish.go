@@ -70,13 +70,17 @@ func GenerateFish(g *Generator) (string, error) {
 				fishWritePositionalCountHelper(&sb, guardName, g.Specs, 0, g.MaxPositionalArgs)
 				fmt.Fprintf(
 					&sb,
-					"\ncomplete -c %s -n '%s' -a \"(%s)\" -f\n",
+					`
+complete -c %s -n '%s' -a "(%s)" -f
+`,
 					g.AppName,
 					guardName,
 					helperName,
 				)
 			} else {
-				fmt.Fprintf(&sb, "\ncomplete -c %s -a \"(%s)\" -f\n", g.AppName, helperName)
+				fmt.Fprintf(&sb, `
+complete -c %s -a "(%s)" -f
+`, g.AppName, helperName)
 			}
 		}
 	}
@@ -142,7 +146,8 @@ func fishWriteDynamicArgsHelper(
 	fmt.Fprint(sb, "            set -a positional $t\n")
 	fmt.Fprint(sb, "        else if test $skip_next -eq 1\n")
 	fmt.Fprint(sb, "            set skip_next 0\n")
-	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
+	fmt.Fprint(sb, `        else if test "$t" = --
+`)
 	fmt.Fprint(sb, "            set dashdash 1\n")
 	fmt.Fprint(sb, "        else\n")
 	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
@@ -192,7 +197,8 @@ func fishWritePositionalCountHelper(
 	fmt.Fprint(sb, "            set -a positional $t\n")
 	fmt.Fprint(sb, "        else if test $skip_next -eq 1\n")
 	fmt.Fprint(sb, "            set skip_next 0\n")
-	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
+	fmt.Fprint(sb, `        else if test "$t" = --
+`)
 	fmt.Fprint(sb, "            set dashdash 1\n")
 	fmt.Fprint(sb, "        else\n")
 	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
@@ -493,7 +499,9 @@ func fishWriteSubTree(
 			fishWriteDynamicArgsHelper(g, sb, helperName, allSpecs, sub.DynamicArgs, depth)
 			fmt.Fprintf(
 				sb,
-				"\ncomplete -c %s -n '%s' -a \"(%s)\" -f\n",
+				`
+complete -c %s -n '%s' -a "(%s)" -f
+`,
 				g.AppName,
 				positionalCondition,
 				helperName,
@@ -640,59 +648,91 @@ func fishWriteSpec(
 	if spec.LongFlag != "" {
 		parts = append(parts, fmt.Sprintf("-l %s", spec.LongFlag))
 	}
-
-	if spec.HasArg {
-		switch {
-		case spec.CommaList && (spec.Dynamic != "" || len(spec.Values) > 0 || len(spec.ValueDescs) > 0):
-			funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
-			parts = append(parts, "-x", fmt.Sprintf("-kra \"(%s)\"", funcName))
-		case spec.Dynamic != "":
-			parts = append(
-				parts,
-				"-x",
-				fmt.Sprintf("-a \"(%s --%s=%s)\"", g.AppName, FlagComplete, spec.Dynamic),
-			)
-		case len(spec.ValueDescs) > 0:
-			funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
-			parts = append(parts, "-x", fmt.Sprintf("-ra \"(%s)\"", funcName))
-		case len(spec.Values) > 0:
-			values := make([]string, len(spec.Values))
-			for i, value := range spec.Values {
-				values[i] = fishEscapeString(value)
-			}
-			parts = append(parts, "-x", fmt.Sprintf("-a \"%s\"", strings.Join(values, " ")))
-		case spec.Extension != "":
-			suffixes := fishExtToSuffixes(spec.Extension)
-			parts = append(
-				parts,
-				"-k",
-				fmt.Sprintf("-xa \"(__fish_complete_suffix %s)\"", strings.Join(suffixes, " ")),
-			)
-		case spec.ValueHint != "":
-			switch spec.ValueHint {
-			case HintFile:
-				parts = append(parts, "-r", "-F")
-			case HintDir:
-				parts = append(parts, "-r", "-f", "-a \"(__fish_complete_directories)\"")
-			case HintCommand:
-				parts = append(parts, "-r", "-f", "-a \"(__fish_complete_command)\"")
-			case HintUser:
-				parts = append(parts, "-r", "-f", "-a \"(__fish_complete_users)\"")
-			case HintHost:
-				parts = append(parts, "-r", "-f", "-a \"(__fish_print_hostnames)\"")
-			default:
-				parts = append(parts, "-r", "-f")
-			}
-		default:
-			parts = append(parts, "-r")
-		}
-	}
+	parts = append(parts, fishSpecArgParts(g, spec, funcLookup, subPath)...)
 
 	if spec.Terse != "" {
 		parts = append(parts, fmt.Sprintf("-d %q", spec.Terse))
 	}
 
 	fmt.Fprintf(sb, "%s\n", strings.Join(parts, " "))
+}
+
+func fishSpecArgParts(
+	g *Generator,
+	spec Spec,
+	funcLookup map[string]string,
+	subPath string,
+) []string {
+	if !spec.HasArg {
+		return nil
+	}
+
+	keepOrder := spec.Order == OrderKeep || (spec.Order == "" && g.Order == OrderKeep)
+	if spec.Order == OrderShell {
+		keepOrder = false
+	}
+
+	switch {
+	case spec.CommaList && (spec.Dynamic != "" || len(spec.Values) > 0 || len(spec.ValueDescs) > 0):
+		funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
+		if spec.Order != OrderShell {
+			return []string{"-x", fmt.Sprintf(`-kra "(%s)"`, funcName)}
+		}
+		return []string{"-x", fmt.Sprintf(`-ra "(%s)"`, funcName)}
+	case spec.Dynamic != "":
+		parts := make([]string, 0, 3) //nolint:mnd // at most "-k", "-x", and "-a ..."
+		if keepOrder {
+			parts = append(parts, "-k")
+		}
+		parts = append(
+			parts,
+			"-x",
+			fmt.Sprintf(`-a "(%s --%s=%s)"`, g.AppName, FlagComplete, spec.Dynamic),
+		)
+		return parts
+	case len(spec.ValueDescs) > 0:
+		funcName := fishLookupFuncName(funcLookup, subPath, spec.LongFlag, g.AppName)
+		parts := make([]string, 0, 3) //nolint:mnd // at most "-k", "-x", and "-ra ..."
+		if keepOrder {
+			parts = append(parts, "-k")
+		}
+		parts = append(parts, "-x", fmt.Sprintf(`-ra "(%s)"`, funcName))
+		return parts
+	case len(spec.Values) > 0:
+		values := make([]string, len(spec.Values))
+		for i, value := range spec.Values {
+			values[i] = fishEscapeString(value)
+		}
+		parts := make([]string, 0, 3) //nolint:mnd // at most "-k", "-x", and "-a ..."
+		if keepOrder {
+			parts = append(parts, "-k")
+		}
+		parts = append(parts, "-x", fmt.Sprintf(`-a "%s"`, strings.Join(values, " ")))
+		return parts
+	case spec.Extension != "":
+		suffixes := fishExtToSuffixes(spec.Extension)
+		return []string{
+			"-k",
+			fmt.Sprintf(`-xa "(__fish_complete_suffix %s)"`, strings.Join(suffixes, " ")),
+		}
+	case spec.ValueHint != "":
+		switch spec.ValueHint {
+		case HintFile:
+			return []string{"-r", "-F"}
+		case HintDir:
+			return []string{"-r", "-f", `-a "(__fish_complete_directories)"`}
+		case HintCommand:
+			return []string{"-r", "-f", `-a "(__fish_complete_command)"`}
+		case HintUser:
+			return []string{"-r", "-f", `-a "(__fish_complete_users)"`}
+		case HintHost:
+			return []string{"-r", "-f", `-a "(__fish_print_hostnames)"`}
+		default:
+			return []string{"-r", "-f"}
+		}
+	default:
+		return []string{"-r"}
+	}
 }
 
 func fishQuotedWords(values []string) string {

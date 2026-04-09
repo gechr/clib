@@ -5,26 +5,28 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gechr/clib/complete"
 	clilib "github.com/urfave/cli/v3"
 )
 
 // FlagExtra holds clib-specific metadata for a urfave Flag.
 type FlagExtra struct {
-	Complete      string   // completion directive (e.g. "predictor=repo")
-	Enum          []string // enum values
-	EnumDefault   string   // default enum value (highlighted by EnumStyleHighlightDefault)
-	EnumHighlight []string // highlight hints for enum values
-	EnumTerse     []string // short descriptions for enum values (parallel to Enum)
-	Extension     string   // file extension filter for completion (e.g. "yaml" or "yaml,yml")
-	Group         string   // help section group
-	HideLong      bool     // hide the long flag from help output
-	HideShort     bool     // hide the short flag from help output
-	Hint          string   // value type hint for completion (file, dir, command, user, host, url, email)
-	NoIndent      bool     // suppress short-flag alignment indent in help
-	NegativeDesc  string   // description for --no- variant (negatable flags)
-	Placeholder   string   // value placeholder (e.g. "repo")
-	PositiveDesc  string   // description for positive variant (negatable flags)
-	Terse         string   // very short description for completions
+	Complete      string         // completion directive (e.g. "predictor=repo")
+	Enum          []string       // enum values
+	EnumDefault   string         // default enum value (highlighted by EnumStyleHighlightDefault)
+	EnumHighlight []string       // highlight hints for enum values
+	EnumTerse     []string       // short descriptions for enum values (parallel to Enum)
+	Extension     string         // file extension filter for completion (e.g. "yaml" or "yaml,yml")
+	Group         string         // help section group
+	HideLong      bool           // hide the long flag from help output
+	HideShort     bool           // hide the short flag from help output
+	Hint          string         // value type hint for completion (file, dir, command, user, host, url, email)
+	NegativeDesc  string         // description for --no- variant (negatable flags)
+	NoIndent      bool           // suppress short-flag alignment indent in help
+	Order         complete.Order // completion ordering mode
+	Placeholder   string         // value placeholder (e.g. "repo")
+	PositiveDesc  string         // description for positive variant (negatable flags)
+	Terse         string         // very short description for completions
 }
 
 var (

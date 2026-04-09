@@ -125,7 +125,7 @@ Annotate your CLI struct with Kong-style tags and a `clib:"..."` tag for
 type CLI struct {
     clib.CompletionFlags
 
-    Query  string        `name:"query"  short:"q" help:"Filter results by query" clib:"group='Filters',terse='Query',complete='predictor=query'"`
+    Query  string        `name:"query"  short:"q" help:"Filter results by query" clib:"group='Filters',terse='Query',complete='predictor=query',order=keep"`
     Fields clib.CSVFlag  `name:"fields" help:"Fields to show"                    clib:"complete='predictor=field,comma'"`
     Format string        `name:"format" short:"f" help:"Output format" default:"table" enum:"table,json,yaml"`
 }
@@ -156,7 +156,7 @@ cobraFields := &cobracli.CSVFlag{}
 f.Var(cobraFields, "fields", "Fields to show")
 
 cobracli.Extend(f.Lookup("query"), cobracli.FlagExtra{
-  Group: "Filters", Placeholder: "text", Complete: "predictor=query",
+  Group: "Filters", Placeholder: "text", Complete: "predictor=query", Order: complete.OrderKeep,
 })
 cobracli.Extend(f.Lookup("format"), cobracli.FlagExtra{
   Group: "Output", Placeholder: "format", Enum: []string{"table", "json", "yaml"}, EnumDefault: "table",
@@ -184,7 +184,7 @@ formatFlag := &clilib.StringFlag{Name: "format", Aliases: []string{"f"}, Usage: 
 fieldsFlag := &clilib.GenericFlag{Name: "fields", Usage: "Fields to show", Value: &cliurfave.CSVFlag{}}
 
 cliurfave.Extend(queryFlag, cliurfave.FlagExtra{
-  Group: "Filters", Placeholder: "text", Complete: "predictor=query",
+  Group: "Filters", Placeholder: "text", Complete: "predictor=query", Order: complete.OrderKeep,
 })
 cliurfave.Extend(formatFlag, cliurfave.FlagExtra{
   Group: "Output", Placeholder: "format", Enum: []string{"table", "json", "yaml"}, EnumDefault: "table",
@@ -213,6 +213,9 @@ controls completion behavior:
 - `values=<space-separated>` - static completion values
 
 The `terse` key provides a very short description for completions (falls back to `help`).
+Use `order=keep` (Kong) or `Order: complete.OrderKeep` (Cobra/urfave) to preserve fish completion order for a flag by emitting `complete -k`.
+Use `order=shell` or `Order: complete.OrderShell` to force the shell's normal ordering for a flag.
+Use `complete.WithOrder(complete.OrderKeep)` to make keep-order the generator default.
 
 ### Time-Ago
 

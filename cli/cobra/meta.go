@@ -61,13 +61,14 @@ func pflagToMeta(f *pflag.Flag) complete.FlagMeta {
 		meta.EnumTerse = extra.EnumTerse
 		meta.Extension = extra.Extension
 		meta.Group = extra.Group
-		meta.ValueHint = extra.Hint
 		meta.Negatable = extra.Negatable
 		meta.NegativeDesc = extra.NegativeDesc
+		meta.Order = extra.Order
 		meta.Placeholder = extra.Placeholder
 		meta.PlaceholderOverride = extra.Placeholder != ""
 		meta.PositiveDesc = extra.PositiveDesc
 		meta.Terse = extra.Terse
+		meta.ValueHint = extra.Hint
 	}
 
 	// Fall back to pflag's default value for enum highlighting.

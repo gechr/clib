@@ -234,6 +234,19 @@ func TestFlagMeta_Hint(t *testing.T) {
 	require.Equal(t, "dir", flags[0].ValueHint)
 }
 
+func TestFlagMeta_Order(t *testing.T) {
+	modeFlag := &clilib.StringFlag{Name: "mode", Usage: "Mode"}
+	urfavecli.Extend(modeFlag, urfavecli.FlagExtra{
+		Complete: "predictor=mode",
+		Order:    complete.OrderKeep,
+	})
+
+	cmd := &clilib.Command{Flags: []clilib.Flag{modeFlag}}
+	flags := urfavecli.FlagMeta(cmd)
+	require.Len(t, flags, 1)
+	require.Equal(t, complete.OrderKeep, flags[0].Order)
+}
+
 func TestFlagMeta_PlaceholderOverride(t *testing.T) {
 	repoFlag := &clilib.StringFlag{Name: "repo", Usage: "Repository"}
 	urfavecli.Extend(repoFlag, urfavecli.FlagExtra{

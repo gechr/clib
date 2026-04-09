@@ -335,6 +335,18 @@ func TestReflect_CompleteTag(t *testing.T) {
 	require.Equal(t, "values=open closed merged all", f.Complete)
 }
 
+func TestReflect_Order(t *testing.T) {
+	type CLI struct {
+		Mode string `name:"mode" help:"Mode" clib:"complete='predictor=mode',order=keep"`
+	}
+
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	f := findFlagByName(flags, "mode")
+	require.NotNil(t, f)
+	require.Equal(t, complete.OrderKeep, f.Order)
+}
+
 func TestReflect_AutoDeriveName(t *testing.T) {
 	flags, err := kong.Reflect(&testPrlLikeCLI{})
 	require.NoError(t, err)

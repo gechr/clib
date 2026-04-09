@@ -22,12 +22,12 @@ type Handler func(shell, kind string, args []string)
 
 // Action describes which completion action was requested.
 type Action struct {
-	Shell               string   // resolved shell name
-	Complete            string   // dynamic completion type (--@complete value)
 	Args                []string // preceding positional args from the shell
+	Complete            string   // dynamic completion type (--@complete value)
 	InstallCompletion   bool
-	UninstallCompletion bool
 	PrintCompletion     bool
+	Shell               string // resolved shell name
+	UninstallCompletion bool
 }
 
 // HandleAction dispatches the given completion action against gen.
@@ -86,6 +86,9 @@ func ApplyMeta(spec *Spec, meta *FlagMeta) {
 			spec.Values = staticValues
 		}
 	}
+	if meta.Order != "" {
+		spec.Order = meta.Order
+	}
 }
 
 // Spec describes a single flag for shell completion generation.
@@ -96,6 +99,7 @@ type Spec struct {
 	HasArg     bool        // flag takes a value
 	Hidden     bool        // hidden from completions
 	LongFlag   string      // e.g. "author" (no dashes)
+	Order      Order       // completion ordering mode
 	Persistent bool        // true if the flag remains available on descendant subcommands
 	ShortFlag  string      // e.g. "a" (no dash)
 	Terse      string      // very short description for tab completion
@@ -106,26 +110,26 @@ type Spec struct {
 
 // SubSpec describes a subcommand for shell completion generation.
 type SubSpec struct {
+	Aliases              []string // command aliases (e.g. ["up"] for "update")
+	DynamicArgs          []string // per-position dynamic completion; final entry repeats for additional positional args
+	HasMaxPositionalArgs bool
+	MaxPositionalArgs    int
 	Name                 string    // subcommand name (e.g. "bump")
-	Aliases              []string  // command aliases (e.g. ["up"] for "update")
-	Terse                string    // short description for tab completion
+	PathArgs             bool      // enable file completion for positional args
 	Specs                []Spec    // subcommand-specific flag specs
 	Subs                 []SubSpec // nested subcommands
-	PathArgs             bool      // enable file completion for positional args
-	DynamicArgs          []string  // per-position dynamic completion; final entry repeats for additional positional args
-	MaxPositionalArgs    int
-	HasMaxPositionalArgs bool
+	Terse                string    // short description for tab completion
 }
 
 // Value hint constants for completion.
 const (
-	HintFile    = "file"
-	HintDir     = "dir"
 	HintCommand = "command"
-	HintUser    = "user"
+	HintDir     = "dir"
+	HintEmail   = "email"
+	HintFile    = "file"
 	HintHost    = "host"
 	HintURL     = "url"
-	HintEmail   = "email"
+	HintUser    = "user"
 )
 
 // ValueDesc pairs a completion value with an optional description.
@@ -138,15 +142,20 @@ type ValueDesc struct {
 type Generator struct {
 	AppName              string
 	DynamicArgs          []string // per-position dynamic completion; final entry repeats for additional positional args
+	HasMaxPositionalArgs bool
+	MaxPositionalArgs    int
+	Order                Order
 	Specs                []Spec
 	Subs                 []SubSpec
-	MaxPositionalArgs    int
-	HasMaxPositionalArgs bool
 }
 
 // NewGenerator creates a Generator for the named application.
-func NewGenerator(command string) *Generator {
-	return &Generator{AppName: command}
+func NewGenerator(command string, opts ...Option) *Generator {
+	g := &Generator{AppName: command}
+	for _, opt := range opts {
+		opt(g)
+	}
+	return g
 }
 
 // FromFlags populates completion specs from pre-inspected flag metadata.
@@ -174,13 +183,14 @@ func SpecsFromFlagMeta(f FlagMeta) []Spec {
 	}
 
 	spec := Spec{
-		LongFlag:   longFlag,
-		ShortFlag:  shortFlag,
-		Terse:      f.Desc(),
+		Extension:  f.Extension,
 		HasArg:     f.HasArg,
 		Hidden:     f.Hidden,
-		Extension:  f.Extension,
+		LongFlag:   longFlag,
+		Order:      f.Order,
 		Persistent: f.Persistent,
+		ShortFlag:  shortFlag,
+		Terse:      f.Desc(),
 		ValueHint:  f.ValueHint,
 	}
 	ApplyMeta(&spec, &f)

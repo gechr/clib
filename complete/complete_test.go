@@ -171,6 +171,7 @@ func TestParseClibTag(t *testing.T) {
 			"predictor=columns,comma",
 			"",
 		},
+		{"order keep", "order=keep", "", "", ""},
 		{"unquoted values", "terse=Simple,group=misc", "Simple", "", "misc"},
 	}
 	for _, tt := range tests {
@@ -190,6 +191,18 @@ func TestParseClibTag_NegatableDescs(t *testing.T) {
 	require.True(t, f.Negatable)
 	require.Equal(t, "Show output", f.PositiveDesc)
 	require.Equal(t, "Hide output", f.NegativeDesc)
+}
+
+func TestParseClibTag_Order(t *testing.T) {
+	var f complete.FlagMeta
+	require.NoError(t, f.ParseClibTag("order=keep"))
+	require.Equal(t, complete.OrderKeep, f.Order)
+}
+
+func TestParseClibTag_OrderShell(t *testing.T) {
+	var f complete.FlagMeta
+	require.NoError(t, f.ParseClibTag("order=shell"))
+	require.Equal(t, complete.OrderShell, f.Order)
 }
 
 func TestParseCompleteTag(t *testing.T) {
@@ -269,6 +282,89 @@ func TestGenerator_Print_UnsupportedShell(t *testing.T) {
 	var buf strings.Builder
 	err := gen.Print(&buf, "elvish")
 	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+}
+
+func TestGenerator_Print_FishOrderKeep(t *testing.T) {
+	gen := complete.NewGenerator("ordered").FromFlags([]complete.FlagMeta{
+		{
+			Name:     "item",
+			HasArg:   true,
+			Complete: "predictor=item",
+			Order:    complete.OrderKeep,
+			Help:     "Item",
+		},
+		{
+			Name:   "mode",
+			HasArg: true,
+			Enum:   []string{"fast", "safe"},
+			Order:  complete.OrderKeep,
+			Help:   "Mode",
+		},
+	})
+
+	var buf strings.Builder
+	err := gen.Print(&buf, "fish")
+	require.NoError(t, err)
+	require.Equal(t, `complete -c ordered -f
+
+complete -c ordered -l item -k -x -a "(ordered --@complete=item)" -d "Item"
+complete -c ordered -l mode -k -x -a "fast safe" -d "Mode"
+`, buf.String())
+}
+
+func TestGenerator_Print_FishDefaultOrderKeep(t *testing.T) {
+	gen := complete.NewGenerator("ordered", complete.WithOrder(complete.OrderKeep)).
+		FromFlags([]complete.FlagMeta{
+			{
+				Name:     "item",
+				HasArg:   true,
+				Complete: "predictor=item",
+				Help:     "Item",
+			},
+			{
+				Name:   "mode",
+				HasArg: true,
+				Enum:   []string{"fast", "safe"},
+				Help:   "Mode",
+			},
+		})
+
+	var buf strings.Builder
+	err := gen.Print(&buf, "fish")
+	require.NoError(t, err)
+	require.Equal(t, `complete -c ordered -f
+
+complete -c ordered -l item -k -x -a "(ordered --@complete=item)" -d "Item"
+complete -c ordered -l mode -k -x -a "fast safe" -d "Mode"
+`, buf.String())
+}
+
+func TestGenerator_Print_FishOrderShellOverridesDefault(t *testing.T) {
+	gen := complete.NewGenerator("ordered", complete.WithOrder(complete.OrderKeep)).
+		FromFlags([]complete.FlagMeta{
+			{
+				Name:     "item",
+				HasArg:   true,
+				Complete: "predictor=item",
+				Help:     "Item",
+			},
+			{
+				Name:   "mode",
+				HasArg: true,
+				Enum:   []string{"fast", "safe"},
+				Order:  complete.OrderShell,
+				Help:   "Mode",
+			},
+		})
+
+	var buf strings.Builder
+	err := gen.Print(&buf, "fish")
+	require.NoError(t, err)
+	require.Equal(t, `complete -c ordered -f
+
+complete -c ordered -l item -k -x -a "(ordered --@complete=item)" -d "Item"
+complete -c ordered -l mode -x -a "fast safe" -d "Mode"
+`, buf.String())
 }
 
 // --- Install tests ---

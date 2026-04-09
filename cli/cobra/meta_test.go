@@ -185,6 +185,19 @@ func TestFlagMeta_Hint(t *testing.T) {
 	require.Equal(t, "file", flags[0].ValueHint)
 }
 
+func TestFlagMeta_Order(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().String("mode", "", "Mode")
+	cobracli.Extend(cmd.Flags().Lookup("mode"), cobracli.FlagExtra{
+		Complete: "predictor=mode",
+		Order:    complete.OrderKeep,
+	})
+
+	flags := cobracli.FlagMeta(cmd)
+	require.Len(t, flags, 1)
+	require.Equal(t, complete.OrderKeep, flags[0].Order)
+}
+
 func TestFlagMeta_Aliases(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	cmd.Flags().String("output", "", "Output path")
