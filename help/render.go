@@ -171,9 +171,16 @@ func (r *Renderer) renderFlags(
 	return nil
 }
 
-func (r *Renderer) argStyle(a Arg) *lipgloss.Style {
+func (r *Renderer) argStyle(a Arg, all Args) *lipgloss.Style {
 	if a.Required {
-		return r.Theme.HelpArgRequired
+		return r.Theme.HelpArg
+	}
+	// Use HelpArgOptional only when optional args coexist with required args,
+	// so they are visually distinct. Otherwise fall back to HelpArg.
+	for _, o := range all {
+		if o.Required {
+			return r.Theme.HelpArgOptional
+		}
 	}
 	return r.Theme.HelpArg
 }
@@ -182,7 +189,7 @@ func (r *Renderer) renderArgs(w io.Writer, args Args, _, ind int) error {
 	// Args compute their own description column, independent of flags.
 	argDescCol := 0
 	for _, a := range args {
-		argWidth := ind + visibleWidth(r.argStyle(a).Render(BracketArg(a)))
+		argWidth := ind + visibleWidth(r.argStyle(a, args).Render(BracketArg(a)))
 		if argWidth > argDescCol {
 			argDescCol = argWidth
 		}
@@ -190,7 +197,7 @@ func (r *Renderer) renderArgs(w io.Writer, args Args, _, ind int) error {
 	argDescCol += r.argPad
 
 	for _, a := range args {
-		if _, err := fmt.Fprintln(w, r.formatArg(a, argDescCol, ind)); err != nil {
+		if _, err := fmt.Fprintln(w, r.formatArg(a, args, argDescCol, ind)); err != nil {
 			return err
 		}
 	}
@@ -264,7 +271,7 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	// Subcommand args come before [options].
 	for _, a := range u.Args {
 		if a.IsSubcommand {
-			parts = append(parts, r.argStyle(a).Render(BracketArg(a)))
+			parts = append(parts, r.argStyle(a, u.Args).Render(BracketArg(a)))
 		}
 	}
 	if u.ShowOptions {
@@ -272,7 +279,7 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	}
 	for _, a := range u.Args {
 		if !a.IsSubcommand {
-			parts = append(parts, r.argStyle(a).Render(BracketArg(a)))
+			parts = append(parts, r.argStyle(a, u.Args).Render(BracketArg(a)))
 		}
 	}
 	_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), strings.Join(parts, " "))
@@ -402,12 +409,12 @@ func (r *Renderer) renderEnum(f Flag) (string, error) {
 	return r.Theme.FmtEnum(values), nil
 }
 
-func (r *Renderer) formatArg(a Arg, descCol, ind int) string {
+func (r *Renderer) formatArg(a Arg, all Args, descCol, ind int) string {
 	var sb strings.Builder
 
 	sb.WriteString(strings.Repeat(" ", ind))
 
-	argPart := r.argStyle(a).Render(BracketArg(a))
+	argPart := r.argStyle(a, all).Render(BracketArg(a))
 	sb.WriteString(argPart)
 
 	if a.Desc != "" {

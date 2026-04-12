@@ -243,11 +243,11 @@ func TestWith_AllOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHelpArgRequired",
-			opt:  theme.WithHelpArgRequired(custom),
+			name: "WithHelpArgOptional",
+			opt:  theme.WithHelpArgOptional(custom),
 			check: func(t *testing.T, th *theme.Theme) {
 				t.Helper()
-				require.Equal(t, custom.Render("x"), th.HelpArgRequired.Render("x"))
+				require.Equal(t, custom.Render("x"), th.HelpArgOptional.Render("x"))
 			},
 		},
 		{
