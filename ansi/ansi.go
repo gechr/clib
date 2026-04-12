@@ -2,13 +2,10 @@ package ansi
 
 import (
 	"os"
-	"strings"
 
 	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/terminal"
 )
-
-const sgrReset = "\x1b[0m"
 
 // HyperlinkFallback controls how hyperlinks render when the output is not a terminal.
 type HyperlinkFallback int
@@ -87,44 +84,4 @@ func (w *ANSI) Hyperlink(url, text string) string {
 		}
 	}
 	return xansi.SetHyperlink(url) + text + xansi.ResetHyperlink()
-}
-
-// PreserveBackground wraps a line with a background escape and re-applies it
-// after every embedded SGR sequence so inner ANSI styling does not clear the
-// row background.
-func PreserveBackground(line, bg string) string {
-	var b strings.Builder
-	b.WriteString(bg)
-
-	i := 0
-	for i < len(line) {
-		if line[i] == '\x1b' && i+1 < len(line) && line[i+1] == '[' {
-			j := i + 2 //nolint:mnd // skip ESC[
-			for j < len(line) && ((line[j] >= '0' && line[j] <= '9') || line[j] == ';') {
-				j++
-			}
-			if j < len(line) && line[j] == 'm' {
-				j++
-				b.WriteString(line[i:j])
-				b.WriteString(bg)
-				i = j
-				continue
-			}
-		}
-		b.WriteByte(line[i])
-		i++
-	}
-
-	b.WriteString(sgrReset)
-	return b.String()
-}
-
-// PreserveBackgroundWidth behaves like PreserveBackground and pads the visible
-// line to the requested terminal width.
-func PreserveBackgroundWidth(line, bg string, width int) string {
-	preserved := PreserveBackground(line, bg)
-	if pad := width - xansi.WcWidth.StringWidth(line); pad > 0 {
-		preserved = strings.TrimSuffix(preserved, sgrReset) + strings.Repeat(" ", pad) + sgrReset
-	}
-	return preserved
 }
