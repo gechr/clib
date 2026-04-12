@@ -68,7 +68,7 @@ func TestRender_Usage_SubcommandArg(t *testing.T) {
 			"Usage",
 		)+"\n\n  "+th.HelpCommand.Render(
 			"app",
-		)+" "+th.HelpArg.Render(
+		)+" "+th.HelpArgRequired.Render(
 			"<command>",
 		)+" "+th.HelpFlag.Render(
 			"[options]",
@@ -114,6 +114,55 @@ func TestRender_Args_RepeatableOptional(t *testing.T) {
 	require.NoError(t, r.Render(&buf, sections))
 
 	require.Equal(t, "Arguments\n\n  [<query>…]  Search terms\n", ansi.Strip(buf.String()))
+}
+
+func TestRender_Args_RequiredUsesHelpArgRequired(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{Name: "file", Desc: "Input file", Required: true}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Contains(t, buf.String(), th.HelpArgRequired.Render("<file>"))
+}
+
+func TestRender_Args_OptionalUsesHelpArg(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{Name: "query", Desc: "Search term"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Contains(t, buf.String(), th.HelpArg.Render("[<query>]"))
+}
+
+func TestRender_Usage_RequiredAndOptionalArgStyles(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "rep", ShowOptions: true, Args: []help.Arg{
+				{Name: "find", Required: true},
+				{Name: "replace", Required: true},
+				{Name: "path", Repeatable: true},
+			}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	out := buf.String()
+	require.Contains(t, out, th.HelpArgRequired.Render("<find>"))
+	require.Contains(t, out, th.HelpArgRequired.Render("<replace>"))
+	require.Contains(t, out, th.HelpArg.Render("[<path>…]"))
 }
 
 func TestRender_PropagatesWriteErrors(t *testing.T) {

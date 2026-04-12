@@ -52,6 +52,7 @@ type Theme struct {
 	HelpSubcommand             *lipgloss.Style
 	HelpFlag                   *lipgloss.Style
 	HelpArg                    *lipgloss.Style
+	HelpArgRequired            *lipgloss.Style
 	HelpValuePlaceholder       *lipgloss.Style
 	HelpDim                    *lipgloss.Style
 	HelpBoldDim                *lipgloss.Style
@@ -110,6 +111,7 @@ func defaultTheme() *Theme {
 		HelpSubcommand:       new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
 		HelpFlag:             new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
 		HelpArg:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
+		HelpArgRequired:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
 		HelpValuePlaceholder: new(lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1"))),
 		HelpDim:              new(lipgloss.NewStyle().Faint(true)),
 		HelpBoldDim: new(lipgloss.NewStyle().
@@ -227,6 +229,7 @@ func (t *Theme) Init() *Theme {
 	ensureStyle(&n.HelpSubcommand)
 	ensureStyle(&n.HelpFlag)
 	ensureStyle(&n.HelpArg)
+	ensureStyle(&n.HelpArgRequired)
 	ensureStyle(&n.HelpValuePlaceholder)
 	ensureStyle(&n.HelpDim)
 	ensureStyle(&n.HelpBoldDim)
@@ -280,9 +283,14 @@ func WithGreen(s lipgloss.Style) Option {
 	return func(t *Theme) { t.Green = new(s) }
 }
 
-// WithHelpArg sets the style for argument names in help output.
+// WithHelpArg sets the style for optional argument names in help output.
 func WithHelpArg(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpArg = new(s) }
+}
+
+// WithHelpArgRequired sets the style for required argument names in help output.
+func WithHelpArgRequired(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpArgRequired = new(s) }
 }
 
 // WithHelpBoldDim sets the bold-dim style used in help output.

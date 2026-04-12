@@ -38,6 +38,7 @@ func TestPresets(t *testing.T) {
 			require.NotNil(t, th.HelpSubcommand, "HelpSubcommand")
 			require.NotNil(t, th.HelpFlag, "HelpFlag")
 			require.NotNil(t, th.HelpArg, "HelpArg")
+			require.NotNil(t, th.HelpArgRequired, "HelpArgRequired")
 			require.NotNil(t, th.HelpValuePlaceholder, "HelpValuePlaceholder")
 			require.NotNil(t, th.HelpDim, "HelpDim")
 			require.NotNil(t, th.HelpBoldDim, "HelpBoldDim")

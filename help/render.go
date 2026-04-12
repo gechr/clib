@@ -171,11 +171,18 @@ func (r *Renderer) renderFlags(
 	return nil
 }
 
+func (r *Renderer) argStyle(a Arg) *lipgloss.Style {
+	if a.Required {
+		return r.Theme.HelpArgRequired
+	}
+	return r.Theme.HelpArg
+}
+
 func (r *Renderer) renderArgs(w io.Writer, args Args, _, ind int) error {
 	// Args compute their own description column, independent of flags.
 	argDescCol := 0
 	for _, a := range args {
-		argWidth := ind + visibleWidth(r.Theme.HelpArg.Render(BracketArg(a)))
+		argWidth := ind + visibleWidth(r.argStyle(a).Render(BracketArg(a)))
 		if argWidth > argDescCol {
 			argDescCol = argWidth
 		}
@@ -257,7 +264,7 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	// Subcommand args come before [options].
 	for _, a := range u.Args {
 		if a.IsSubcommand {
-			parts = append(parts, r.Theme.HelpArg.Render(BracketArg(a)))
+			parts = append(parts, r.argStyle(a).Render(BracketArg(a)))
 		}
 	}
 	if u.ShowOptions {
@@ -265,7 +272,7 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	}
 	for _, a := range u.Args {
 		if !a.IsSubcommand {
-			parts = append(parts, r.Theme.HelpArg.Render(BracketArg(a)))
+			parts = append(parts, r.argStyle(a).Render(BracketArg(a)))
 		}
 	}
 	_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), strings.Join(parts, " "))
@@ -400,7 +407,7 @@ func (r *Renderer) formatArg(a Arg, descCol, ind int) string {
 
 	sb.WriteString(strings.Repeat(" ", ind))
 
-	argPart := r.Theme.HelpArg.Render(BracketArg(a))
+	argPart := r.argStyle(a).Render(BracketArg(a))
 	sb.WriteString(argPart)
 
 	if a.Desc != "" {
