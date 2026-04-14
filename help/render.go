@@ -271,7 +271,8 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	// Subcommand args come before [options].
 	for _, a := range u.Args {
 		if a.IsSubcommand {
-			parts = append(parts, r.argStyle(a, u.Args).Render(BracketArg(a)))
+			s := r.Theme.HelpSubcommand.Bold(false)
+			parts = append(parts, s.Render(BracketArg(a)))
 		}
 	}
 	if u.ShowOptions {

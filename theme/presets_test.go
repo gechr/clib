@@ -16,6 +16,13 @@ func TestPresets(t *testing.T) {
 		"CatppuccinMacchiato": theme.CatppuccinMacchiato,
 		"CatppuccinMocha":     theme.CatppuccinMocha,
 		"Dracula":             theme.Dracula,
+		"GruvboxDark":         theme.GruvboxDark,
+		"GruvboxLight":        theme.GruvboxLight,
+		"Nord":                theme.Nord,
+		"OneDark":             theme.OneDark,
+		"Synthwave":           theme.Synthwave,
+		"Solarized":           theme.Solarized,
+		"TokyoNight":          theme.TokyoNight,
 	}
 
 	for name, fn := range presets {
@@ -98,6 +105,13 @@ func TestThemeUnmarshalText(t *testing.T) {
 		},
 		{name: "catppuccin compact", input: "catppuccinfrappe", want: theme.CatppuccinFrappe},
 		{name: "dracula", input: "dracula", want: theme.Dracula},
+		{name: "gruvbox-dark", input: "gruvbox-dark", want: theme.GruvboxDark},
+		{name: "gruvbox-light", input: "gruvbox-light", want: theme.GruvboxLight},
+		{name: "nord", input: "nord", want: theme.Nord},
+		{name: "one-dark", input: "one-dark", want: theme.OneDark},
+		{name: "synthwave", input: "synthwave", want: theme.Synthwave},
+		{name: "solarized", input: "solarized", want: theme.Solarized},
+		{name: "tokyo-night", input: "tokyo-night", want: theme.TokyoNight},
 	}
 
 	for _, tt := range tests {

@@ -7,13 +7,23 @@ import (
 
 var validThemeNames = []string{
 	"default",
-	"monochrome",
-	"monokai",
-	"catppuccin-latte",
+
+	"plain", // no styling
+
 	"catppuccin-frappe",
+	"catppuccin-latte",
 	"catppuccin-macchiato",
 	"catppuccin-mocha",
 	"dracula",
+	"gruvbox-dark",
+	"gruvbox-light",
+	"monochrome",
+	"monokai",
+	"nord",
+	"one-dark",
+	"synthwave",
+	"solarized",
+	"tokyo-night",
 }
 
 func normalizePresetName(name string) string {
@@ -51,6 +61,8 @@ func (t *Theme) UnmarshalText(text []byte) error {
 	switch normalizePresetName(string(text)) {
 	case "", "default":
 		*t = *defaultTheme()
+	case "plain":
+		*t = *Plain()
 	case "monochrome":
 		*t = *Monochrome()
 	case "monokai":
@@ -65,6 +77,20 @@ func (t *Theme) UnmarshalText(text []byte) error {
 		*t = *CatppuccinMocha()
 	case "dracula":
 		*t = *Dracula()
+	case "gruvboxdark":
+		*t = *GruvboxDark()
+	case "gruvboxlight":
+		*t = *GruvboxLight()
+	case "nord":
+		*t = *Nord()
+	case "onedark":
+		*t = *OneDark()
+	case "synthwave":
+		*t = *Synthwave()
+	case "solarized":
+		*t = *Solarized()
+	case "tokyonight":
+		*t = *TokyoNight()
 	default:
 		return fmt.Errorf("unknown theme %q (valid: %s)", text, strings.Join(validThemeNames, ", "))
 	}

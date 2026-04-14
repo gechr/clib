@@ -109,7 +109,7 @@ func defaultTheme() *Theme {
 
 		HelpSection:          new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))),
 		HelpCommand:          new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
-		HelpSubcommand:       new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
+		HelpSubcommand:       new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))),
 		HelpFlag:             new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
 		HelpArg:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
 		HelpArgOptional:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
