@@ -851,6 +851,32 @@ func TestRender_BackticksStyled_WhenConfigured(t *testing.T) {
 	)
 }
 
+func TestRender_DescNoteBackticksKeepsClosingParenStyled(t *testing.T) {
+	th := testTheme()
+	note := lipgloss.NewStyle().Faint(true)
+	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	th.HelpFlagNote = &note
+	th.HelpDescBacktick = &code
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "git", Desc: "Clone with `git` (alias for `--vcs=git`)"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
+			note.Render("(alias for ")+code.Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+		buf.String(),
+	)
+}
+
 func TestRender_DescBracketDefault(t *testing.T) {
 	th := testTheme()
 	r := help.NewRenderer(th)

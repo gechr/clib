@@ -443,8 +443,6 @@ func (r *Renderer) formatArg(a Arg, all Args, descCol, ind int) string {
 //   - Trailing "[example: ...]" -> HelpFlagExample style
 //   - Trailing "[note]" -> HelpDim style (fallback)
 func (r *Renderer) renderDesc(desc string) string {
-	desc = r.renderBackticks(desc)
-
 	// Try parenthesized note first.
 	if r.Theme.HelpFlagNote != nil {
 		if styled, ok := r.styledSuffix(desc, NoteOpen, NoteClose, *r.Theme.HelpFlagNote); ok {
@@ -473,49 +471,76 @@ func (r *Renderer) renderDesc(desc string) string {
 				style = r.Theme.HelpFlagExample
 			}
 		}
-		return strings.TrimRight(prefix, " ") + " " + style.Render(note)
+		return r.renderBackticks(strings.TrimRight(prefix, " "), nil) + " " + r.renderBackticks(note, style)
 	}
 
-	return desc
+	return r.renderBackticks(desc, nil)
 }
 
 // renderBackticks replaces `text` and 'text' with styled text (delimiters removed).
 // Single-quoted strings are only matched when not preceded/followed by a letter,
 // so contractions like "don't" are left intact.
 // When HelpDescBacktick is nil, delimiters are left intact.
-func (r *Renderer) renderBackticks(s string) string {
-	if r.Theme.HelpDescBacktick == nil {
+func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
+	if r.Theme.HelpDescBacktick == nil && base == nil {
 		return s
 	}
 	var sb strings.Builder
+	writePlain := func(text string) {
+		if text == "" {
+			return
+		}
+		if base != nil {
+			sb.WriteString(base.Render(text))
+			return
+		}
+		sb.WriteString(text)
+	}
+	renderCode := func(text string) string {
+		if r.Theme.HelpDescBacktick == nil {
+			if base != nil {
+				return base.Render(text)
+			}
+			return text
+		}
+		style := *r.Theme.HelpDescBacktick
+		if base != nil {
+			style = style.Inherit(*base)
+		}
+		return style.Render(text)
+	}
+	last := 0
 	for i := 0; i < len(s); {
 		switch {
 		case s[i] == '`':
 			end := strings.IndexByte(s[i+1:], '`')
 			if end < 0 {
-				sb.WriteString(s[i:])
+				writePlain(s[last:])
 				return sb.String()
 			}
+			writePlain(s[last:i])
 			end += i + 1
-			sb.WriteString(r.Theme.HelpDescBacktick.Render(s[i+1 : end]))
+			sb.WriteString(renderCode(s[i+1 : end]))
 			i = end + 1
+			last = i
 
 		case s[i] == '\'' && !isLetterAt(s, i-1):
 			end := strings.IndexByte(s[i+1:], '\'')
 			if end < 0 || isLetterAt(s, i+1+end+1) {
-				sb.WriteByte(s[i])
 				i++
 				continue
 			}
+			writePlain(s[last:i])
 			end += i + 1
-			sb.WriteString(r.Theme.HelpDescBacktick.Render(s[i+1 : end]))
+			sb.WriteString(renderCode(s[i+1 : end]))
 			i = end + 1
+			last = i
 
 		default:
-			sb.WriteByte(s[i])
 			i++
 		}
 	}
+	writePlain(s[last:])
 	return sb.String()
 }
 
@@ -546,7 +571,7 @@ func (r *Renderer) styledSuffix(
 		return "", false
 	}
 	note := desc[idx:]
-	return strings.TrimRight(prefix, " ") + " " + style.Render(note), true
+	return r.renderBackticks(strings.TrimRight(prefix, " "), nil) + " " + r.renderBackticks(note, &style), true
 }
 
 func (r *Renderer) buildFlagPart(f Flag, hasShort bool) string {
