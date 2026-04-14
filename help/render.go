@@ -471,7 +471,13 @@ func (r *Renderer) renderDesc(desc string) string {
 				style = r.Theme.HelpFlagExample
 			}
 		}
-		return r.renderBackticks(strings.TrimRight(prefix, " "), nil) + " " + r.renderBackticks(note, style)
+		return r.renderBackticks(
+			strings.TrimRight(prefix, " "),
+			nil,
+		) + " " + r.renderBackticks(
+			note,
+			style,
+		)
 	}
 
 	return r.renderBackticks(desc, nil)
@@ -497,13 +503,13 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 		sb.WriteString(text)
 	}
 	renderCode := func(text string) string {
-		if r.Theme.HelpDescBacktick == nil {
+		style, hasStyle := r.backtickStyle(text)
+		if !hasStyle {
 			if base != nil {
 				return base.Render(text)
 			}
 			return text
 		}
-		style := *r.Theme.HelpDescBacktick
 		if base != nil {
 			style = style.Inherit(*base)
 		}
@@ -544,6 +550,39 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 	return sb.String()
 }
 
+func (r *Renderer) backtickStyle(text string) (lipgloss.Style, bool) {
+	if !isFlagLikeBacktick(text) {
+		if r.Theme.HelpDescBacktick == nil {
+			return lipgloss.Style{}, false
+		}
+		return *r.Theme.HelpDescBacktick, true
+	}
+
+	style, hasStyle := r.flagBacktickBaseStyle()
+	if r.Theme.HelpDescBacktick == nil {
+		return style, hasStyle
+	}
+	if !hasStyle {
+		return *r.Theme.HelpDescBacktick, true
+	}
+	return style.Inherit(*r.Theme.HelpDescBacktick), true
+}
+
+func (r *Renderer) flagBacktickBaseStyle() (lipgloss.Style, bool) {
+	switch {
+	case r.Theme.HelpFlagBacktick != nil:
+		return *r.Theme.HelpFlagBacktick, true
+	case r.Theme.HelpFlag != nil:
+		return *r.Theme.HelpFlag, true
+	default:
+		return lipgloss.Style{}, false
+	}
+}
+
+func isFlagLikeBacktick(s string) bool {
+	return len(s) > 1 && s[0] == '-'
+}
+
 // isLetterAt reports whether s[i] is an ASCII letter. Returns false if i is out of bounds.
 func isLetterAt(s string, i int) bool {
 	if i < 0 || i >= len(s) {
@@ -571,7 +610,13 @@ func (r *Renderer) styledSuffix(
 		return "", false
 	}
 	note := desc[idx:]
-	return r.renderBackticks(strings.TrimRight(prefix, " "), nil) + " " + r.renderBackticks(note, &style), true
+	return r.renderBackticks(
+		strings.TrimRight(prefix, " "),
+		nil,
+	) + " " + r.renderBackticks(
+		note,
+		&style,
+	), true
 }
 
 func (r *Renderer) buildFlagPart(f Flag, hasShort bool) string {

@@ -872,7 +872,65 @@ func TestRender_DescNoteBackticksKeepsClosingParenStyled(t *testing.T) {
 	require.Equal(t,
 		th.HelpSection.Render("Flags")+"\n\n  "+
 			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
-			note.Render("(alias for ")+code.Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+			note.Render(
+				"(alias for ",
+			)+th.HelpFlag.Inherit(code).Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_DescFlagBackticksUseHelpFlagByDefault(t *testing.T) {
+	th := testTheme()
+	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	th.HelpDescBacktick = &code
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "git", Desc: "Clone with `git` (alias for `--vcs=git`)"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
+			th.HelpFlagNote.Render(
+				"(alias for ",
+			)+th.HelpFlag.Inherit(code).Inherit(*th.HelpFlagNote).Render("--vcs=git")+th.HelpFlagNote.Render(")")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_DescFlagBackticksCanBeOverridden(t *testing.T) {
+	th := testTheme()
+	code := lipgloss.NewStyle().Bold(true)
+	flagCode := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	note := lipgloss.NewStyle().Faint(true)
+	th.HelpDescBacktick = &code
+	th.HelpFlagBacktick = &flagCode
+	th.HelpFlagNote = &note
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "git", Desc: "Clone with `git` (alias for `--vcs=git`)"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
+			note.Render(
+				"(alias for ",
+			)+flagCode.Inherit(code).Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
 		buf.String(),
 	)
 }

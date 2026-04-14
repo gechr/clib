@@ -62,6 +62,7 @@ type Theme struct {
 	HelpFlagDefault            *lipgloss.Style       // [default: ...] annotations in flag descriptions.
 	HelpEnumDefault            *lipgloss.Style       // Default value in EnumStyleHighlightDefault lists (default: dim green).
 	HelpDescBacktick           *lipgloss.Style       // Backtick-enclosed text in flag descriptions (nil = leave backticks intact).
+	HelpFlagBacktick           *lipgloss.Style       // Override for backtick-enclosed flag-like text in descriptions (nil = fall back to HelpFlag).
 	HelpKeyValueSeparator      rune                  // Separator between flag and placeholder (default: ' ').
 	HelpKeyValueSeparatorStyle *lipgloss.Style       // Style applied to the separator (default: nil = unstyled).
 	HelpRepeatEllipsis         *lipgloss.Style       // "…" suffix on repeatable flag placeholders (default: dim red).
@@ -322,6 +323,11 @@ func WithHelpEnumDefault(s lipgloss.Style) Option {
 // WithHelpFlag sets the style for flag names in help output.
 func WithHelpFlag(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpFlag = new(s) }
+}
+
+// WithHelpFlagBacktick sets the style for backtick-enclosed flag-like text in flag descriptions.
+func WithHelpFlagBacktick(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpFlagBacktick = new(s) }
 }
 
 // WithHelpFlagDefault sets the style for flag default annotations in help output.

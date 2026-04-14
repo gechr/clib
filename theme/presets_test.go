@@ -56,6 +56,7 @@ func TestPresets(t *testing.T) {
 			require.Equal(t, ' ', th.HelpKeyValueSeparator)
 			require.True(t, th.HelpRepeatEllipsisEnabled)
 			require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
+			require.Nil(t, th.HelpFlagBacktick)
 			require.Len(t, th.EntityColors, 20)
 			require.Len(t, th.TimeAgoThresholds, 5)
 		})

@@ -293,11 +293,19 @@ func TestWith_AllOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHelpFlagNote",
-			opt:  theme.WithHelpFlagNote(custom),
+			name: "WithHelpDescBacktick",
+			opt:  theme.WithHelpDescBacktick(custom),
 			check: func(t *testing.T, th *theme.Theme) {
 				t.Helper()
-				require.Equal(t, custom.Render("x"), th.HelpFlagNote.Render("x"))
+				require.Equal(t, custom.Render("x"), th.HelpDescBacktick.Render("x"))
+			},
+		},
+		{
+			name: "WithHelpFlagBacktick",
+			opt:  theme.WithHelpFlagBacktick(custom),
+			check: func(t *testing.T, th *theme.Theme) {
+				t.Helper()
+				require.Equal(t, custom.Render("x"), th.HelpFlagBacktick.Render("x"))
 			},
 		},
 		{
@@ -309,11 +317,11 @@ func TestWith_AllOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "WithHelpDescBacktick",
-			opt:  theme.WithHelpDescBacktick(custom),
+			name: "WithHelpFlagNote",
+			opt:  theme.WithHelpFlagNote(custom),
 			check: func(t *testing.T, th *theme.Theme) {
 				t.Helper()
-				require.Equal(t, custom.Render("x"), th.HelpDescBacktick.Render("x"))
+				require.Equal(t, custom.Render("x"), th.HelpFlagNote.Render("x"))
 			},
 		},
 		{
