@@ -231,14 +231,14 @@ func Monochrome() *Theme {
 // Monokai returns a theme inspired by the Monokai color scheme.
 func Monokai() *Theme {
 	return fromPalette("monokai", palette{
-		heading:     lipgloss.Color("#e6db74"), // yellow
-		command:     lipgloss.Color("#a6e22e"), // green
-		subcommand:  lipgloss.Color("#66d9ef"), // cyan
-		backtick:    lipgloss.Color("#fd971f"), // orange
-		flag:        lipgloss.Color("#f92672"), // pink
-		arg:         lipgloss.Color("#ae81ff"), // purple
-		argOptional: lipgloss.Color("#ae81ff"), // purple
-		comment:     lipgloss.Color("#88846f"), // comment
+		heading:     lipgloss.Color("#ffd866"), // yellow
+		command:     lipgloss.Color("#a9dc76"), // green
+		subcommand:  lipgloss.Color("#78dce8"), // cyan
+		backtick:    lipgloss.Color("#fc9867"), // orange
+		flag:        lipgloss.Color("#ff6188"), // pink
+		arg:         lipgloss.Color("#78dce8"), // cyan
+		argOptional: lipgloss.Color("#ab9df2"), // purple
+		comment:     lipgloss.Color("#939293"), // comment
 	})
 }
 
