@@ -96,6 +96,7 @@ type Spec struct {
 	CommaList  bool        // comma-separated multi-value (e.g. --columns)
 	Dynamic    string      // dynamic completion type (e.g. "author" -> "<app> --@complete=author")
 	Extension  string      // file extension filter for completion (e.g. "yaml" or "yaml,yml")
+	Forward    bool        // forward this flag's value to dynamic completion handlers
 	HasArg     bool        // flag takes a value
 	Hidden     bool        // hidden from completions
 	LongFlag   string      // e.g. "author" (no dashes)
@@ -184,6 +185,7 @@ func SpecsFromFlagMeta(f FlagMeta) []Spec {
 
 	spec := Spec{
 		Extension:  f.Extension,
+		Forward:    f.Forward,
 		HasArg:     f.HasArg,
 		Hidden:     f.Hidden,
 		LongFlag:   longFlag,
@@ -401,6 +403,39 @@ func appendSpecs(specs ...[]Spec) []Spec {
 		result = append(result, group...)
 	}
 	return result
+}
+
+// forwardSpec describes a flag whose value should be forwarded to dynamic
+// completion handlers as --LongFlag=<value> in the positional args.
+type forwardSpec struct {
+	LongFlag  string
+	ShortFlag string
+}
+
+// forwardableSpecs returns the Forward-marked specs that have a value (HasArg).
+func forwardableSpecs(specs []Spec) []forwardSpec {
+	var result []forwardSpec
+	for _, spec := range specs {
+		if spec.Forward && spec.HasArg && spec.LongFlag != "" {
+			result = append(result, forwardSpec{
+				LongFlag:  spec.LongFlag,
+				ShortFlag: spec.ShortFlag,
+			})
+		}
+	}
+	return result
+}
+
+// nonForwardArgValuePatterns returns argValuePatterns excluding Forward specs.
+// Use this in dynamic-args helpers where forwarded flags are captured separately.
+func nonForwardArgValuePatterns(specs []Spec) ([]string, []string) {
+	filtered := make([]Spec, 0, len(specs))
+	for _, spec := range specs {
+		if !spec.Forward {
+			filtered = append(filtered, spec)
+		}
+	}
+	return argValuePatterns(filtered)
 }
 
 func argValuePatterns(specs []Spec) ([]string, []string) {

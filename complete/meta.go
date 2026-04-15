@@ -16,6 +16,7 @@ type FlagMeta struct {
 	EnumHighlight       []string // highlight hint substrings (parallel to Enum)
 	EnumTerse           []string // short descriptions for enum values (parallel to Enum)
 	Extension           string   // file extension filter for completion (e.g. "yaml" or "yaml,yml")
+	Forward             bool     // forward this flag's value to dynamic completion handlers
 	Group               string   // help section group
 	HasArg              bool     // true if the flag takes a value (non-bool)
 	Help                string   // help text for --help output
@@ -84,6 +85,8 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 			f.EnumDefault = val
 		case tag.Ext:
 			f.Extension = val
+		case tag.Forward:
+			f.Forward = true
 		case tag.Group:
 			f.Group = val
 		case tag.HideLong:
@@ -176,6 +179,12 @@ func (f *FlagMeta) Validate() error {
 	}
 	if f.EnumDefault != "" && len(f.Enum) == 0 {
 		return fmt.Errorf("%sdefault requires enum", p)
+	}
+	if f.Forward && !f.HasArg {
+		return fmt.Errorf("%sforward requires a flag that takes a value", p)
+	}
+	if f.Forward && f.Name == "" {
+		return fmt.Errorf("%sforward requires a long flag name", p)
 	}
 	return nil
 }

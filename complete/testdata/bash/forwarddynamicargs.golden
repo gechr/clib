@@ -1,12 +1,13 @@
 # myapp bash completion
 _myapp() {
-    local i cur opts cmd
+    local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
         cur="$2"
     else
         cur="${COMP_WORDS[COMP_CWORD]}"
     fi
+    prev="$3"
     cmd=""
     opts=""
 
@@ -22,20 +23,38 @@ _myapp() {
 
     case "${cmd}" in
         myapp)
-            opts="--verbose -v"
+            opts="--category -c --filter --verbose -v"
             if [[ ${cur} == -* ]]; then
                 COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
                 return 0
             fi
+            case "${prev}" in
+                --category|-c)
+                    COMPREPLY=($(compgen -W 'alpha beta gamma' -- "${cur}"))
+                    return 0
+                    ;;
+                --filter)
+                    COMPREPLY=()
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
             local -a __dyn_pos=()
             local __skip_next=0
             local __after_dd=0
+            local __fwd_name=""
             for ((j=1; j<COMP_CWORD; j++)); do
                 if [[ "${__after_dd}" -eq 1 ]]; then
                     __dyn_pos+=("${COMP_WORDS[j]}")
                     continue
                 fi
                 if [[ "${__skip_next}" -eq 1 ]]; then
+                    if [[ -n "${__fwd_name}" ]]; then
+                        __dyn_pos+=("--${__fwd_name}=${COMP_WORDS[j]}")
+                        __fwd_name=""
+                    fi
                     __skip_next=0
                     continue
                 fi
@@ -44,6 +63,23 @@ _myapp() {
                     continue
                 fi
                 case "${COMP_WORDS[j]}" in
+                    --category|-c)
+                        __skip_next=1
+                        __fwd_name="category"
+                        ;;
+                    --category=*)
+                        __dyn_pos+=("${COMP_WORDS[j]}")
+                        ;;
+                    -c=*)
+                        __dyn_pos+=("--category=${COMP_WORDS[j]#-c=}")
+                        ;;
+                    --filter)
+                        __skip_next=1
+                        __fwd_name="filter"
+                        ;;
+                    --filter=*)
+                        __dyn_pos+=("${COMP_WORDS[j]}")
+                        ;;
                     -*)
                         ;;
                     *)
@@ -56,10 +92,10 @@ _myapp() {
                     COMPREPLY=($(compgen -W "${opts} $(myapp --@complete=items 2>/dev/null)" -- "${cur}"))
                     ;;
                 1)
-                    COMPREPLY=($(compgen -W "$(myapp --@complete=subitems -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "$(myapp --@complete=values -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
                     ;;
                 *)
-                    COMPREPLY=($(compgen -W "$(myapp --@complete=subitems -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "$(myapp --@complete=values -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
                     ;;
             esac
             return 0

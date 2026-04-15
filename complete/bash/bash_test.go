@@ -743,14 +743,13 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 	require.NoError(t, err)
 	expected := `# testapp bash completion
 _testapp() {
-    local i cur prev opts cmd
+    local i cur opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
         cur="$2"
     else
         cur="${COMP_WORDS[COMP_CWORD]}"
     fi
-    prev="$3"
     cmd=""
     opts=""
 
@@ -825,14 +824,13 @@ func TestGenerate_Hyphenated(t *testing.T) {
 	require.NoError(t, err)
 	expected := `# my-app bash completion
 _my_app() {
-    local i cur prev opts cmd
+    local i cur opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
         cur="$2"
     else
         cur="${COMP_WORDS[COMP_CWORD]}"
     fi
-    prev="$3"
     cmd=""
     opts=""
 

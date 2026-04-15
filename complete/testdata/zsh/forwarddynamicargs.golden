@@ -1,0 +1,195 @@
+#compdef myapp
+
+autoload -U is-at-least
+
+_myapp() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        '(-c --category)-c+[Target category]:category:(alpha beta gamma)' \
+        '(-c --category)--category=[Target category]:category:(alpha beta gamma)' \
+        '--filter=[Result filter]: :_default' \
+        '(-v --verbose)-v[Verbose output]' \
+        '(-v --verbose)--verbose[Verbose output]' \
+        '1: :->dyn_1' \
+        '2: :->dyn_2' \
+        '*: :->dyn_rest' \
+    && ret=0
+
+    case $state in
+    (dyn_1)
+        local -a __pos=()
+        local __skip_next=0
+        local __after_dd=0
+        local __fwd_name=""
+        local token
+        for ((i=2; i<CURRENT; i++)); do
+            token=${words[i]}
+            if (( __after_dd )); then
+                __pos+=("$token")
+                continue
+            fi
+            if (( __skip_next )); then
+                if [[ -n "${__fwd_name}" ]]; then
+                    __pos+=("--${__fwd_name}=${token}")
+                    __fwd_name=""
+                fi
+                __skip_next=0
+                continue
+            fi
+            if [[ $token == -- ]]; then
+                __after_dd=1
+                continue
+            fi
+            case $token in
+                (--category|-c)
+                    __skip_next=1
+                    __fwd_name="category"
+                    ;;
+                (--category=*)
+                    __pos+=("$token")
+                    ;;
+                (-c=*)
+                    __pos+=("--category=${token#-c=}")
+                    ;;
+                (--filter)
+                    __skip_next=1
+                    __fwd_name="filter"
+                    ;;
+                (--filter=*)
+                    __pos+=("$token")
+                    ;;
+                (-*)
+                    ;;
+                (*)
+                    __pos+=("$token")
+                    ;;
+            esac
+        done
+        local -a items
+        items=(${(f)"$(myapp --@complete=items 2>/dev/null)"})
+        compadd -a items
+    ;;
+    (dyn_2)
+        local -a __pos=()
+        local __skip_next=0
+        local __after_dd=0
+        local __fwd_name=""
+        local token
+        for ((i=2; i<CURRENT; i++)); do
+            token=${words[i]}
+            if (( __after_dd )); then
+                __pos+=("$token")
+                continue
+            fi
+            if (( __skip_next )); then
+                if [[ -n "${__fwd_name}" ]]; then
+                    __pos+=("--${__fwd_name}=${token}")
+                    __fwd_name=""
+                fi
+                __skip_next=0
+                continue
+            fi
+            if [[ $token == -- ]]; then
+                __after_dd=1
+                continue
+            fi
+            case $token in
+                (--category|-c)
+                    __skip_next=1
+                    __fwd_name="category"
+                    ;;
+                (--category=*)
+                    __pos+=("$token")
+                    ;;
+                (-c=*)
+                    __pos+=("--category=${token#-c=}")
+                    ;;
+                (--filter)
+                    __skip_next=1
+                    __fwd_name="filter"
+                    ;;
+                (--filter=*)
+                    __pos+=("$token")
+                    ;;
+                (-*)
+                    ;;
+                (*)
+                    __pos+=("$token")
+                    ;;
+            esac
+        done
+        local -a items
+        items=(${(f)"$(myapp --@complete=values -- "${__pos[@]}" 2>/dev/null)"})
+        compadd -a items
+    ;;
+    (dyn_rest)
+        local -a __pos=()
+        local __skip_next=0
+        local __after_dd=0
+        local __fwd_name=""
+        local token
+        for ((i=2; i<CURRENT; i++)); do
+            token=${words[i]}
+            if (( __after_dd )); then
+                __pos+=("$token")
+                continue
+            fi
+            if (( __skip_next )); then
+                if [[ -n "${__fwd_name}" ]]; then
+                    __pos+=("--${__fwd_name}=${token}")
+                    __fwd_name=""
+                fi
+                __skip_next=0
+                continue
+            fi
+            if [[ $token == -- ]]; then
+                __after_dd=1
+                continue
+            fi
+            case $token in
+                (--category|-c)
+                    __skip_next=1
+                    __fwd_name="category"
+                    ;;
+                (--category=*)
+                    __pos+=("$token")
+                    ;;
+                (-c=*)
+                    __pos+=("--category=${token#-c=}")
+                    ;;
+                (--filter)
+                    __skip_next=1
+                    __fwd_name="filter"
+                    ;;
+                (--filter=*)
+                    __pos+=("$token")
+                    ;;
+                (-*)
+                    ;;
+                (*)
+                    __pos+=("$token")
+                    ;;
+            esac
+        done
+        local -a items
+        items=(${(f)"$(myapp --@complete=values -- "${__pos[@]}" 2>/dev/null)"})
+        compadd -a items
+    ;;
+    esac
+}
+
+if [ "$funcstack[1]" = "_myapp" ]; then
+    _myapp "$@"
+else
+    compdef _myapp myapp
+fi

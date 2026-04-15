@@ -19,17 +19,26 @@ func GenerateBash(g *Generator) (string, error) {
 	rootSpecs := SortVisibleSpecs(g.Specs)
 	inheritedSpecs := persistentSpecs(g.Specs)
 
+	needsPrev := bashNeedsPrev(g.Specs, g.Subs)
+
+	localVars := "local i cur opts cmd"
+	if needsPrev {
+		localVars = "local i cur prev opts cmd"
+	}
 	fmt.Fprintf(&sb, `# %s bash completion
 %s() {
-    local i cur prev opts cmd
+    %s
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
         cur="$2"
     else
         cur="${COMP_WORDS[COMP_CWORD]}"
     fi
-    prev="$3"
-    cmd=""
+`, command, funcName, localVars)
+	if needsPrev {
+		fmt.Fprint(&sb, "    prev=\"$3\"\n")
+	}
+	fmt.Fprintf(&sb, `    cmd=""
     opts=""
 
     for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
@@ -37,7 +46,7 @@ func GenerateBash(g *Generator) (string, error) {
             ",$1")
                 cmd="%s"
                 ;;
-`, command, funcName, cmdName)
+`, cmdName)
 
 	if len(g.Subs) > 0 {
 		bashWriteSubcmdTransitions(&sb, g.Subs, cmdName)
@@ -85,6 +94,20 @@ fi
 `, funcName, command, funcName, command)
 
 	return sb.String(), nil
+}
+
+func bashNeedsPrev(specs []Spec, subs []SubSpec) bool {
+	for _, spec := range specs {
+		if spec.HasArg {
+			return true
+		}
+	}
+	for _, sub := range subs {
+		if bashNeedsPrev(sub.Specs, sub.Subs) {
+			return true
+		}
+	}
+	return false
 }
 
 func bashCmdNameFromApp(name string) string {
@@ -241,20 +264,33 @@ func bashWriteCmdCase(
 
 func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
 	cmdSkip := depth - 1
-	exact, equals := argValuePatterns(specs)
+	fwd := forwardableSpecs(specs)
+	hasFwd := len(fwd) > 0
+	exact, equals := nonForwardArgValuePatterns(specs)
 	fmt.Fprint(sb, "            local -a __dyn_pos=()\n")
 	fmt.Fprint(sb, "            local __skip_next=0\n")
 	fmt.Fprint(sb, "            local __after_dd=0\n")
+	if hasFwd {
+		fmt.Fprint(sb, "            local __fwd_name=\"\"\n")
+	}
 	if cmdSkip > 0 {
 		fmt.Fprintf(sb, "            local __cmd_skip=%d\n", cmdSkip)
 	}
-	fmt.Fprint(sb, `            for ((j=1; j<COMP_CWORD; j++)); do
-                if [[ "${__after_dd}" -eq 1 ]]; then
+	fmt.Fprint(sb, "            for ((j=1; j<COMP_CWORD; j++)); do\n")
+	fmt.Fprint(sb, `                if [[ "${__after_dd}" -eq 1 ]]; then
                     __dyn_pos+=("${COMP_WORDS[j]}")
                     continue
                 fi
                 if [[ "${__skip_next}" -eq 1 ]]; then
-                    __skip_next=0
+`)
+	if hasFwd {
+		fmt.Fprint(sb, `                    if [[ -n "${__fwd_name}" ]]; then
+                        __dyn_pos+=("--${__fwd_name}=${COMP_WORDS[j]}")
+                        __fwd_name=""
+                    fi
+`)
+	}
+	fmt.Fprint(sb, `                    __skip_next=0
                     continue
                 fi
                 if [[ "${COMP_WORDS[j]}" == "--" ]]; then
@@ -263,6 +299,43 @@ func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
                 fi
                 case "${COMP_WORDS[j]}" in
 `)
+	for _, f := range fwd {
+		// Forward exact: --flag value / -f value
+		var patterns []string
+		if f.LongFlag != "" {
+			patterns = append(patterns, "--"+f.LongFlag)
+		}
+		if f.ShortFlag != "" {
+			patterns = append(patterns, "-"+f.ShortFlag)
+		}
+		fmt.Fprintf(
+			sb,
+			"                    %s)\n                        __skip_next=1\n                        __fwd_name=%q\n                        ;;\n",
+			strings.Join(patterns, "|"),
+			f.LongFlag,
+		)
+		// Forward equals: --flag=value passes through; -f=value normalized
+		if f.ShortFlag != "" && f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"                    --%s=*)\n                        __dyn_pos+=(\"${COMP_WORDS[j]}\")\n                        ;;\n",
+				f.LongFlag,
+			)
+			fmt.Fprintf(
+				sb,
+				"                    -%s=*)\n                        __dyn_pos+=(\"--%s=${COMP_WORDS[j]#-%s=}\")\n                        ;;\n",
+				f.ShortFlag,
+				f.LongFlag,
+				f.ShortFlag,
+			)
+		} else if f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"                    --%s=*)\n                        __dyn_pos+=(\"${COMP_WORDS[j]}\")\n                        ;;\n",
+				f.LongFlag,
+			)
+		}
+	}
 	if len(exact) > 0 {
 		fmt.Fprintf(
 			sb,

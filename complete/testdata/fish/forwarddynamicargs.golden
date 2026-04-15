@@ -1,0 +1,55 @@
+complete -c myapp -f
+
+complete -c myapp -s c -l category -x -a "alpha beta gamma" -d "Target category"
+complete -c myapp -l filter -r -d "Result filter"
+complete -c myapp -s v -l verbose -d "Verbose output"
+
+function __myapp_dynamic_args
+    set -l tokens (commandline -xpc)
+    set -e tokens[1]
+    set -l positional
+    set -l skip_next 0
+    set -l dashdash 0
+    set -l fwd_name
+    for t in $tokens
+        if test $dashdash -eq 1
+            set -a positional $t
+        else if test $skip_next -eq 1
+            if set -q fwd_name[1]
+                set -a positional "--$fwd_name=$t"
+                set -e fwd_name
+            end
+            set skip_next 0
+        else if test "$t" = --
+            set dashdash 1
+        else
+            switch $t
+            case --category -c
+                set skip_next 1
+                set fwd_name category
+            case '--category=*' '-c=*'
+                set -a positional (string replace -r '^-c=' '--category=' -- $t)
+            case --filter
+                set skip_next 1
+                set fwd_name filter
+            case '--filter=*'
+                set -a positional $t
+            case '-*'
+                true
+            case '*'
+                set -a positional $t
+            end
+        end
+    end
+    set -l nargs (count $positional)
+    switch $nargs
+        case 0
+            myapp --@complete=items
+        case 1
+            myapp --@complete=values -- $positional
+        case '*'
+            myapp --@complete=values -- $positional
+    end
+end
+
+complete -c myapp -a "(__myapp_dynamic_args)" -f

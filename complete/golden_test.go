@@ -356,6 +356,30 @@ func genCollidingSubDynamicArgs() *complete.Generator {
 	}
 }
 
+func genForwardDynamicArgs() *complete.Generator {
+	return &complete.Generator{
+		AppName:     "myapp",
+		DynamicArgs: []string{"items", "values"},
+		Specs: []complete.Spec{
+			{
+				LongFlag:  "category",
+				ShortFlag: "c",
+				Terse:     "Target category",
+				HasArg:    true,
+				Forward:   true,
+				Values:    []string{"alpha", "beta", "gamma"},
+			},
+			{
+				LongFlag: "filter",
+				Terse:    "Result filter",
+				HasArg:   true,
+				Forward:  true,
+			},
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+	}
+}
+
 func genPositionalDynamicArgs() *complete.Generator {
 	return &complete.Generator{
 		AppName: "acme-plugin",
@@ -396,6 +420,7 @@ func TestGolden(t *testing.T) {
 		"enumslice":               genEnumSlice(),
 		"ext":                     genExt(),
 		"flat":                    genFlat(),
+		"forwarddynamicargs":      genForwardDynamicArgs(),
 		"globalflags":             genGlobalFlags(),
 		"hide":                    genHide(),
 		"hints":                   genHints(),

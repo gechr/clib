@@ -12,6 +12,7 @@ const (
 	Enum        = "enum"
 	EnumTerse   = "enum-terse"
 	Ext         = "ext"
+	Forward     = "forward"
 	Group       = "group"
 	HideLong    = "hide-long"
 	HideShort   = "hide-short"

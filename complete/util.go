@@ -53,6 +53,12 @@ func ValidateSpecs(specs []Spec) error {
 				return err
 			}
 		}
+		if spec.Forward && spec.LongFlag == "" {
+			return fmt.Errorf("forward flag requires a LongFlag name")
+		}
+		if spec.Forward && !spec.HasArg {
+			return fmt.Errorf("forward flag %q requires HasArg", spec.LongFlag)
+		}
 		if spec.Extension != "" {
 			if err := validateExtensionList(spec.Extension); err != nil {
 				return err

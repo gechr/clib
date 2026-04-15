@@ -18,14 +18,13 @@ func TestPrint_BuiltInShellsWithoutRegistration(t *testing.T) {
 			shell: "bash",
 			want: `# myapp bash completion
 _myapp() {
-    local i cur prev opts cmd
+    local i cur opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
         cur="$2"
     else
         cur="${COMP_WORDS[COMP_CWORD]}"
     fi
-    prev="$3"
     cmd=""
     opts=""
 
@@ -246,6 +245,7 @@ func TestFishWriteTokenClassifier(t *testing.T) {
 		&sb,
 		[]string{"--output", "-o"},
 		[]string{"--output=*", "-o=*"},
+		nil,
 		1,
 		"    ",
 	)
