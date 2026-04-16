@@ -6,7 +6,7 @@ A reusable Go library that plugs into existing CLI frameworks to add helpers, sh
 
 | Package      | Description                                                                    |
 | ------------ | ------------------------------------------------------------------------------ |
-| `ansi`       | Terminal-aware ANSI output                                                     |
+| `ansi`       | Terminal-aware ANSI output and text wrapping                                   |
 | `cli/cobra`  | [Cobra](https://github.com/spf13/cobra) framework adapters                     |
 | `cli/kong`   | [Kong](https://github.com/alecthomas/kong) framework adapters                  |
 | `cli/urfave` | [urfave/cli](https://github.com/urfave/cli) framework adapters                 |
@@ -44,6 +44,18 @@ w = ansi.New(ansi.WithHyperlinkFallback(ansi.HyperlinkFallbackMarkdown))
 // HyperlinkFallbackMarkdown           → "[text](url)"
 // HyperlinkFallbackText               → "text"
 // HyperlinkFallbackURL                → "url"
+
+// ANSI-aware text wrapping (preserves colors, hyperlinks across line breaks):
+ansi.WrapSoft(line, 80)  // soft wrap at spaces only (hyphens stay intact)
+ansi.WrapHard(line, 80)  // hard wrap at exact column width
+
+// Configurable wrapper with builder pattern:
+w := ansi.NewWrapper(                 // defaults: soft wrap at terminal width
+    ansi.WithWidth(80),               // explicit width (default: terminal width)
+    ansi.WithWrapHard(),              // hard wrap mode
+    ansi.WithBreakpoints("-"),        // additional break chars beyond spaces
+    ansi.WithWidthFunc(output.Width), // dynamic width (re-query each call)
+)
 ```
 
 ### Terminal Detection
