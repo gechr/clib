@@ -16,6 +16,7 @@ const (
 	tagPlaceholder = "placeholder"
 	tagPredictor   = "predictor"
 	tagShort       = "short"
+	tagShowAliases = "show-aliases"
 )
 
 // Kong struct tag values.

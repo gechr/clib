@@ -553,9 +553,37 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	require.True(t, found, "expected inherited verbose flag")
 }
 
-func TestNodeSections_Aliases(t *testing.T) {
+func TestNodeSections_AliasesHiddenByDefault(t *testing.T) {
 	type CLI struct {
 		Format struct{} `help:"Format code" aliases:"fmt" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"format", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	require.Nil(t, findSection(sections, "Aliases"))
+}
+
+func TestNodeSections_ShowAliasesOption(t *testing.T) {
+	type CLI struct {
+		Format struct{} `help:"Format code" aliases:"fmt" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"format", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx, kong.WithShowAliases())
+	require.NoError(t, err)
+
+	aliases := findSection(sections, "Aliases")
+	require.NotNil(t, aliases)
+	text, ok := aliases.Content[0].(help.Text)
+	require.True(t, ok)
+	require.Equal(t, help.Text("fmt"), text)
+}
+
+func TestNodeSections_ShowAliasesTag(t *testing.T) {
+	type CLI struct {
+		Format struct{} `help:"Format code" aliases:"fmt" cmd:"" show-aliases:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"format", "--help"}, konglib.Name("myapp"))

@@ -67,7 +67,17 @@ type NodeSectionsOption func(*nodeSectionsConfig)
 
 type nodeSectionsConfig struct {
 	hideArguments bool
+	showAliases   bool
 	argsCLI       any // when set, use reflected args instead of kong's
+}
+
+// WithShowAliases opts into rendering the "Aliases" section. By default
+// aliases are hidden - they exist to make commands callable by alternate
+// names but are not advertised in help output unless explicitly enabled
+// globally with this option, or per-command via the `show-aliases:""`
+// struct tag.
+func WithShowAliases() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.showAliases = true }
 }
 
 // WithHideArguments suppresses the "Arguments" section from the output.
@@ -132,8 +142,13 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		}
 	}
 
-	// Aliases section.
-	if len(node.Aliases) > 0 {
+	// Aliases section. Hidden by default; enabled globally by WithShowAliases(),
+	// or per-command via the `show-aliases:""` struct tag.
+	showAliases := cfg.showAliases
+	if !showAliases && node.Tag != nil && node.Tag.Has(tagShowAliases) {
+		showAliases = true
+	}
+	if showAliases && len(node.Aliases) > 0 {
 		sections = append(sections, help.Section{
 			Title:   "Aliases",
 			Content: []help.Content{help.Text(strings.Join(node.Aliases, ", "))},
