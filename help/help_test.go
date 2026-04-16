@@ -77,6 +77,47 @@ func TestRender_Usage_SubcommandArg(t *testing.T) {
 	)
 }
 
+func TestRender_Aliases_DefaultsToHelpCommand(t *testing.T) {
+	r := help.NewRenderer(testTheme())
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Aliases", Content: []help.Content{help.Aliases{"fmt", "format-code", "f"}}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	th := testTheme()
+	require.Equal(
+		t,
+		th.HelpSection.Render("Aliases")+"\n\n  "+
+			th.HelpCommand.Render("fmt")+", "+
+			th.HelpCommand.Render("format-code")+", "+
+			th.HelpCommand.Render("f")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_Aliases_UsesHelpAliasWhenSet(t *testing.T) {
+	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	th := testTheme().With(theme.WithHelpAlias(custom))
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Aliases", Content: []help.Content{help.Aliases{"fmt", "f"}}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		th.HelpSection.Render("Aliases")+"\n\n  "+
+			th.HelpAlias.Render("fmt")+", "+
+			th.HelpAlias.Render("f")+"\n",
+		buf.String(),
+	)
+	// The ", " separator must be unstyled - verify by reconstructing without
+	// the separator being passed through any Render call.
+	require.Contains(t, buf.String(), ", ")
+}
+
 func TestRender_Args(t *testing.T) {
 	r := help.NewRenderer(testTheme())
 	var buf bytes.Buffer

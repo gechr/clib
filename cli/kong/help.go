@@ -151,7 +151,7 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 	if showAliases && len(node.Aliases) > 0 {
 		sections = append(sections, help.Section{
 			Title:   "Aliases",
-			Content: []help.Content{help.Text(strings.Join(node.Aliases, ", "))},
+			Content: []help.Content{help.Aliases(node.Aliases)},
 		})
 	}
 

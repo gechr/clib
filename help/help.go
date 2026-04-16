@@ -71,6 +71,13 @@ type Text string
 
 func (Text) helpContent() {}
 
+// Aliases is a list of alias names. Each name is styled with HelpAlias,
+// falling back to HelpCommand when HelpAlias is unset. Separators (", ")
+// between names are left unstyled.
+type Aliases []string
+
+func (Aliases) helpContent() {}
+
 // Example describes a help example with a comment and command.
 type Example struct {
 	Comment string

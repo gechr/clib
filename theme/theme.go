@@ -47,27 +47,28 @@ type Theme struct {
 	BoldGreen *lipgloss.Style
 
 	// Help styles.
-	HelpSection                *lipgloss.Style
-	HelpCommand                *lipgloss.Style
-	HelpSubcommand             *lipgloss.Style
-	HelpFlag                   *lipgloss.Style
+	HelpAlias                  *lipgloss.Style
 	HelpArg                    *lipgloss.Style
 	HelpArgOptional            *lipgloss.Style
-	HelpValuePlaceholder       *lipgloss.Style
-	HelpDim                    *lipgloss.Style
 	HelpBoldDim                *lipgloss.Style
+	HelpCommand                *lipgloss.Style
+	HelpDescBacktick           *lipgloss.Style // Backtick-enclosed text in flag descriptions (nil = leave backticks intact).
+	HelpDim                    *lipgloss.Style
+	HelpEnumDefault            *lipgloss.Style // Default value in EnumStyleHighlightDefault lists (default: dim green).
+	HelpFlag                   *lipgloss.Style
+	HelpFlagBacktick           *lipgloss.Style // Override for backtick-enclosed flag-like text in descriptions (nil = fall back to HelpFlag).
+	HelpFlagDefault            *lipgloss.Style // [default: ...] annotations in flag descriptions.
+	HelpFlagExample            *lipgloss.Style // [example: ...] annotations in flag descriptions.
+	HelpFlagNote               *lipgloss.Style // Trailing (...) notes in flag descriptions.
+	HelpKeyValueSeparator      rune            // Separator between flag and placeholder (default: ' ').
+	HelpKeyValueSeparatorStyle *lipgloss.Style // Style applied to the separator (default: nil = unstyled).
+	HelpRepeatEllipsis         *lipgloss.Style // "…" suffix on repeatable flag placeholders (default: dim red).
+	HelpRepeatEllipsisEnabled  bool            // Whether to show "…" suffix on repeatable placeholders (default: true).
+	HelpSection                *lipgloss.Style
+	HelpSubcommand             *lipgloss.Style
 	HelpUsageExample           HelpUsageExampleStyle // Examples section prompt and command styling.
-	HelpFlagExample            *lipgloss.Style       // [example: ...] annotations in flag descriptions.
-	HelpFlagNote               *lipgloss.Style       // Trailing (...) notes in flag descriptions.
-	HelpFlagDefault            *lipgloss.Style       // [default: ...] annotations in flag descriptions.
-	HelpEnumDefault            *lipgloss.Style       // Default value in EnumStyleHighlightDefault lists (default: dim green).
-	HelpDescBacktick           *lipgloss.Style       // Backtick-enclosed text in flag descriptions (nil = leave backticks intact).
-	HelpFlagBacktick           *lipgloss.Style       // Override for backtick-enclosed flag-like text in descriptions (nil = fall back to HelpFlag).
-	HelpKeyValueSeparator      rune                  // Separator between flag and placeholder (default: ' ').
-	HelpKeyValueSeparatorStyle *lipgloss.Style       // Style applied to the separator (default: nil = unstyled).
-	HelpRepeatEllipsis         *lipgloss.Style       // "…" suffix on repeatable flag placeholders (default: dim red).
-	HelpRepeatEllipsisEnabled  bool                  // Whether to show "…" suffix on repeatable placeholders (default: true).
-	EnumStyle                  EnumStyle             // How enum values are rendered in help output.
+	HelpValuePlaceholder       *lipgloss.Style
+	EnumStyle                  EnumStyle // How enum values are rendered in help output.
 
 	// Markdown styles.
 	MarkdownCode *lipgloss.Style
@@ -107,29 +108,22 @@ func defaultTheme() *Theme {
 		Orange:    new(lipgloss.NewStyle().Foreground(lipgloss.Color("208"))),
 		BoldGreen: new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
 
-		HelpSection:          new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))),
-		HelpCommand:          new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
-		HelpSubcommand:       new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))),
-		HelpFlag:             new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
-		HelpArg:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
-		HelpArgOptional:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
-		HelpValuePlaceholder: new(lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1"))),
-		HelpDim:              new(lipgloss.NewStyle().Faint(true)),
+		HelpArg:         new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
+		HelpArgOptional: new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
 		HelpBoldDim: new(lipgloss.NewStyle().
 			Bold(true).
 			Faint(true).
 			Foreground(lipgloss.Color("4"))),
+		HelpCommand:      new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
+		HelpDescBacktick: new(lipgloss.NewStyle().Foreground(lipgloss.Color("189"))),
+		HelpDim:          new(lipgloss.NewStyle().Faint(true)),
 		HelpEnumDefault: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("2")),
 		),
-		HelpUsageExample: HelpUsageExampleStyle{
-			Prompt:      "$",
-			PromptStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("2")),
-		},
+		HelpFlag:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
+		HelpFlagDefault:       new(lipgloss.NewStyle().Faint(true)),
 		HelpFlagExample:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
 		HelpFlagNote:          new(lipgloss.NewStyle().Faint(true)),
-		HelpFlagDefault:       new(lipgloss.NewStyle().Faint(true)),
-		HelpDescBacktick:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("189"))),
 		HelpKeyValueSeparator: ' ',
 		HelpKeyValueSeparatorStyle: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1")),
@@ -138,7 +132,18 @@ func defaultTheme() *Theme {
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1")),
 		),
 		HelpRepeatEllipsisEnabled: true,
-		EnumStyle:                 EnumStyleHighlightDefault,
+		HelpSection: new(
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3")),
+		),
+		HelpSubcommand: new(
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4")),
+		),
+		HelpUsageExample: HelpUsageExampleStyle{
+			Prompt:      "$",
+			PromptStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("2")),
+		},
+		HelpValuePlaceholder: new(lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("1"))),
+		EnumStyle:            EnumStyleHighlightDefault,
 
 		MarkdownCode: new(lipgloss.NewStyle().Foreground(lipgloss.Color("#98d5d3"))),
 		MarkdownText: new(lipgloss.NewStyle().Foreground(lipgloss.Color("#D8DEE9"))),
@@ -225,17 +230,17 @@ func (t *Theme) Init() *Theme {
 	ensureStyle(&n.Magenta)
 	ensureStyle(&n.Orange)
 	ensureStyle(&n.BoldGreen)
-	ensureStyle(&n.HelpSection)
-	ensureStyle(&n.HelpCommand)
-	ensureStyle(&n.HelpSubcommand)
-	ensureStyle(&n.HelpFlag)
 	ensureStyle(&n.HelpArg)
 	ensureStyle(&n.HelpArgOptional)
-	ensureStyle(&n.HelpValuePlaceholder)
-	ensureStyle(&n.HelpDim)
 	ensureStyle(&n.HelpBoldDim)
+	ensureStyle(&n.HelpCommand)
+	ensureStyle(&n.HelpDim)
 	ensureStyle(&n.HelpEnumDefault)
+	ensureStyle(&n.HelpFlag)
 	ensureStyle(&n.HelpRepeatEllipsis)
+	ensureStyle(&n.HelpSection)
+	ensureStyle(&n.HelpSubcommand)
+	ensureStyle(&n.HelpValuePlaceholder)
 	ensureStyle(&n.MarkdownCode)
 	ensureStyle(&n.MarkdownText)
 
@@ -282,6 +287,12 @@ func WithEnumStyle(s EnumStyle) Option {
 // WithGreen sets the green color style.
 func WithGreen(s lipgloss.Style) Option {
 	return func(t *Theme) { t.Green = new(s) }
+}
+
+// WithHelpAlias sets the style for alias names in the Aliases section.
+// When unset, aliases fall back to the HelpCommand style.
+func WithHelpAlias(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpAlias = new(s) }
 }
 
 // WithHelpArg sets the style for argument names in help output.

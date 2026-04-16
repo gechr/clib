@@ -145,6 +145,17 @@ func (r *Renderer) renderContent(
 	case Text:
 		_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), string(c))
 		return err
+	case Aliases:
+		style := r.Theme.HelpAlias
+		if style == nil {
+			style = r.Theme.HelpCommand
+		}
+		parts := make([]string, len(c))
+		for i, a := range c {
+			parts[i] = style.Render(a)
+		}
+		_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), strings.Join(parts, ", "))
+		return err
 	case Examples:
 		return r.renderExamples(w, c, ind)
 	case *Section:

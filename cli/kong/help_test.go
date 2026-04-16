@@ -576,9 +576,9 @@ func TestNodeSections_ShowAliasesOption(t *testing.T) {
 
 	aliases := findSection(sections, "Aliases")
 	require.NotNil(t, aliases)
-	text, ok := aliases.Content[0].(help.Text)
+	list, ok := aliases.Content[0].(help.Aliases)
 	require.True(t, ok)
-	require.Equal(t, help.Text("fmt"), text)
+	require.Equal(t, help.Aliases{"fmt"}, list)
 }
 
 func TestNodeSections_ShowAliasesTag(t *testing.T) {
@@ -592,9 +592,9 @@ func TestNodeSections_ShowAliasesTag(t *testing.T) {
 
 	aliases := findSection(sections, "Aliases")
 	require.NotNil(t, aliases)
-	text, ok := aliases.Content[0].(help.Text)
+	list, ok := aliases.Content[0].(help.Aliases)
 	require.True(t, ok)
-	require.Equal(t, help.Text("fmt"), text)
+	require.Equal(t, help.Aliases{"fmt"}, list)
 }
 
 func TestNodeSections_PositionalArgs(t *testing.T) {
