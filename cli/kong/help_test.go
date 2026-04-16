@@ -520,7 +520,7 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	sections, err := kong.NodeSections(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, sectionTitles(sections))
+	require.Equal(t, []string{"Usage", "Options", "Global Options"}, sectionTitles(sections))
 
 	// Usage path should be "myapp run".
 	usage := findSection(sections, "Usage")
@@ -541,7 +541,7 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	require.True(t, found, "expected output flag")
 
 	// Inherited Flags should have verbose.
-	inherited := findSection(sections, "Inherited Options")
+	inherited := findSection(sections, "Global Options")
 	ifg, ok := inherited.Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	found = false
@@ -878,7 +878,7 @@ func TestNodeSections_GroupedWithUngroupedLocalAndInherited(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]string{"Usage", "Filters", "Options", "Inherited Options"},
+		[]string{"Usage", "Filters", "Options", "Global Options"},
 		sectionTitles(sections),
 	)
 }
@@ -897,7 +897,7 @@ func TestNodeSections_GroupedInheritedTriggersGroupedMode(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]string{"Usage", "Output", "Options", "Inherited Options"},
+		[]string{"Usage", "Output", "Options", "Global Options"},
 		sectionTitles(sections),
 	)
 }

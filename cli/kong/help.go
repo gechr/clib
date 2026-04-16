@@ -421,10 +421,10 @@ func ancestorFlags(node *konglib.Node) []*konglib.Flag {
 
 // buildNodeFlagSections builds flag sections from a kong node:
 //   - If any flag has a clib group, split into group sections (sorted alphabetically),
-//     plus "Options" (ungrouped local) and "Inherited Options" (ungrouped inherited).
+//     plus "Options" (ungrouped local) and "Global Options" (ungrouped inherited).
 //   - Compound group names ("Section/SubGroup") split flags within the same
 //     section into separate FlagGroup entries (blank line separator).
-//   - Otherwise: flat "Options" (local) + "Inherited Options" (ancestor).
+//   - Otherwise: flat "Options" (local) + "Global Options" (ancestor).
 func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
 	inherited := ancestorFlags(node)
 

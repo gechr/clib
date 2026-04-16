@@ -447,11 +447,11 @@ func KeepGroupOrder() FlagSectionsOption {
 // BuildFlagSections assembles flag help sections from pre-classified flags.
 //
 // When no flag carries a group name, two flat sections are produced:
-// "Options" (local) and "Inherited Options" (inherited), each omitted if empty.
+// "Options" (local) and "Global Options" (inherited), each omitted if empty.
 //
 // When any flag has a group, flags are organized into one section per group
 // (sorted alphabetically by default), with ungrouped local flags under "Options"
-// and ungrouped inherited flags under "Inherited Options".
+// and ungrouped inherited flags under "Global Options".
 // Pass KeepGroupOrder() to preserve first-seen order instead of sorting.
 //
 // Compound group names ("Section/SubGroup") split flags within the same
@@ -482,7 +482,7 @@ func BuildFlagSections(flags []ClassifiedFlag, opts ...FlagSectionsOption) []Sec
 	return buildGroupedFlagSections(flags, cfg.keepGroupOrder)
 }
 
-// buildFlatFlagSections builds simple "Options" / "Inherited Options" sections
+// buildFlatFlagSections builds simple "Options" / "Global Options" sections
 // when no flag carries a group name.
 func buildFlatFlagSections(flags []ClassifiedFlag) []Section {
 	var local, inherited FlagGroup
@@ -502,7 +502,7 @@ func buildFlatFlagSections(flags []ClassifiedFlag) []Section {
 	}
 	if len(inherited) > 0 {
 		sections = append(sections, Section{
-			Title:   "Inherited Options",
+			Title:   "Global Options",
 			Content: []Content{inherited},
 		})
 	}
@@ -575,7 +575,7 @@ func buildGroupedFlagSections(flags []ClassifiedFlag, keepOrder bool) []Section 
 	}
 	if len(ungroupedInherited) > 0 {
 		sections = append(sections, Section{
-			Title:   "Inherited Options",
+			Title:   "Global Options",
 			Content: []Content{ungroupedInherited},
 		})
 	}

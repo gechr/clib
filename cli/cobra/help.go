@@ -240,8 +240,8 @@ func formatCommandList(cmds []*cobralib.Command) help.CommandGroup {
 // buildFlagSections builds flag help sections from a cobra command.
 // If any visible flag has a clib "group" extra, flags are split into
 // one section per group (alphabetical order), with ungrouped flags falling
-// through to "Options" (local) or "Inherited Options" (inherited).
-// If no flag has a group, the flat "Options" / "Inherited Options" layout is used.
+// through to "Options" (local) or "Global Options" (inherited).
+// If no flag has a group, the flat "Options" / "Global Options" layout is used.
 func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Section, bool) {
 	var classified []help.ClassifiedFlag
 	hideInherited := cfg.hideInheritedFlags ||

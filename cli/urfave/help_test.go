@@ -345,7 +345,7 @@ func TestSections_InheritedFlags(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, titles)
+	require.Equal(t, []string{"Usage", "Options", "Global Options"}, titles)
 }
 
 func TestSections_GroupedWithInherited(t *testing.T) {
@@ -379,8 +379,8 @@ func TestSections_GroupedWithInherited(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	// Should have "Filters" group and "Inherited Options" for ungrouped inherited.
-	require.Equal(t, []string{"Usage", "Filters", "Options", "Inherited Options"}, titles)
+	// Should have "Filters" group and "Global Options" for ungrouped inherited.
+	require.Equal(t, []string{"Usage", "Filters", "Options", "Global Options"}, titles)
 }
 
 func TestSections_HiddenFlagsFiltered(t *testing.T) {

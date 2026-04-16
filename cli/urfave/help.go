@@ -103,7 +103,7 @@ func commandSection(cmds []*clilib.Command) help.Section {
 // buildFlagSections builds flag help sections from a urfave command.
 // If any visible flag has a group (via urfave Category or clib extra),
 // flags are split into group sections (alphabetical), with ungrouped local
-// flags under "Options" and ungrouped inherited flags under "Inherited Options".
+// flags under "Options" and ungrouped inherited flags under "Global Options".
 func buildFlagSections(cmd *clilib.Command) ([]help.Section, bool) {
 	localFlags, inheritedFlags := splitFlags(cmd)
 

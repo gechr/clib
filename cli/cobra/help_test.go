@@ -471,7 +471,7 @@ func TestSectionsWithOptions_ShowInheritedFlagsOnSubcommands(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Options", "Inherited Options"}, titles)
+	require.Equal(t, []string{"Usage", "Options", "Global Options"}, titles)
 }
 
 func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {

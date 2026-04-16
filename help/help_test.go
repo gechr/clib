@@ -1944,7 +1944,7 @@ func TestBuildFlagSections_UngroupedLocalAndInherited(t *testing.T) {
 
 	require.Len(t, result, 2)
 	require.Equal(t, "Options", result[0].Title)
-	require.Equal(t, "Inherited Options", result[1].Title)
+	require.Equal(t, "Global Options", result[1].Title)
 
 	localFg, ok := result[0].Content[0].(help.FlagGroup)
 	require.True(t, ok)
@@ -2039,11 +2039,11 @@ func TestBuildFlagSections_GroupedWithUngroupedFlags(t *testing.T) {
 
 	result := help.BuildFlagSections(flags)
 
-	// "Output" group + "Options" (ungrouped local) + "Inherited Options" (ungrouped inherited).
+	// "Output" group + "Options" (ungrouped local) + "Global Options" (ungrouped inherited).
 	require.Len(t, result, 3)
 	require.Equal(t, "Output", result[0].Title)
 	require.Equal(t, "Options", result[1].Title)
-	require.Equal(t, "Inherited Options", result[2].Title)
+	require.Equal(t, "Global Options", result[2].Title)
 
 	localFg, ok := result[1].Content[0].(help.FlagGroup)
 	require.True(t, ok)
@@ -2232,14 +2232,14 @@ func TestWithHelpFlagsInSection_CreatesSection(t *testing.T) {
 func TestWithRenamedSection(t *testing.T) {
 	sections := []help.Section{
 		{Title: "Usage", Content: []help.Content{help.Text("app [options]")}},
-		{Title: "Inherited Options", Content: []help.Content{help.FlagGroup{{Long: "debug"}}}},
+		{Title: "Global Options", Content: []help.Content{help.FlagGroup{{Long: "debug"}}}},
 	}
 
-	result := help.Apply(sections, help.WithRenamedSection("Inherited Options", "Global Options"))
+	result := help.Apply(sections, help.WithRenamedSection("Global Options", "Shared Options"))
 
 	require.Len(t, result, 2)
 	require.Equal(t, "Usage", result[0].Title)
-	require.Equal(t, "Global Options", result[1].Title)
+	require.Equal(t, "Shared Options", result[1].Title)
 }
 
 func TestWithoutSection(t *testing.T) {
@@ -2320,7 +2320,7 @@ func TestBuildFlagSections_InheritedOnly(t *testing.T) {
 	result := help.BuildFlagSections(flags)
 
 	require.Len(t, result, 1)
-	require.Equal(t, "Inherited Options", result[0].Title)
+	require.Equal(t, "Global Options", result[0].Title)
 
 	fg, ok := result[0].Content[0].(help.FlagGroup)
 	require.True(t, ok)
