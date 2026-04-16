@@ -12,7 +12,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/gechr/clib/shell"
+	"github.com/gechr/x/shell"
 )
 
 // Handler is called when a dynamic completion is requested.

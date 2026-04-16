@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/gechr/clib/human"
+	"github.com/gechr/x/human"
 )
 
 // HelpUsageExampleStyle controls the rendering of examples in the

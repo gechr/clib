@@ -12,7 +12,7 @@ import (
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
 	"github.com/gechr/clib/internal/tag"
-	"github.com/gechr/clib/shell"
+	"github.com/gechr/x/shell"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

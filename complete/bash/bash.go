@@ -2,7 +2,7 @@ package bash
 
 import (
 	"github.com/gechr/clib/complete"
-	"github.com/gechr/clib/shell"
+	"github.com/gechr/x/shell"
 )
 
 //nolint:gochecknoinits // shell subpackages register themselves via init by design

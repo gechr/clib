@@ -6,15 +6,11 @@ A reusable Go library that plugs into existing CLI frameworks to add helpers, sh
 
 | Package      | Description                                                                    |
 | ------------ | ------------------------------------------------------------------------------ |
-| `ansi`       | Terminal-aware ANSI output and text wrapping                                   |
 | `cli/cobra`  | [Cobra](https://github.com/spf13/cobra) framework adapters                     |
 | `cli/kong`   | [Kong](https://github.com/alecthomas/kong) framework adapters                  |
 | `cli/urfave` | [urfave/cli](https://github.com/urfave/cli) framework adapters                 |
 | `complete`   | Shell completion generation (bash, zsh, fish)                                  |
 | `help`       | Structured help rendering with themed output                                   |
-| `human`      | Human-friendly formatting                                                      |
-| `shell`      | Shell detection                                                                |
-| `terminal`   | Terminal detection                                                             |
 | `theme`      | Configurable theme (via [lipgloss](https://github.com/charmbracelet/lipgloss)) |
 
 ## Installation
@@ -24,49 +20,6 @@ go get github.com/gechr/clib
 ```
 
 ## Usage
-
-### ANSI Output
-
-Auto-detect terminal support, or force/disable ANSI output:
-
-```go
-w := ansi.Auto()                          // detect from os.Stdout
-w := ansi.Auto(os.Stdout, os.Stderr)      // all must be terminals
-w := ansi.Force()                         // always emit ANSI
-w := ansi.Never()                         // plain text only
-w := ansi.New(ansi.WithTerminal(true))    // manual configuration
-
-w.Hyperlink("https://example.com", "click here")  // OSC 8 hyperlink
-
-// Control how hyperlinks render in non-terminal output:
-w = ansi.New(ansi.WithHyperlinkFallback(ansi.HyperlinkFallbackMarkdown))
-// HyperlinkFallbackExpanded (default) → "text (url)"
-// HyperlinkFallbackMarkdown           → "[text](url)"
-// HyperlinkFallbackText               → "text"
-// HyperlinkFallbackURL                → "url"
-
-// ANSI-aware text wrapping (preserves colors, hyperlinks across line breaks):
-ansi.WrapSoft(line, 80)  // soft wrap at spaces only (hyphens stay intact)
-ansi.WrapHard(line, 80)  // hard wrap at exact column width
-
-// Configurable wrapper with builder pattern:
-w := ansi.NewWrapper(                 // defaults: soft wrap at terminal width
-    ansi.WithWidth(80),               // explicit width (default: terminal width)
-    ansi.WithWrapHard(),              // hard wrap mode
-    ansi.WithBreakpoints("-"),        // additional break chars beyond spaces
-    ansi.WithWidthFunc(output.Width), // dynamic width (re-query each call)
-)
-```
-
-### Terminal Detection
-
-```go
-if terminal.Is(os.Stdout) {
-    // stdout is a terminal
-}
-
-width := terminal.Width(os.Stdout)  // column count, 0 if not a terminal
-```
 
 ### Theme
 
@@ -228,20 +181,6 @@ The `terse` key provides a very short description for completions (falls back to
 Use `order=keep` (Kong) or `Order: complete.OrderKeep` (Cobra/urfave) to preserve fish completion order for a flag by emitting `complete -k`.
 Use `order=shell` or `Order: complete.OrderShell` to force the shell's normal ordering for a flag.
 Use `complete.WithOrder(complete.OrderKeep)` to make keep-order the generator default.
-
-### Time-Ago
-
-```go
-styled  := th.RenderTimeAgo(someTime, true)     // colored based on thresholds
-plain   := human.FormatTimeAgo(someTime)        // "3 hours ago"
-compact := human.FormatTimeAgoCompact(someTime) // "3h ago"
-```
-
-### Path Formatting
-
-```go
-human.ContractHome("/Users/alice/Documents")  // "~/Documents"
-```
 
 ### Enum Formatting
 

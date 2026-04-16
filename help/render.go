@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/gechr/clib/terminal"
 	"github.com/gechr/clib/theme"
+	"github.com/gechr/x/terminal"
 )
 
 // Renderer renders styled help output.

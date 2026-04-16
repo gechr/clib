@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/gechr/clib/human"
+	"github.com/gechr/x/human"
 )
 
 // palette holds the core colors that define a theme preset.

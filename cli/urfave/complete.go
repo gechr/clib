@@ -10,7 +10,7 @@ import (
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
-	"github.com/gechr/clib/shell"
+	"github.com/gechr/x/shell"
 	clilib "github.com/urfave/cli/v3"
 )
 

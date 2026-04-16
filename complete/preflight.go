@@ -3,7 +3,7 @@ package complete
 import (
 	"os"
 
-	"github.com/gechr/clib/shell"
+	"github.com/gechr/x/shell"
 )
 
 // CompletionFlags provides standalone completion flags for pre-parse handling.

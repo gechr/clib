@@ -3,7 +3,7 @@ package theme
 import (
 	"time"
 
-	"github.com/gechr/clib/human"
+	"github.com/gechr/x/human"
 )
 
 // RenderTimeAgo formats a time as a colored relative string using the theme's
