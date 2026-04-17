@@ -2075,6 +2075,41 @@ func TestBuildFlagSections_KeepGroupOrder(t *testing.T) {
 	require.Equal(t, "Filter", result[1].Title)
 }
 
+func TestBuildFlagSections_UserGroupMatchingDefaultTitleMerges(t *testing.T) {
+	// When user-defined groups ("Options/N") share the title of the default
+	// section for ungrouped flags ("Options"), the ungrouped flags must merge
+	// into the existing section rather than produce a duplicate header, and
+	// the help flag must still land last.
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "alpha"}, Group: "Options/1", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "beta"}, Group: "Options/2", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "gamma"}, Group: "", AncestorDepth: 1},
+		{Flag: help.Flag{Short: "h", Long: "help"}, Group: "", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags)
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+	require.Len(t, result[0].Content, 4)
+
+	fg0, ok := result[0].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "alpha", fg0[0].Long)
+
+	fg1, ok := result[0].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "beta", fg1[0].Long)
+
+	fg2, ok := result[0].Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "gamma", fg2[0].Long)
+
+	fg3, ok := result[0].Content[3].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "help", fg3[0].Long)
+}
+
 func TestBuildFlagSections_GroupedWithUngroupedFlags(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "format"}, Group: "Output", AncestorDepth: 0},

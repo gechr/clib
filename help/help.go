@@ -586,6 +586,10 @@ func flagsByDepth(flags []ClassifiedFlag) []FlagGroup {
 // in a single "Options" section as blank-line-separated sub-groups. Under
 // separateGlobal, the deepest sub-group is emitted as "Global Options"
 // instead, while any shallower sub-groups remain in "Options".
+//
+// If a section with the target title already exists (e.g. user-defined
+// "Options/N" groups), the ungrouped content is merged into it rather than
+// producing a duplicate section header.
 func assembleFlagSections(
 	sections []Section,
 	depthGroups []FlagGroup,
@@ -601,8 +605,8 @@ func assembleFlagSections(
 		for _, g := range local {
 			localContent = append(localContent, g)
 		}
-		sections = append(sections, Section{Title: "Options", Content: localContent})
-		sections = append(sections, Section{Title: "Global Options", Content: []Content{global}})
+		sections = mergeOrAppendSection(sections, "Options", localContent)
+		sections = mergeOrAppendSection(sections, "Global Options", []Content{global})
 		return sections
 	}
 	title := "Options"
@@ -613,6 +617,17 @@ func assembleFlagSections(
 	for _, g := range depthGroups {
 		content = append(content, g)
 	}
-	sections = append(sections, Section{Title: title, Content: content})
-	return sections
+	return mergeOrAppendSection(sections, title, content)
+}
+
+// mergeOrAppendSection appends content to an existing section with the given
+// title, or creates a new section if none exists.
+func mergeOrAppendSection(sections []Section, title string, content []Content) []Section {
+	for i := range sections {
+		if sections[i].Title == title {
+			sections[i].Content = append(sections[i].Content, content...)
+			return sections
+		}
+	}
+	return append(sections, Section{Title: title, Content: content})
 }
