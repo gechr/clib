@@ -192,8 +192,8 @@ func TestReflect_EmbeddedStruct(t *testing.T) {
 	require.False(t, f.HasArg)
 }
 
-// testPrlLikeCLI mirrors prl's CLI struct to exercise all tag varieties.
-type testPrlLikeCLI struct {
+// testFullCLI is a comprehensive CLI struct used to exercise all tag varieties.
+type testFullCLI struct {
 	kong.CompletionFlags
 
 	Query   []string      `help:"Search query" arg:""                   optional:""`
@@ -212,8 +212,8 @@ type testPrlLikeCLI struct {
 	Sub struct{} `help:"A subcommand" cmd:""` // cmd fields should be skipped
 }
 
-func TestReflect_PrlLikeCLI(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+func TestReflect_FullCLI(t *testing.T) {
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 
 	// 1 arg (Query) + 10 named + 1 auto-derived (NoName) = 12 total
@@ -222,7 +222,7 @@ func TestReflect_PrlLikeCLI(t *testing.T) {
 }
 
 func TestReflect_Aliases(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "org")
 	require.NotNil(t, f)
@@ -231,7 +231,7 @@ func TestReflect_Aliases(t *testing.T) {
 }
 
 func TestReflect_Optional(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 
 	var arg *complete.FlagMeta
@@ -246,7 +246,7 @@ func TestReflect_Optional(t *testing.T) {
 }
 
 func TestReflect_Placeholder(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "match")
 	require.NotNil(t, f)
@@ -255,7 +255,7 @@ func TestReflect_Placeholder(t *testing.T) {
 }
 
 func TestReflect_PlaceholderOverride_NativeTag(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "match")
 	require.NotNil(t, f)
@@ -289,7 +289,7 @@ func TestReflect_PlaceholderOverride_NotSetWhenEmpty(t *testing.T) {
 }
 
 func TestReflect_Group(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "limit")
 	require.NotNil(t, f)
@@ -298,7 +298,7 @@ func TestReflect_Group(t *testing.T) {
 }
 
 func TestReflect_PointerCSVFlag(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "author")
 	require.NotNil(t, f)
@@ -309,7 +309,7 @@ func TestReflect_PointerCSVFlag(t *testing.T) {
 }
 
 func TestReflect_IsSlice(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "filter")
 	require.NotNil(t, f)
@@ -319,7 +319,7 @@ func TestReflect_IsSlice(t *testing.T) {
 }
 
 func TestReflect_CompleteTag(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 
 	f := findFlagByName(flags, "repo")
@@ -348,7 +348,7 @@ func TestReflect_Order(t *testing.T) {
 }
 
 func TestReflect_AutoDeriveName(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	f := findFlagByName(flags, "no-name")
 	require.NotNil(t, f, "field without name tag should auto-derive kebab-case name")
@@ -357,7 +357,7 @@ func TestReflect_AutoDeriveName(t *testing.T) {
 }
 
 func TestReflect_SkipCmdFields(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 	for _, f := range flags {
 		if f.Origin == "Sub" {
@@ -367,7 +367,7 @@ func TestReflect_SkipCmdFields(t *testing.T) {
 }
 
 func TestReflect_ArgOrigin(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 
 	var arg *complete.FlagMeta
@@ -476,7 +476,7 @@ func TestReflect_FieldNameToFlag(t *testing.T) {
 }
 
 func TestReflect_ExcludesCompletionFlags(t *testing.T) {
-	flags, err := kong.Reflect(&testPrlLikeCLI{})
+	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)
 
 	completionNames := []string{

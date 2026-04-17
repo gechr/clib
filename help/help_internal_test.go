@@ -157,7 +157,7 @@ func TestSplitHelpFlags_NoExistingHelpFlag(t *testing.T) {
 
 func TestSplitHelpFlags_NoFlagSections(t *testing.T) {
 	sections := []Section{
-		{Title: "Usage", Content: []Content{Text("prl [options]")}},
+		{Title: "Usage", Content: []Content{Text("mycli [options]")}},
 	}
 
 	result := SplitHelpFlags(sections, "Short", "Long")

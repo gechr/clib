@@ -154,6 +154,12 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		// Recurse into nested subcommands.
 		sub.Subs = nodeSubSpecs(child)
+		// Subcommand-only groupers: flags at this level cannot take effect
+		// without picking a subcommand, so drop them from completions to
+		// match help output.
+		if len(sub.Subs) > 0 {
+			sub.Specs = nil
+		}
 		subs = append(subs, sub)
 	}
 	return subs

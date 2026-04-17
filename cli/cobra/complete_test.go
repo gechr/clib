@@ -613,19 +613,12 @@ func TestGenerator_PersistentFlagsPropagateToNestedSubcommands(t *testing.T) {
 		{LongFlag: "root-local", Terse: "Root local", HasArg: false},
 		{LongFlag: "root-persistent", Terse: "Root persistent", HasArg: false, Persistent: true},
 	}, gen.Specs)
+	// "parent" is a subcommand-only grouper, so its own flags are suppressed
+	// from completions. Only the leaf "child" carries specs.
 	require.Equal(t, []complete.SubSpec{
 		{
 			Name:  "parent",
 			Terse: "Parent command",
-			Specs: []complete.Spec{
-				{LongFlag: "parent-local", Terse: "Parent local", HasArg: false},
-				{
-					LongFlag:   "parent-persistent",
-					Terse:      "Parent persistent",
-					HasArg:     false,
-					Persistent: true,
-				},
-			},
 			Subs: []complete.SubSpec{
 				{
 					Name:  "child",

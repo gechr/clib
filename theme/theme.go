@@ -84,7 +84,7 @@ type Theme struct {
 // Option configures a Theme.
 type Option func(*Theme)
 
-// Default returns the default theme matching prl's hardcoded styles.
+// Default returns the default theme.
 func Default() *Theme {
 	if name := strings.TrimSpace(getEnv(envTheme)); name != "" {
 		var th Theme

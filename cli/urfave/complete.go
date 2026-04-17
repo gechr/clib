@@ -145,6 +145,12 @@ func commandSubSpecs(cmd *clilib.Command) []complete.SubSpec {
 		}
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		sub.Subs = commandSubSpecs(child)
+		// Subcommand-only groupers: flags at this level cannot take effect
+		// without picking a subcommand, so drop them from completions to
+		// match help output.
+		if len(sub.Subs) > 0 {
+			sub.Specs = nil
+		}
 		subs = append(subs, sub)
 	}
 	return subs

@@ -39,14 +39,14 @@ func TestRender_Usage(t *testing.T) {
 	var buf bytes.Buffer
 	sections := []help.Section{
 		{Title: "Usage", Content: []help.Content{
-			help.Usage{Command: "prl", ShowOptions: true, Args: []help.Arg{
+			help.Usage{Command: "mycli", ShowOptions: true, Args: []help.Arg{
 				{Name: "query"},
 			}},
 		}},
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
-	require.Equal(t, "Usage\n\n  prl [options] [<query>]\n", ansi.Strip(buf.String()))
+	require.Equal(t, "Usage\n\n  mycli [options] [<query>]\n", ansi.Strip(buf.String()))
 }
 
 func TestRender_Usage_SubcommandArg(t *testing.T) {
@@ -212,7 +212,7 @@ func TestRender_PropagatesWriteErrors(t *testing.T) {
 	r := help.NewRenderer(testTheme())
 	sections := []help.Section{
 		{Title: "Usage", Content: []help.Content{
-			help.Usage{Command: "prl"},
+			help.Usage{Command: "mycli"},
 		}},
 	}
 
@@ -325,15 +325,15 @@ func TestRender_Examples(t *testing.T) {
 	sections := []help.Section{
 		{Title: "Examples", Content: []help.Content{
 			help.Examples{
-				{Comment: "List PRs", Command: "prl"},
-				{Comment: "Search", Command: "prl foo"},
+				{Comment: "List PRs", Command: "mycli"},
+				{Comment: "Search", Command: "mycli foo"},
 			},
 		}},
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
 	require.Equal(t,
-		"Examples\n\n  # List PRs\n  $ prl\n\n  # Search\n  $ prl foo\n",
+		"Examples\n\n  # List PRs\n  $ mycli\n\n  # Search\n  $ mycli foo\n",
 		ansi.Strip(buf.String()),
 	)
 }
@@ -1133,7 +1133,7 @@ func TestRender_SingleQuotesStyled(t *testing.T) {
 	sections := []help.Section{
 		{Title: "Commands", Content: []help.Content{
 			help.CommandGroup{
-				{Name: "resolve", Desc: "Runtime resolution for 'prl' filters"},
+				{Name: "resolve", Desc: "Runtime resolution for 'mycli' filters"},
 			},
 		}},
 	}
@@ -1143,7 +1143,7 @@ func TestRender_SingleQuotesStyled(t *testing.T) {
 		th.HelpSection.Render("Commands")+"\n\n  "+
 			th.HelpSubcommand.Render(
 				"resolve",
-			)+"  Runtime resolution for "+s.Render("prl")+" filters\n",
+			)+"  Runtime resolution for "+s.Render("mycli")+" filters\n",
 		buf.String(),
 	)
 }

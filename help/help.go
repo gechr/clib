@@ -59,7 +59,7 @@ func (CommandGroup) helpContent() {}
 
 // Usage is an auto-styled usage line.
 type Usage struct {
-	Command     string // "prl" -> styled as HelpCommand
+	Command     string // "mycli" -> styled as HelpCommand
 	ShowOptions bool   // true -> renders [options] in HelpFlag style
 	Args        []Arg  // positional args with bracket style
 }

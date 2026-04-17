@@ -174,6 +174,12 @@ func commandSubSpecs(cmd *cobralib.Command) []complete.SubSpec {
 		applyCommandAnnotations(&sub, child)
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = commandPositionalLimit(child)
 		sub.Subs = commandSubSpecs(child)
+		// Subcommand-only groupers: flags at this level cannot take effect
+		// without picking a subcommand, so drop them from completions to
+		// match help output.
+		if len(sub.Subs) > 0 {
+			sub.Specs = nil
+		}
 		subs = append(subs, sub)
 	}
 	return subs
