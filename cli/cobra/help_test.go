@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/cli/cobra"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
@@ -55,6 +56,34 @@ func TestSections_Usage_RepeatableArg(t *testing.T) {
 	require.Equal(t, "dst", usage.Args[1].Name)
 	require.True(t, usage.Args[1].Required)
 	require.False(t, usage.Args[1].Repeatable)
+}
+
+func TestSections_WithRawUsage(t *testing.T) {
+	// kubectl-style Use: with shell metacharacters that clib's arg grammar
+	// would otherwise mangle.
+	const use = `get [(-o|--output=)json|yaml|name] (TYPE[.VERSION][.GROUP] [NAME] | TYPE[.VERSION][.GROUP]/NAME ...)`
+	cmd := &cobralib.Command{Use: use}
+	cmd.Flags().StringP("output", "o", "", "Output format")
+
+	sections := cobra.SectionsWithOptions(cobra.WithRawUsage())(cmd)
+
+	usage, ok := sections[0].Content[0].(help.Usage)
+	require.True(t, ok)
+	require.Equal(t, "get", usage.Command)
+	require.Empty(t, usage.Args, "raw usage must not emit structured args")
+	require.False(t, usage.ShowOptions, "raw usage must not auto-inject [options]")
+	require.Equal(
+		t,
+		`[(-o|--output=)json|yaml|name] (TYPE[.VERSION][.GROUP] [NAME] | TYPE[.VERSION][.GROUP]/NAME ...)`,
+		usage.Raw,
+	)
+
+	// End-to-end: render the section and confirm the raw string appears verbatim
+	// after the command name, with no bracketed arg styling.
+	r := help.NewRenderer(theme.Default())
+	var buf bytes.Buffer
+	require.NoError(t, r.Render(&buf, sections))
+	require.Contains(t, ansi.Strip(buf.String()), use)
 }
 
 func TestSections_Usage_NoFlags(t *testing.T) {

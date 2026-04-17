@@ -58,10 +58,16 @@ type CommandGroup []Command
 func (CommandGroup) helpContent() {}
 
 // Usage is an auto-styled usage line.
+//
+// When Raw is non-empty, it is appended verbatim after the styled Command and
+// the structured Args/ShowOptions fields are ignored. Use Raw to pass through
+// a pre-formatted usage string (for example, cobra's cmd.Use) when its shape
+// does not match clib's arg grammar.
 type Usage struct {
 	Command     string // "mycli" -> styled as HelpCommand
 	ShowOptions bool   // true -> renders [options] in HelpFlag style
 	Args        []Arg  // positional args with bracket style
+	Raw         string // when set, rendered verbatim after Command (disables Args/ShowOptions)
 }
 
 func (Usage) helpContent() {}
@@ -434,28 +440,6 @@ type ClassifiedFlag struct {
 	// one sub-group per distinct depth within the "Options" section, rendered
 	// with blank-line separators.
 	AncestorDepth int
-}
-
-// FlagSectionsOption configures BuildFlagSections behavior.
-type FlagSectionsOption func(*flagSectionsConfig)
-
-type flagSectionsConfig struct {
-	keepGroupOrder        bool
-	separateGlobalOptions bool
-}
-
-// WithKeepGroupOrder preserves first-seen order of groups instead of sorting
-// them alphabetically. Use this when the caller controls insertion order
-// and wants it preserved in the output.
-func WithKeepGroupOrder() FlagSectionsOption {
-	return func(c *flagSectionsConfig) { c.keepGroupOrder = true }
-}
-
-// WithSeparateGlobalOptions emits inherited flags under a dedicated
-// "Global Options" section instead of the default behavior, which merges
-// them into the "Options" section as a blank-line-separated sub-group.
-func WithSeparateGlobalOptions() FlagSectionsOption {
-	return func(c *flagSectionsConfig) { c.separateGlobalOptions = true }
 }
 
 // BuildFlagSections assembles flag help sections from pre-classified flags.

@@ -279,6 +279,11 @@ func (r *Renderer) formatCommand(c Command, descCol, ind int) string {
 func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	var parts []string
 	parts = append(parts, r.Theme.HelpCommand.Render(u.Command))
+	if u.Raw != "" {
+		parts = append(parts, u.Raw)
+		_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), strings.Join(parts, " "))
+		return err
+	}
 	// Subcommand args come before [options].
 	for _, a := range u.Args {
 		if a.IsSubcommand {

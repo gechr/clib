@@ -31,68 +31,6 @@ func HelpFunc(
 	}
 }
 
-type sectionsConfig struct {
-	keepGroupOrder                  bool
-	sortGroupOrder                  bool
-	hideInheritedFlags              bool
-	hideInheritedFlagsOnSubcommands bool
-	showInheritedFlagsOnSubcommands bool
-	subcommandOptional              bool
-}
-
-// SectionsOption configures cobra help-section generation.
-type SectionsOption func(*sectionsConfig)
-
-// WithKeepGroupOrder preserves first-seen order of grouped flag sections
-// instead of sorting them alphabetically. This is the default.
-func WithKeepGroupOrder() SectionsOption {
-	return func(c *sectionsConfig) {
-		c.keepGroupOrder = true
-		c.sortGroupOrder = false
-	}
-}
-
-// WithSortedGroupOrder sorts grouped flag sections alphabetically.
-func WithSortedGroupOrder() SectionsOption {
-	return func(c *sectionsConfig) {
-		c.keepGroupOrder = false
-		c.sortGroupOrder = true
-	}
-}
-
-// WithHideInheritedFlags omits inherited/global flags from help output.
-func WithHideInheritedFlags() SectionsOption {
-	return func(c *sectionsConfig) {
-		c.hideInheritedFlags = true
-	}
-}
-
-// WithHideInheritedFlagsOnSubcommands omits inherited/global flags from
-// subcommand help output while leaving root-command help unchanged. This is
-// the default.
-func WithHideInheritedFlagsOnSubcommands() SectionsOption {
-	return func(c *sectionsConfig) {
-		c.hideInheritedFlagsOnSubcommands = true
-		c.showInheritedFlagsOnSubcommands = false
-	}
-}
-
-// WithSubcommandOptional marks the auto-appended subcommand placeholder as
-// optional ([<command>] instead of <command>). Use this when the root command
-// is genuinely runnable without a subcommand.
-func WithSubcommandOptional() SectionsOption {
-	return func(c *sectionsConfig) { c.subcommandOptional = true }
-}
-
-// WithShowInheritedFlagsOnSubcommands keeps inherited/global flags visible in
-// subcommand help output.
-func WithShowInheritedFlagsOnSubcommands() SectionsOption {
-	return func(c *sectionsConfig) {
-		c.hideInheritedFlagsOnSubcommands = false
-		c.showInheritedFlagsOnSubcommands = true
-	}
-}
-
 // SectionsWithOptions builds standard help sections from a cobra command using
 // configurable flag-section behavior.
 func SectionsWithOptions(opts ...SectionsOption) func(*cobralib.Command) []help.Section {
@@ -132,7 +70,7 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 		hasFlags = false
 	}
 
-	sections = append(sections, usageSection(cmd, hasFlags, cfg.subcommandOptional))
+	sections = append(sections, usageSection(cmd, hasFlags, cfg))
 
 	if len(cmd.Aliases) > 0 {
 		sections = append(sections, aliasSection(cmd))
@@ -148,7 +86,13 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 	return sections
 }
 
-func usageSection(cmd *cobralib.Command, hasFlags bool, subcommandOptional bool) help.Section {
+func usageSection(cmd *cobralib.Command, hasFlags bool, cfg sectionsConfig) help.Section {
+	if cfg.rawUsage {
+		return help.Section{
+			Title:   "Usage",
+			Content: []help.Content{help.Usage{Command: cmd.CommandPath(), Raw: rawUseSuffix(cmd)}},
+		}
+	}
 	u := help.Usage{
 		Command:     cmd.CommandPath(),
 		ShowOptions: hasFlags,
@@ -157,13 +101,19 @@ func usageSection(cmd *cobralib.Command, hasFlags bool, subcommandOptional bool)
 	if len(availableCommands(cmd)) > 0 {
 		u.Args = append(
 			u.Args,
-			help.Arg{Name: "command", Required: !subcommandOptional, IsSubcommand: true},
+			help.Arg{Name: "command", Required: !cfg.subcommandOptional, IsSubcommand: true},
 		)
 	}
 	return help.Section{
 		Title:   "Usage",
 		Content: []help.Content{u},
 	}
+}
+
+// rawUseSuffix returns cmd.Use with the leading command name stripped, so the
+// caller can prepend cmd.CommandPath() without duplicating the name.
+func rawUseSuffix(cmd *cobralib.Command) string {
+	return strings.TrimSpace(strings.TrimPrefix(cmd.Use, cmd.Name()))
 }
 
 func aliasSection(cmd *cobralib.Command) help.Section {

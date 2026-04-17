@@ -35,6 +35,27 @@ func TestSections_Usage(t *testing.T) {
 	require.True(t, usage.Args[0].Required)
 }
 
+func TestSections_WithRawUsage(t *testing.T) {
+	// ArgsUsage with shell metacharacters that clib's arg grammar would mangle.
+	const args = `[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]`
+	cmd := &clilib.Command{
+		Name:      "get",
+		ArgsUsage: args,
+		Flags: []clilib.Flag{
+			&clilib.StringFlag{Name: "output", Aliases: []string{"o"}, Usage: "Output format"},
+		},
+	}
+
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithRawUsage())(cmd)
+
+	usage, ok := sections[0].Content[0].(help.Usage)
+	require.True(t, ok)
+	require.Equal(t, "get", usage.Command)
+	require.Equal(t, args, usage.Raw)
+	require.Empty(t, usage.Args, "raw usage must suppress computed positional args")
+	require.False(t, usage.ShowOptions, "raw usage must suppress [options] injection")
+}
+
 func TestSections_Usage_OptionalArg(t *testing.T) {
 	cmd := &clilib.Command{
 		Name:      "search",

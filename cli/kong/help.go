@@ -62,36 +62,6 @@ func HelpPrinterFunc(
 	}
 }
 
-// NodeSectionsOption configures NodeSections behavior.
-type NodeSectionsOption func(*nodeSectionsConfig)
-
-type nodeSectionsConfig struct {
-	hideArguments bool
-	showAliases   bool
-	argsCLI       any // when set, use reflected args instead of kong's
-}
-
-// WithShowAliases opts into rendering the "Aliases" section. By default
-// aliases are hidden - they exist to make commands callable by alternate
-// names but are not advertised in help output unless explicitly enabled
-// globally with this option, or per-command via the `show-aliases:""`
-// struct tag.
-func WithShowAliases() NodeSectionsOption {
-	return func(c *nodeSectionsConfig) { c.showAliases = true }
-}
-
-// WithHideArguments suppresses the "Arguments" section from the output.
-func WithHideArguments() NodeSectionsOption {
-	return func(c *nodeSectionsConfig) { c.hideArguments = true }
-}
-
-// WithArguments uses reflected struct tag metadata for the Arguments section
-// instead of kong's parse context. This provides richer descriptions from
-// clib tags (e.g. terse, help).
-func WithArguments(cli any) NodeSectionsOption {
-	return func(c *nodeSectionsConfig) { c.argsCLI = cli }
-}
-
 // NodeSectionsFunc returns a sections callback for use with HelpPrinterFunc,
 // with the given options applied.
 func NodeSectionsFunc(opts ...NodeSectionsOption) func(*konglib.Context) ([]help.Section, error) {
@@ -191,6 +161,17 @@ func isSubcommandOnlyGrouper(node *konglib.Node) bool {
 
 // nodeUsageSection builds the Usage section for a node.
 func nodeUsageSection(node *konglib.Node) help.Section {
+	// Raw passthrough: clib:"raw='...'" on a command struct suppresses the
+	// computed positionals/options and emits the tag value verbatim after the
+	// command path. Use this when kong's computed usage does not fit (e.g.
+	// mutually exclusive flag groups, shell-syntax alternatives).
+	if raw := nodeRawUsage(node); raw != "" {
+		return help.Section{
+			Title:   "Usage",
+			Content: []help.Content{help.Usage{Command: nodePath(node), Raw: raw}},
+		}
+	}
+
 	u := help.Usage{
 		Command: nodePath(node),
 	}
@@ -233,6 +214,19 @@ func nodeUsageSection(node *konglib.Node) help.Section {
 		Title:   "Usage",
 		Content: []help.Content{u},
 	}
+}
+
+// nodeRawUsage reads clib:"raw='...'" from the node's struct tag, returning
+// the raw usage string or "" if unset or malformed.
+func nodeRawUsage(node *konglib.Node) string {
+	if node.Tag == nil {
+		return ""
+	}
+	raw, _, err := tag.Parse(node.Tag.Get(tagClib), tag.Raw)
+	if err != nil {
+		return ""
+	}
+	return raw
 }
 
 // nodePath walks parents to build the command path (e.g. "app run"),

@@ -496,6 +496,29 @@ func TestNodeSections_Root(t *testing.T) {
 	require.Len(t, cg, 2)
 }
 
+func TestNodeSections_RawUsageTag(t *testing.T) {
+	// clib:"raw='...'" on a command struct passes a verbatim usage suffix
+	// through, bypassing kong's computed positional/[options] rendering.
+	type CLI struct {
+		Get struct {
+			Output string `name:"output" help:"Output format" short:"o"`
+		} `help:"Get resources" clib:"raw='[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]'" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"get", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	usage := findSection(sections, "Usage")
+	require.NotNil(t, usage)
+	u, ok := usage.Content[0].(help.Usage)
+	require.True(t, ok)
+	require.Equal(t, "myapp get", u.Command)
+	require.Equal(t, "[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]", u.Raw)
+	require.Empty(t, u.Args, "raw usage must suppress computed positional args")
+	require.False(t, u.ShowOptions, "raw usage must suppress [options] injection")
+}
+
 func TestNodeSections_Subcommand(t *testing.T) {
 	type CLI struct {
 		Verbose bool `help:"Verbose output"`

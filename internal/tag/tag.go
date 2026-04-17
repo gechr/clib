@@ -25,6 +25,7 @@ const (
 	NoIndent    = "no-indent"
 	Placeholder = "placeholder"
 	Positive    = "positive"
+	Raw         = "raw"
 	Terse       = "terse"
 )
 

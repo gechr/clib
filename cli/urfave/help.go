@@ -38,6 +38,23 @@ func HelpPrinter(
 // Sections builds standard help sections from a urfave command.
 // Extracts: Usage, Aliases, Commands, and grouped flag sections.
 func Sections(cmd *clilib.Command) []help.Section {
+	return buildSections(cmd)
+}
+
+// SectionsWithOptions builds standard help sections from a urfave command
+// using configurable behavior.
+func SectionsWithOptions(opts ...SectionsOption) func(*clilib.Command) []help.Section {
+	return func(cmd *clilib.Command) []help.Section {
+		return buildSections(cmd, opts...)
+	}
+}
+
+func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
+	var cfg sectionsConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	prepareFlagExtras(cmd)
 
 	var sections []help.Section
@@ -51,7 +68,7 @@ func Sections(cmd *clilib.Command) []help.Section {
 		hasFlags = false
 	}
 
-	sections = append(sections, usageSection(cmd, hasFlags))
+	sections = append(sections, usageSection(cmd, hasFlags, cfg))
 
 	if len(cmd.Aliases) > 0 {
 		sections = append(sections, aliasSection(cmd))
@@ -66,7 +83,14 @@ func Sections(cmd *clilib.Command) []help.Section {
 	return sections
 }
 
-func usageSection(cmd *clilib.Command, hasFlags bool) help.Section {
+func usageSection(cmd *clilib.Command, hasFlags bool, cfg sectionsConfig) help.Section {
+	if cfg.rawUsage {
+		return help.Section{
+			Title:   "Usage",
+			Content: []help.Content{help.Usage{Command: cmd.FullName(), Raw: cmd.ArgsUsage}},
+		}
+	}
+
 	u := help.Usage{
 		Command:     cmd.FullName(),
 		ShowOptions: hasFlags,

@@ -49,6 +49,28 @@ func TestRender_Usage(t *testing.T) {
 	require.Equal(t, "Usage\n\n  mycli [options] [<query>]\n", ansi.Strip(buf.String()))
 }
 
+func TestRender_Usage_Raw(t *testing.T) {
+	r := help.NewRenderer(testTheme())
+	var buf bytes.Buffer
+	// Raw disables Args/ShowOptions parsing and emits the string verbatim.
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{
+				Command:     "mycli get",
+				ShowOptions: true, // ignored when Raw is set
+				Args:        []help.Arg{{Name: "ignored"}},
+				Raw:         "[(-o|--output=)json|yaml] <TYPE[.VERSION][.GROUP]>",
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		"Usage\n\n  mycli get [(-o|--output=)json|yaml] <TYPE[.VERSION][.GROUP]>\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
 func TestRender_Usage_SubcommandArg(t *testing.T) {
 	th := testTheme()
 	r := help.NewRenderer(th)
