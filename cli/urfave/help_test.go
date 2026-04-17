@@ -345,7 +345,11 @@ func TestSections_InheritedFlags(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Options", "Global Options"}, titles)
+	// Inherited flags merge into "Options"; urfave's auto-injected --help
+	// is pulled into its own trailing sub-group, so we expect three.
+	require.Equal(t, []string{"Usage", "Options"}, titles)
+	opts := sections[1]
+	require.Len(t, opts.Content, 3, "local + inherited + help sub-groups")
 }
 
 func TestSections_GroupedWithInherited(t *testing.T) {
@@ -379,8 +383,69 @@ func TestSections_GroupedWithInherited(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	// Should have "Filters" group and "Global Options" for ungrouped inherited.
-	require.Equal(t, []string{"Usage", "Filters", "Options", "Global Options"}, titles)
+	// Inherited "verbose" merges into "Options" as a second sub-group by default.
+	require.Equal(t, []string{"Usage", "Filters", "Options"}, titles)
+}
+
+func TestSections_PerLevelAncestorDepth(t *testing.T) {
+	// root (quiet) -> parent (filter) -> leaf (limit).
+	rootFlag := &clilib.BoolFlag{Name: "quiet", Usage: "Quiet mode"}
+	parentFlag := &clilib.StringFlag{Name: "filter", Usage: "Filter string"}
+	leafFlag := &clilib.IntFlag{Name: "limit", Usage: "Max results"}
+
+	// Each level declares only its own flag; the leaf re-declares the ancestors
+	// (urfave inheritance model).
+	root := &clilib.Command{
+		Name:  "root",
+		Flags: []clilib.Flag{rootFlag},
+		Commands: []*clilib.Command{
+			{
+				Name:  "parent",
+				Flags: []clilib.Flag{parentFlag},
+				Commands: []*clilib.Command{
+					{
+						Name:  "leaf",
+						Flags: []clilib.Flag{leafFlag, parentFlag, rootFlag},
+					},
+				},
+			},
+		},
+	}
+
+	var sections []help.Section
+	root.Commands[0].Commands[0].Action = func(_ context.Context, cmd *clilib.Command) error {
+		sections = urfavecli.Sections(cmd)
+		return nil
+	}
+	_ = root.Run(context.Background(), []string{"root", "parent", "leaf"})
+
+	var opts *help.Section
+	for i := range sections {
+		if sections[i].Title == "Options" {
+			opts = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, opts)
+	// Four sub-groups: local + parent + root, plus urfave's --help as the
+	// mandatory trailing sub-group.
+	require.Len(t, opts.Content, 4)
+
+	fg0, ok := opts.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "limit", fg0[0].Long)
+
+	fg1, ok := opts.Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "filter", fg1[0].Long)
+
+	fg2, ok := opts.Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "quiet", fg2[0].Long)
+
+	fg3, ok := opts.Content[3].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "help", fg3[0].Long)
 }
 
 func TestSections_HiddenFlagsFiltered(t *testing.T) {

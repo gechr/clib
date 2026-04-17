@@ -477,35 +477,23 @@ func TestNodeSections_Root(t *testing.T) {
 	sections, err := kong.NodeSections(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"Usage", "Commands", "Options"}, sectionTitles(sections))
+	// Root is a subcommand-only grouper: Options section is suppressed and
+	// [options] is dropped from usage since flags can't apply without a
+	// subcommand.
+	require.Equal(t, []string{"Usage", "Commands"}, sectionTitles(sections))
 
-	// Usage should contain the app name.
 	usage := findSection(sections, "Usage")
 	require.NotNil(t, usage)
 	u, ok := usage.Content[0].(help.Usage)
 	require.True(t, ok)
 	require.Equal(t, "myapp", u.Command)
-	require.True(t, u.ShowOptions)
+	require.False(t, u.ShowOptions)
 
-	// Commands should list visible children.
 	cmds := findSection(sections, "Commands")
 	require.NotNil(t, cmds)
 	cg, ok := cmds.Content[0].(help.CommandGroup)
 	require.True(t, ok)
 	require.Len(t, cg, 2)
-
-	// Flags should include debug.
-	flags := findSection(sections, "Options")
-	require.NotNil(t, flags)
-	fg, ok := flags.Content[0].(help.FlagGroup)
-	require.True(t, ok)
-	found := false
-	for _, f := range fg {
-		if f.Long == "debug" {
-			found = true
-		}
-	}
-	require.True(t, found, "expected debug flag")
 }
 
 func TestNodeSections_Subcommand(t *testing.T) {
@@ -520,7 +508,8 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	sections, err := kong.NodeSections(ctx)
 	require.NoError(t, err)
 
-	require.Equal(t, []string{"Usage", "Options", "Global Options"}, sectionTitles(sections))
+	// Default: inherited flags merge into "Options" as a trailing sub-group.
+	require.Equal(t, []string{"Usage", "Options"}, sectionTitles(sections))
 
 	// Usage path should be "myapp run".
 	usage := findSection(sections, "Usage")
@@ -528,29 +517,34 @@ func TestNodeSections_Subcommand(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "myapp run", u.Command)
 
-	// Flags should have output.
+	// Options has three sub-groups: local (output), inherited (verbose), help.
 	flags := findSection(sections, "Options")
-	fg, ok := flags.Content[0].(help.FlagGroup)
+	require.Len(t, flags.Content, 3)
+
+	localFg, ok := flags.Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	found := false
-	for _, f := range fg {
+	for _, f := range localFg {
 		if f.Long == "output" && f.Short == "o" {
 			found = true
 		}
 	}
-	require.True(t, found, "expected output flag")
+	require.True(t, found, "expected output flag in local sub-group")
 
-	// Inherited Flags should have verbose.
-	inherited := findSection(sections, "Global Options")
-	ifg, ok := inherited.Content[0].(help.FlagGroup)
+	inheritedFg, ok := flags.Content[1].(help.FlagGroup)
 	require.True(t, ok)
 	found = false
-	for _, f := range ifg {
+	for _, f := range inheritedFg {
 		if f.Long == "verbose" {
 			found = true
 		}
 	}
 	require.True(t, found, "expected inherited verbose flag")
+
+	helpFg, ok := flags.Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, helpFg, 1)
+	require.Equal(t, "help", helpFg[0].Long)
 }
 
 func TestNodeSections_AliasesHiddenByDefault(t *testing.T) {
@@ -878,9 +872,104 @@ func TestNodeSections_GroupedWithUngroupedLocalAndInherited(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]string{"Usage", "Filters", "Options", "Global Options"},
+		[]string{"Usage", "Filters", "Options"},
 		sectionTitles(sections),
 	)
+	// Options holds three sub-groups: local "debug", inherited "verbose",
+	// and kong's auto-injected --help pulled into its own trailing sub-group.
+	opts := findSection(sections, "Options")
+	require.Len(t, opts.Content, 3)
+}
+
+func TestNodeSections_SubcommandOnlyGrouperHidesOptions(t *testing.T) {
+	// "resolve" has only subcommands plus a Filter flag that only makes sense
+	// when dispatching; help for `app resolve -h` should hide the Options
+	// section entirely and drop [options] from usage.
+	type Inner struct {
+		Repo string `arg:"" optional:""`
+	}
+	type Resolve struct {
+		Filter string `name:"filter"       help:"Filter" short:"f"`
+		Repo   Inner  `help:"Resolve repo" cmd:""`
+	}
+	type CLI struct {
+		Verbose bool    `name:"verbose"         help:"Verbose"`
+		Resolve Resolve `help:"Resolve or list" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"resolve", "--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	titles := sectionTitles(sections)
+	require.NotContains(t, titles, "Options")
+	require.NotContains(t, titles, "Global Options")
+
+	// Usage should not contain [options] when Options section is hidden.
+	usage := findSection(sections, "Usage")
+	u, ok := usage.Content[0].(help.Usage)
+	require.True(t, ok)
+	require.False(t, u.ShowOptions, "usage should not show [options]")
+}
+
+func TestNodeSections_RootGrouperHidesOptions(t *testing.T) {
+	// Root that only dispatches to subcommands also hides Options - its flags
+	// are not actionable without picking a subcommand.
+	type Sub struct{}
+	type CLI struct {
+		Quiet bool `name:"quiet"   help:"Quiet mode"`
+		Sub   Sub  `help:"Run sub" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	titles := sectionTitles(sections)
+	require.NotContains(t, titles, "Options")
+}
+
+func TestNodeSections_PerLevelAncestorDepth(t *testing.T) {
+	// Three-level CLI: root (Quiet) -> Parent (Filter) -> Leaf (Limit).
+	// Verify leaf's help shows three distinct sub-groups within "Options".
+	type Leaf struct {
+		Limit int `name:"limit" help:"Max results"`
+	}
+	type Parent struct {
+		Filter string `name:"filter"   help:"Filter string"`
+		Run    Leaf   `help:"Run leaf" cmd:""`
+	}
+	type CLI struct {
+		Quiet bool   `name:"quiet"        help:"Quiet mode"`
+		Pipe  Parent `help:"Pipe command" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"pipe", "run", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	opts := findSection(sections, "Options")
+	require.NotNil(t, opts)
+	// Expect 4 sub-groups: local (limit), parent (filter), root (quiet),
+	// and help (always last, extracted to its own sub-group).
+	require.Len(t, opts.Content, 4)
+
+	fg0, ok := opts.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "limit", fg0[0].Long, "depth 0: leaf's own flag")
+
+	fg1, ok := opts.Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "filter", fg1[0].Long, "depth 1: parent's flag")
+
+	fg2, ok := opts.Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "quiet", fg2[0].Long, "depth 2: root's non-help flag")
+
+	helpFg, ok := opts.Content[3].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, helpFg, 1)
+	require.Equal(t, "help", helpFg[0].Long, "help always trailing")
 }
 
 func TestNodeSections_GroupedInheritedTriggersGroupedMode(t *testing.T) {
@@ -897,9 +986,12 @@ func TestNodeSections_GroupedInheritedTriggersGroupedMode(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]string{"Usage", "Output", "Options", "Global Options"},
+		[]string{"Usage", "Output", "Options"},
 		sectionTitles(sections),
 	)
+	// "Options" holds local "limit" plus kong's auto-injected inherited "--help".
+	opts := findSection(sections, "Options")
+	require.Len(t, opts.Content, 2)
 }
 
 func TestNodeSections_ClibEnumHighlightDefault(t *testing.T) {

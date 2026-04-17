@@ -122,7 +122,15 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 
 	var sections []help.Section
 
+	// Commands that only dispatch to subcommands have their flags suppressed -
+	// they cannot take effect without picking a subcommand.
+	subcommandOnlyGrouper := len(availableCommands(cmd)) > 0
+
 	flagSections, hasFlags := buildFlagSections(cmd, cfg)
+	if subcommandOnlyGrouper {
+		flagSections = nil
+		hasFlags = false
+	}
 
 	sections = append(sections, usageSection(cmd, hasFlags, cfg.subcommandOptional))
 
@@ -258,8 +266,8 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 		}()
 	}
 
-	classifyFlags := func(flags *pflag.FlagSet, inherited bool) {
-		if inherited && hideInherited {
+	classifyFlags := func(flags *pflag.FlagSet, depth int) {
+		if depth > 0 && hideInherited {
 			return
 		}
 		flags.VisitAll(func(f *pflag.Flag) {
@@ -271,18 +279,22 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 				group = extra.Group
 			}
 			classified = append(classified, help.ClassifiedFlag{
-				Flag:      pflagToHelpFlag(f),
-				Group:     group,
-				Inherited: inherited,
+				Flag:          pflagToHelpFlag(f),
+				Group:         group,
+				AncestorDepth: depth,
 			})
 		})
 	}
-	classifyFlags(cmd.LocalFlags(), false)
-	classifyFlags(cmd.InheritedFlags(), true)
+	classifyFlags(cmd.LocalFlags(), 0)
+	depth := 1
+	for p := cmd.Parent(); p != nil; p = p.Parent() {
+		classifyFlags(p.PersistentFlags(), depth)
+		depth++
+	}
 
 	var opts []help.FlagSectionsOption
 	if cfg.keepGroupOrder && !cfg.sortGroupOrder {
-		opts = append(opts, help.KeepGroupOrder())
+		opts = append(opts, help.WithKeepGroupOrder())
 	}
 
 	sections := help.BuildFlagSections(classified, opts...)

@@ -167,14 +167,26 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		})
 	}
 
-	// Flag sections.
-	flagSections, err := buildNodeFlagSections(node)
-	if err != nil {
-		return nil, err
+	// Flag sections - omitted for non-root commands that only dispatch to
+	// subcommands, since flags at this level can't take effect without
+	// picking a subcommand. The root still shows its options for
+	// top-level discoverability of global flags.
+	if !isSubcommandOnlyGrouper(node) {
+		flagSections, err := buildNodeFlagSections(node)
+		if err != nil {
+			return nil, err
+		}
+		sections = append(sections, flagSections...)
 	}
-	sections = append(sections, flagSections...)
 
 	return sections, nil
+}
+
+// isSubcommandOnlyGrouper reports whether node exists solely to dispatch to
+// subcommands. Its own flags (and inherited flags) are suppressed in help
+// output, since they cannot take effect without picking a subcommand.
+func isSubcommandOnlyGrouper(node *konglib.Node) bool {
+	return hasVisibleChildren(node)
 }
 
 // nodeUsageSection builds the Usage section for a node.
@@ -197,19 +209,22 @@ func nodeUsageSection(node *konglib.Node) help.Section {
 		u.Args = append(u.Args, help.Arg{Name: "command", Required: true, IsSubcommand: true})
 	}
 
-	// Show [options] if there are any visible flags.
-	for _, f := range node.Flags {
-		if !f.Hidden {
-			u.ShowOptions = true
-			break
-		}
-	}
-	// Also check ancestor flags.
-	if !u.ShowOptions && node.Parent != nil {
-		for _, f := range ancestorFlags(node) {
+	// Show [options] if there are any visible flags - but not on
+	// subcommand-only grouper commands, since the Options section is
+	// hidden there.
+	if !isSubcommandOnlyGrouper(node) {
+		for _, f := range node.Flags {
 			if !f.Hidden {
 				u.ShowOptions = true
 				break
+			}
+		}
+		if !u.ShowOptions && node.Parent != nil {
+			for _, f := range ancestorFlags(node) {
+				if !f.Hidden {
+					u.ShowOptions = true
+					break
+				}
 			}
 		}
 	}
@@ -281,9 +296,16 @@ func hasVisibleChildren(node *konglib.Node) bool {
 
 // kongFlagToHelp converts a kong flag to a help.Flag.
 func kongFlagToHelp(f *konglib.Flag) (help.Flag, error) {
+	helpText := f.Help
+	// Override kong's auto-injected --help description ("Show
+	// context-sensitive help.") with a shorter, period-free version that
+	// matches the style of the rest of the help output.
+	if f.Name == "help" && helpText == "Show context-sensitive help." {
+		helpText = "Print help"
+	}
 	meta := complete.FlagMeta{
 		Name:                f.Name,
-		Help:                f.Help,
+		Help:                helpText,
 		HasArg:              !f.IsBool() && !f.IsCounter(),
 		IsCSV:               isCSVFlag(f),
 		IsSlice:             f.IsSlice() || f.IsCumulative(),
@@ -419,6 +441,17 @@ func ancestorFlags(node *konglib.Node) []*konglib.Flag {
 	return flags
 }
 
+// ancestorFlagsByDepth returns ancestor flags bucketed by distance from node:
+// result[0] is the immediate parent's flags (depth=1 from the leaf),
+// result[1] is the grandparent's, and so on up to the root.
+func ancestorFlagsByDepth(node *konglib.Node) [][]*konglib.Flag {
+	var byDepth [][]*konglib.Flag
+	for p := node.Parent; p != nil; p = p.Parent {
+		byDepth = append(byDepth, p.Flags)
+	}
+	return byDepth
+}
+
 // buildNodeFlagSections builds flag sections from a kong node:
 //   - If any flag has a clib group, split into group sections (sorted alphabetically),
 //     plus "Options" (ungrouped local) and "Global Options" (ungrouped inherited).
@@ -426,10 +459,8 @@ func ancestorFlags(node *konglib.Node) []*konglib.Flag {
 //     section into separate FlagGroup entries (blank line separator).
 //   - Otherwise: flat "Options" (local) + "Global Options" (ancestor).
 func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
-	inherited := ancestorFlags(node)
-
 	var classified []help.ClassifiedFlag
-	classifyKongFlags := func(flags []*konglib.Flag, isInherited bool) error {
+	classifyKongFlags := func(flags []*konglib.Flag, depth int) error {
 		for _, f := range flags {
 			if f.Hidden {
 				continue
@@ -443,21 +474,23 @@ func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
 				return err
 			}
 			classified = append(classified, help.ClassifiedFlag{
-				Flag:      hf,
-				Group:     group,
-				Inherited: isInherited,
+				Flag:          hf,
+				Group:         group,
+				AncestorDepth: depth,
 			})
 		}
 		return nil
 	}
-	if err := classifyKongFlags(node.Flags, false); err != nil {
+	if err := classifyKongFlags(node.Flags, 0); err != nil {
 		return nil, err
 	}
-	if err := classifyKongFlags(inherited, true); err != nil {
-		return nil, err
+	for i, ancestors := range ancestorFlagsByDepth(node) {
+		if err := classifyKongFlags(ancestors, i+1); err != nil {
+			return nil, err
+		}
 	}
 
-	return help.BuildFlagSections(classified, help.KeepGroupOrder()), nil
+	return help.BuildFlagSections(classified, help.WithKeepGroupOrder()), nil
 }
 
 // Args extracts positional argument entries from a CLI struct's reflected
@@ -503,7 +536,7 @@ func FlagSections(flags []complete.FlagMeta) []help.Section {
 			// All flags from FlagMeta are local (no inherited concept).
 		})
 	}
-	return help.BuildFlagSections(classified, help.KeepGroupOrder())
+	return help.BuildFlagSections(classified, help.WithKeepGroupOrder())
 }
 
 func helpFlagFromMeta(f complete.FlagMeta) help.Flag {

@@ -1,9 +1,9 @@
-package csvutil_test
+package csv_test
 
 import (
 	"testing"
 
-	"github.com/gechr/clib/cli/internal/csvutil"
+	csvutil "github.com/gechr/clib/cli/util/csv"
 	"github.com/stretchr/testify/require"
 )
 

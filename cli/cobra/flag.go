@@ -3,7 +3,7 @@ package cobra
 import (
 	"strings"
 
-	"github.com/gechr/clib/cli/internal/csvutil"
+	csvutil "github.com/gechr/clib/cli/util/csv"
 )
 
 // CSVFlag implements pflag.Value for comma-separated values.

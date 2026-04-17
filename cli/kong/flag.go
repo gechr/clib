@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	konglib "github.com/alecthomas/kong"
-	"github.com/gechr/clib/cli/internal/csvutil"
+	csvutil "github.com/gechr/clib/cli/util/csv"
 )
 
 // CSVFlag implements kong.MapperValue that splits comma-separated values.

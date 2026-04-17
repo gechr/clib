@@ -44,6 +44,13 @@ func Sections(cmd *clilib.Command) []help.Section {
 
 	flagSections, hasFlags := buildFlagSections(cmd)
 
+	// Commands that only dispatch to subcommands have their flags suppressed -
+	// they cannot take effect without picking a subcommand.
+	if len(cmd.VisibleCommands()) > 0 {
+		flagSections = nil
+		hasFlags = false
+	}
+
 	sections = append(sections, usageSection(cmd, hasFlags))
 
 	if len(cmd.Aliases) > 0 {
@@ -105,57 +112,49 @@ func commandSection(cmds []*clilib.Command) help.Section {
 // flags are split into group sections (alphabetical), with ungrouped local
 // flags under "Options" and ungrouped inherited flags under "Global Options".
 func buildFlagSections(cmd *clilib.Command) ([]help.Section, bool) {
-	localFlags, inheritedFlags := splitFlags(cmd)
+	flagDepths := flagAncestorDepths(cmd)
 
 	var classified []help.ClassifiedFlag
-	classifyFlags := func(flags []clilib.Flag, inherited bool) {
-		for _, f := range flags {
-			if !isVisible(f) {
-				continue
-			}
-			classified = append(classified, help.ClassifiedFlag{
-				Flag:      flagToHelp(cmd, f),
-				Group:     flagGroup(cmd, f),
-				Inherited: inherited,
-			})
+	for _, f := range cmd.Flags {
+		if !isVisible(f) {
+			continue
 		}
+		depth := 0
+		names := f.Names()
+		if len(names) > 0 {
+			if d, ok := flagDepths[names[0]]; ok {
+				if lf, isLocal := f.(clilib.LocalFlag); !isLocal || !lf.IsLocal() {
+					depth = d
+				}
+			}
+		}
+		classified = append(classified, help.ClassifiedFlag{
+			Flag:          flagToHelp(cmd, f),
+			Group:         flagGroup(cmd, f),
+			AncestorDepth: depth,
+		})
 	}
-	classifyFlags(localFlags, false)
-	classifyFlags(inheritedFlags, true)
 
 	sections := help.BuildFlagSections(classified)
 	return sections, len(sections) > 0
 }
 
-// splitFlags separates a command's flags into local and inherited.
-// Inherited flags come from ancestor commands (Lineage()[1:]).
-func splitFlags(cmd *clilib.Command) ([]clilib.Flag, []clilib.Flag) {
-	// Collect inherited flag names from ancestors.
-	inheritedNames := make(map[string]bool)
+// flagAncestorDepths maps a flag name to the depth of the nearest ancestor
+// that defines it (1 = immediate parent, 2 = grandparent, ...). Flags defined
+// only on the current command are absent from the map.
+func flagAncestorDepths(cmd *clilib.Command) map[string]int {
+	depths := make(map[string]int)
 	lineage := cmd.Lineage()
-	for _, ancestor := range lineage[1:] {
-		for _, f := range ancestor.Flags {
+	for d := 1; d < len(lineage); d++ {
+		for _, f := range lineage[d].Flags {
 			for _, n := range f.Names() {
-				inheritedNames[n] = true
+				if _, seen := depths[n]; !seen {
+					depths[n] = d
+				}
 			}
 		}
 	}
-
-	var local, inherited []clilib.Flag
-	for _, f := range cmd.Flags {
-		names := f.Names()
-		if len(names) > 0 && inheritedNames[names[0]] {
-			// Non-local flag that came from an ancestor.
-			if lf, ok := f.(clilib.LocalFlag); ok && lf.IsLocal() {
-				local = append(local, f)
-			} else {
-				inherited = append(inherited, f)
-			}
-		} else {
-			local = append(local, f)
-		}
-	}
-	return local, inherited
+	return depths
 }
 
 func isVisible(f clilib.Flag) bool {

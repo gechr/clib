@@ -1917,8 +1917,8 @@ func TestBuildFlagSections_Empty(t *testing.T) {
 
 func TestBuildFlagSections_UngroupedLocalOnly(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "verbose", Desc: "Verbose output"}, Group: "", Inherited: false},
-		{Flag: help.Flag{Long: "debug", Desc: "Debug mode"}, Group: "", Inherited: false},
+		{Flag: help.Flag{Long: "verbose", Desc: "Verbose output"}, Group: "", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "debug", Desc: "Debug mode"}, Group: "", AncestorDepth: 0},
 	}
 
 	result := help.BuildFlagSections(flags)
@@ -1936,11 +1936,34 @@ func TestBuildFlagSections_UngroupedLocalOnly(t *testing.T) {
 
 func TestBuildFlagSections_UngroupedLocalAndInherited(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "verbose", Desc: "Verbose"}, Group: "", Inherited: false},
-		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", Inherited: true},
+		{Flag: help.Flag{Long: "verbose", Desc: "Verbose"}, Group: "", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", AncestorDepth: 1},
 	}
 
 	result := help.BuildFlagSections(flags)
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+	require.Len(t, result[0].Content, 2)
+
+	localFg, ok := result[0].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, localFg, 1)
+	require.Equal(t, "verbose", localFg[0].Long)
+
+	inheritedFg, ok := result[0].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, inheritedFg, 1)
+	require.Equal(t, "config", inheritedFg[0].Long)
+}
+
+func TestBuildFlagSections_UngroupedLocalAndInherited_Separate(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "verbose", Desc: "Verbose"}, Group: "", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithSeparateGlobalOptions())
 
 	require.Len(t, result, 2)
 	require.Equal(t, "Options", result[0].Title)
@@ -1959,9 +1982,9 @@ func TestBuildFlagSections_UngroupedLocalAndInherited(t *testing.T) {
 
 func TestBuildFlagSections_GroupedSortedAlphabetically(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "format", Desc: "Output format"}, Group: "Output", Inherited: false},
-		{Flag: help.Flag{Long: "author", Desc: "Filter author"}, Group: "Filter", Inherited: false},
-		{Flag: help.Flag{Long: "color", Desc: "Color mode"}, Group: "Output", Inherited: false},
+		{Flag: help.Flag{Long: "format", Desc: "Output format"}, Group: "Output", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "author", Desc: "Filter author"}, Group: "Filter", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "color", Desc: "Color mode"}, Group: "Output", AncestorDepth: 0},
 	}
 
 	result := help.BuildFlagSections(flags)
@@ -1986,14 +2009,14 @@ func TestBuildFlagSections_GroupedSortedAlphabetically(t *testing.T) {
 func TestBuildFlagSections_CompoundGroup(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{
-			Flag:      help.Flag{Long: "format", Desc: "Output format"},
-			Group:     "Output/Format",
-			Inherited: false,
+			Flag:          help.Flag{Long: "format", Desc: "Output format"},
+			Group:         "Output/Format",
+			AncestorDepth: 0,
 		},
 		{
-			Flag:      help.Flag{Long: "color", Desc: "Color mode"},
-			Group:     "Output/Color",
-			Inherited: false,
+			Flag:          help.Flag{Long: "color", Desc: "Color mode"},
+			Group:         "Output/Color",
+			AncestorDepth: 0,
 		},
 	}
 
@@ -2017,12 +2040,12 @@ func TestBuildFlagSections_CompoundGroup(t *testing.T) {
 
 func TestBuildFlagSections_KeepGroupOrder(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "format", Desc: "Output format"}, Group: "Output", Inherited: false},
-		{Flag: help.Flag{Long: "author", Desc: "Filter author"}, Group: "Filter", Inherited: false},
-		{Flag: help.Flag{Long: "color", Desc: "Color mode"}, Group: "Output", Inherited: false},
+		{Flag: help.Flag{Long: "format", Desc: "Output format"}, Group: "Output", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "author", Desc: "Filter author"}, Group: "Filter", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "color", Desc: "Color mode"}, Group: "Output", AncestorDepth: 0},
 	}
 
-	result := help.BuildFlagSections(flags, help.KeepGroupOrder())
+	result := help.BuildFlagSections(flags, help.WithKeepGroupOrder())
 
 	require.Len(t, result, 2)
 	// First-seen order: Output before Filter.
@@ -2032,14 +2055,37 @@ func TestBuildFlagSections_KeepGroupOrder(t *testing.T) {
 
 func TestBuildFlagSections_GroupedWithUngroupedFlags(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "format"}, Group: "Output", Inherited: false},
-		{Flag: help.Flag{Long: "verbose"}, Group: "", Inherited: false},
-		{Flag: help.Flag{Long: "config"}, Group: "", Inherited: true},
+		{Flag: help.Flag{Long: "format"}, Group: "Output", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "verbose"}, Group: "", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "config"}, Group: "", AncestorDepth: 1},
 	}
 
 	result := help.BuildFlagSections(flags)
 
-	// "Output" group + "Options" (ungrouped local) + "Global Options" (ungrouped inherited).
+	// "Output" group + "Options" (with local and inherited as sub-groups).
+	require.Len(t, result, 2)
+	require.Equal(t, "Output", result[0].Title)
+	require.Equal(t, "Options", result[1].Title)
+	require.Len(t, result[1].Content, 2)
+
+	localFg, ok := result[1].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "verbose", localFg[0].Long)
+
+	inheritedFg, ok := result[1].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "config", inheritedFg[0].Long)
+}
+
+func TestBuildFlagSections_GroupedWithUngroupedFlags_Separate(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "format"}, Group: "Output", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "verbose"}, Group: "", AncestorDepth: 0},
+		{Flag: help.Flag{Long: "config"}, Group: "", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithSeparateGlobalOptions())
+
 	require.Len(t, result, 3)
 	require.Equal(t, "Output", result[0].Title)
 	require.Equal(t, "Options", result[1].Title)
@@ -2052,6 +2098,88 @@ func TestBuildFlagSections_GroupedWithUngroupedFlags(t *testing.T) {
 	inheritedFg, ok := result[2].Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	require.Equal(t, "config", inheritedFg[0].Long)
+}
+
+func TestBuildFlagSections_AncestorDepthLevels(t *testing.T) {
+	// Avoid using Long="help" in fixtures - BuildFlagSections always pulls
+	// help flags into a trailing sub-group, which would add an extra entry.
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "verbose"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "filter"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "debug"}, AncestorDepth: 2},
+		{Flag: help.Flag{Long: "quiet"}, AncestorDepth: 2},
+	}
+
+	result := help.BuildFlagSections(flags)
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+	require.Len(t, result[0].Content, 3)
+
+	g0, ok := result[0].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, []string{"verbose"}, flagLongs(g0))
+
+	g1, ok := result[0].Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, []string{"filter"}, flagLongs(g1))
+
+	g2, ok := result[0].Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, []string{"debug", "quiet"}, flagLongs(g2))
+}
+
+func TestBuildFlagSections_AncestorDepthLevels_Separate(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "verbose"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "filter"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "debug"}, AncestorDepth: 2},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithSeparateGlobalOptions())
+
+	// Under separate: Options holds depths 0..N-1; Global Options holds the deepest.
+	require.Len(t, result, 2)
+	require.Equal(t, "Options", result[0].Title)
+	require.Len(t, result[0].Content, 2)
+	require.Equal(t, "Global Options", result[1].Title)
+	require.Len(t, result[1].Content, 1)
+
+	deepest, ok := result[1].Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, []string{"debug"}, flagLongs(deepest))
+}
+
+func TestBuildFlagSections_HelpFlagAlwaysLast(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "verbose"}, AncestorDepth: 0},
+		{Flag: help.Flag{Short: "h", Long: "help"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "quiet"}, AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags)
+	require.Len(t, result, 1)
+	opts := result[0]
+
+	// Final sub-group should contain help only; earlier sub-groups should not.
+	lastFg, ok := opts.Content[len(opts.Content)-1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, []string{"help"}, flagLongs(lastFg))
+	for i := range len(opts.Content) - 1 {
+		fg, ok := opts.Content[i].(help.FlagGroup)
+		require.True(t, ok)
+		for _, f := range fg {
+			require.NotEqual(t, "help", f.Long, "help flag leaked into non-trailing sub-group")
+		}
+	}
+}
+
+func flagLongs(fg help.FlagGroup) []string {
+	out := make([]string, len(fg))
+	for i, f := range fg {
+		out[i] = f.Long
+	}
+	return out
 }
 
 func TestWithHelpFlags(t *testing.T) {
@@ -2314,18 +2442,23 @@ func TestWithExamplesOnLongHelp_LongHelp(t *testing.T) {
 
 func TestBuildFlagSections_InheritedOnly(t *testing.T) {
 	flags := []help.ClassifiedFlag{
-		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", Inherited: true},
+		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", AncestorDepth: 1},
 	}
 
+	// Default: inherited-only collapses to "Options" (one sub-group).
 	result := help.BuildFlagSections(flags)
-
 	require.Len(t, result, 1)
-	require.Equal(t, "Global Options", result[0].Title)
+	require.Equal(t, "Options", result[0].Title)
 
 	fg, ok := result[0].Content[0].(help.FlagGroup)
 	require.True(t, ok)
 	require.Len(t, fg, 1)
 	require.Equal(t, "config", fg[0].Long)
+
+	// Separate: inherited-only keeps the dedicated "Global Options" section.
+	sepResult := help.BuildFlagSections(flags, help.WithSeparateGlobalOptions())
+	require.Len(t, sepResult, 1)
+	require.Equal(t, "Global Options", sepResult[0].Title)
 }
 
 func TestRender_Examples_SingleExample(t *testing.T) {

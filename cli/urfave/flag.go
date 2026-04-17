@@ -3,7 +3,7 @@ package urfave
 import (
 	"strings"
 
-	"github.com/gechr/clib/cli/internal/csvutil"
+	csvutil "github.com/gechr/clib/cli/util/csv"
 )
 
 // CSVFlag implements urfave/cli's Value interface for comma-separated values.

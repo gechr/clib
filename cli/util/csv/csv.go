@@ -1,4 +1,4 @@
-package csvutil
+package csv
 
 import "strings"
 

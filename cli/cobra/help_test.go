@@ -446,7 +446,8 @@ func TestSectionsWithOptions_HideInheritedFlagsOnSubcommands(t *testing.T) {
 	for _, s := range rootSections {
 		rootTitles = append(rootTitles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Commands", "Options"}, rootTitles)
+	// Root dispatches to subcommands, so Options is suppressed there.
+	require.Equal(t, []string{"Usage", "Commands"}, rootTitles)
 
 	var subTitles []string
 	for _, s := range subSections {
@@ -471,7 +472,51 @@ func TestSectionsWithOptions_ShowInheritedFlagsOnSubcommands(t *testing.T) {
 	for _, s := range sections {
 		titles = append(titles, s.Title)
 	}
-	require.Equal(t, []string{"Usage", "Options", "Global Options"}, titles)
+	// Inherited flags now merge into "Options" as a second sub-group by default.
+	require.Equal(t, []string{"Usage", "Options"}, titles)
+	opts := sections[1]
+	require.Len(t, opts.Content, 2, "local + inherited sub-groups")
+}
+
+func TestSectionsWithOptions_PerLevelAncestorDepth(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	// root (--quiet, persistent) -> parent (--filter, persistent) -> leaf (--limit).
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().Bool("quiet", false, "Quiet mode")
+
+	parent := &cobralib.Command{Use: "pipe"}
+	parent.PersistentFlags().String("filter", "", "Filter string")
+	root.AddCommand(parent)
+
+	leaf := &cobralib.Command{Use: "run", RunE: noop}
+	leaf.Flags().Int("limit", 0, "Max results")
+	parent.AddCommand(leaf)
+
+	sections := cobra.SectionsWithOptions(cobra.WithShowInheritedFlagsOnSubcommands())(leaf)
+
+	var opts *help.Section
+	for i := range sections {
+		if sections[i].Title == "Options" {
+			opts = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, opts)
+	// Expect three sub-groups: local (limit), depth=1 (filter), depth=2 (quiet).
+	require.Len(t, opts.Content, 3)
+
+	fg0, ok := opts.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "limit", fg0[0].Long)
+
+	fg1, ok := opts.Content[1].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "filter", fg1[0].Long)
+
+	fg2, ok := opts.Content[2].(help.FlagGroup)
+	require.True(t, ok)
+	require.Equal(t, "quiet", fg2[0].Long)
 }
 
 func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {
