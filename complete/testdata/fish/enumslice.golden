@@ -47,10 +47,17 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a get -d "Get item"
 complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
 
 complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
 
-complete -c myapp -n '__myapp_using_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
-complete -c myapp -n '__myapp_using_subcommand list' -l limit -r -d "Max results"
+complete -c myapp -n '__myapp_using_primary_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_primary_subcommand list' -l limit -r -d "Max results"

@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const zshDefaultCompleter = "_default"
+
 // GenerateZsh generates a zsh shell completion script.
 func GenerateZsh(g *Generator) (string, error) {
 	if err := ValidateGenerator(g); err != nil {
@@ -405,7 +407,7 @@ func zshCompleter(g *Generator, spec Spec) string {
 	case spec.ValueHint != "":
 		return zshHintCompleter(spec.ValueHint)
 	default:
-		return "_default"
+		return zshDefaultCompleter
 	}
 }
 
@@ -546,7 +548,7 @@ func zshHintCompleter(hint string) string {
 	case HintEmail:
 		return "_email_addresses"
 	default:
-		return "_default"
+		return zshDefaultCompleter
 	}
 }
 

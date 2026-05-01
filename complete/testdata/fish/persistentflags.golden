@@ -28,13 +28,20 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a parent -d "Parent command"
 
 complete -c myapp -l root-persistent -d "Root persistent"
 complete -c myapp -n '__myapp_needs_command' -l root-local -d "Root local"
 
-complete -c myapp -n '__myapp_using_subcommand parent; and not __myapp_using_subcommand child' -a child -d "Child command"
-complete -c myapp -n '__myapp_using_subcommand parent' -l parent-persistent -d "Parent persistent"
-complete -c myapp -n '__myapp_using_subcommand parent; and not __myapp_using_subcommand child' -l parent-local -d "Parent local"
+complete -c myapp -n '__myapp_using_primary_subcommand parent; and not __myapp_using_subcommand child' -a child -d "Child command"
+complete -c myapp -n '__myapp_using_primary_subcommand parent' -l parent-persistent -d "Parent persistent"
+complete -c myapp -n '__myapp_using_primary_subcommand parent; and not __myapp_using_subcommand child' -l parent-local -d "Parent local"
 
-complete -c myapp -n '__myapp_using_subcommand parent; and __myapp_using_subcommand child' -l child-local -d "Child local"
+complete -c myapp -n '__myapp_using_primary_subcommand parent; and __myapp_using_subcommand child' -l child-local -d "Child local"

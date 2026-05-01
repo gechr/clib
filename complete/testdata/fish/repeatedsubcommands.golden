@@ -1,0 +1,54 @@
+complete -c tool -f
+
+function __tool_global_optspecs
+    string join \n --
+end
+
+function __tool_needs_command
+    set -l cmd (commandline -xpc)
+    set -e cmd[1]
+    argparse -s (__tool_global_optspecs) -- $cmd 2>/dev/null
+    or return
+    if set -q argv[1]
+        printf '%s\n' $argv
+        return 1
+    end
+    return 0
+end
+
+function __tool_using_subcommand
+    set -l cmd (__tool_needs_command)
+    test -z "$cmd"
+    and return 1
+    for arg in $argv
+        if contains -- $arg $cmd
+            return 0
+        end
+    end
+    return 1
+end
+
+function __tool_using_primary_subcommand
+    set -l cmd (__tool_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
+complete -c tool -n '__tool_needs_command' -a container -d "Manage containers"
+complete -c tool -n '__tool_needs_command' -a foo -d "Manage foo"
+complete -c tool -n '__tool_needs_command' -a login -d "Log in"
+
+complete -c tool -n '__tool_using_primary_subcommand container; and not __tool_using_subcommand login' -a login -d "Log in to a container registry"
+
+complete -c tool -n '__tool_using_primary_subcommand container; and __tool_using_subcommand login' -l registry -r -d "Registry URL"
+
+complete -c tool -n '__tool_using_primary_subcommand foo; and not __tool_using_subcommand login' -a login -d "Log in to foo"
+
+complete -c tool -n '__tool_using_primary_subcommand foo; and __tool_using_subcommand login; and not __tool_using_subcommand bar' -a bar -d "Manage bars"
+
+complete -c tool -n '__tool_using_primary_subcommand foo; and __tool_using_subcommand login; and __tool_using_subcommand bar; and not __tool_using_subcommand login' -a login -d "Log in to a bar"
+
+complete -c tool -n '__tool_using_primary_subcommand foo; and __tool_using_subcommand login; and __tool_using_subcommand bar; and __tool_using_subcommand login' -l bar-token -r -d "Bar token"
+
+complete -c tool -n '__tool_using_primary_subcommand login' -s u -l user -r -d "User name"

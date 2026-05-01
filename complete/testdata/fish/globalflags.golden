@@ -28,6 +28,13 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
 complete -c myapp -n '__myapp_needs_command' -a version -d "Show version"
 
@@ -39,5 +46,5 @@ complete -c myapp -n '__myapp_needs_command' -l no-config -d "Disable config"
 complete -c myapp -n '__myapp_needs_command' -l no-proxy -d "Ignore proxies"
 complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
 
-complete -c myapp -n '__myapp_using_subcommand run' -s n -l dry-run -d "Dry run"
-complete -c myapp -n '__myapp_using_subcommand run' -s o -l output -x -a "text json" -d "Output format"
+complete -c myapp -n '__myapp_using_primary_subcommand run' -s n -l dry-run -d "Dry run"
+complete -c myapp -n '__myapp_using_primary_subcommand run' -s o -l output -x -a "text json" -d "Output format"

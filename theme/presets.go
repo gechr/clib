@@ -129,7 +129,7 @@ func Plain() *Theme {
 	plain := lipgloss.NewStyle()
 
 	return &Theme{
-		name:      "plain",
+		name:      themeNamePlain,
 		Bold:      new(plain),
 		Dim:       new(plain),
 		Red:       new(plain),
@@ -181,7 +181,7 @@ func Monochrome() *Theme {
 	plain := lipgloss.NewStyle()
 
 	return &Theme{
-		name:      "monochrome",
+		name:      themeNameMonochrome,
 		Bold:      new(bold),
 		Dim:       new(dim),
 		Red:       new(plain),
@@ -230,7 +230,7 @@ func Monochrome() *Theme {
 
 // Monokai returns a theme inspired by the Monokai color scheme.
 func Monokai() *Theme {
-	return fromPalette("monokai", palette{
+	return fromPalette(themeNameMonokai, palette{
 		heading:     lipgloss.Color("#ffd866"), // yellow
 		command:     lipgloss.Color("#a9dc76"), // green
 		subcommand:  lipgloss.Color("#78dce8"), // cyan
@@ -244,7 +244,7 @@ func Monokai() *Theme {
 
 // CatppuccinLatte returns a theme based on the Catppuccin Latte (light) palette.
 func CatppuccinLatte() *Theme {
-	return fromPalette("catppuccin-latte", palette{
+	return fromPalette(themeNameCatppuccinLatte, palette{
 		heading:     lipgloss.Color("#df8e1d"), // yellow
 		command:     lipgloss.Color("#40a02b"), // green
 		subcommand:  lipgloss.Color("#179299"), // teal
@@ -258,7 +258,7 @@ func CatppuccinLatte() *Theme {
 
 // CatppuccinFrappe returns a theme based on the Catppuccin Frappé (dark) palette.
 func CatppuccinFrappe() *Theme {
-	return fromPalette("catppuccin-frappe", palette{
+	return fromPalette(themeNameCatppuccinFrappe, palette{
 		heading:     lipgloss.Color("#e5c890"), // yellow
 		command:     lipgloss.Color("#a6d189"), // green
 		subcommand:  lipgloss.Color("#81c8be"), // teal
@@ -272,7 +272,7 @@ func CatppuccinFrappe() *Theme {
 
 // CatppuccinMacchiato returns a theme based on the Catppuccin Macchiato (dark) palette.
 func CatppuccinMacchiato() *Theme {
-	return fromPalette("catppuccin-macchiato", palette{
+	return fromPalette(themeNameCatppuccinMacchiato, palette{
 		heading:     lipgloss.Color("#eed49f"), // yellow
 		command:     lipgloss.Color("#a6da95"), // green
 		subcommand:  lipgloss.Color("#8bd5ca"), // teal
@@ -286,7 +286,7 @@ func CatppuccinMacchiato() *Theme {
 
 // CatppuccinMocha returns a theme based on the Catppuccin Mocha (dark) palette.
 func CatppuccinMocha() *Theme {
-	return fromPalette("catppuccin-mocha", palette{
+	return fromPalette(themeNameCatppuccinMocha, palette{
 		heading:     lipgloss.Color("#f9e2af"), // yellow
 		command:     lipgloss.Color("#a6e3a1"), // green
 		subcommand:  lipgloss.Color("#94e2d5"), // teal
@@ -300,7 +300,7 @@ func CatppuccinMocha() *Theme {
 
 // Dracula returns a theme based on the Dracula color scheme.
 func Dracula() *Theme {
-	return fromPalette("dracula", palette{
+	return fromPalette(themeNameDracula, palette{
 		heading:     lipgloss.Color("#f1fa8c"), // yellow
 		command:     lipgloss.Color("#50fa7b"), // green
 		subcommand:  lipgloss.Color("#8be9fd"), // cyan
@@ -314,7 +314,7 @@ func Dracula() *Theme {
 
 // Nord returns a theme based on the Nord Arctic color scheme.
 func Nord() *Theme {
-	return fromPalette("nord", palette{
+	return fromPalette(themeNameNord, palette{
 		heading:     lipgloss.Color("#ebcb8b"), // nord13, yellow
 		command:     lipgloss.Color("#a3be8c"), // nord14, green
 		subcommand:  lipgloss.Color("#88c0d0"), // nord8, cyan
@@ -328,7 +328,7 @@ func Nord() *Theme {
 
 // Solarized returns a theme based on the Solarized color scheme.
 func Solarized() *Theme {
-	return fromPalette("solarized", palette{
+	return fromPalette(themeNameSolarized, palette{
 		heading:     lipgloss.Color("#b58900"), // yellow
 		command:     lipgloss.Color("#859900"), // green
 		subcommand:  lipgloss.Color("#2aa198"), // cyan
@@ -342,7 +342,7 @@ func Solarized() *Theme {
 
 // GruvboxDark returns a theme based on the Gruvbox Dark color scheme.
 func GruvboxDark() *Theme {
-	return fromPalette("gruvbox-dark", palette{
+	return fromPalette(themeNameGruvboxDark, palette{
 		heading:     lipgloss.Color("#fabd2f"), // yellow
 		command:     lipgloss.Color("#b8bb26"), // green
 		subcommand:  lipgloss.Color("#8ec07c"), // aqua
@@ -356,7 +356,7 @@ func GruvboxDark() *Theme {
 
 // GruvboxLight returns a theme based on the Gruvbox Light color scheme.
 func GruvboxLight() *Theme {
-	return fromPalette("gruvbox-light", palette{
+	return fromPalette(themeNameGruvboxLight, palette{
 		heading:     lipgloss.Color("#b57614"), // yellow
 		command:     lipgloss.Color("#79740e"), // green
 		subcommand:  lipgloss.Color("#427b58"), // aqua
@@ -370,7 +370,7 @@ func GruvboxLight() *Theme {
 
 // TokyoNight returns a theme based on the Tokyo Night color scheme.
 func TokyoNight() *Theme {
-	return fromPalette("tokyo-night", palette{
+	return fromPalette(themeNameTokyoNight, palette{
 		heading:     lipgloss.Color("#e0af68"), // yellow
 		command:     lipgloss.Color("#9ece6a"), // green
 		subcommand:  lipgloss.Color("#7dcfff"), // cyan
@@ -384,7 +384,7 @@ func TokyoNight() *Theme {
 
 // Synthwave returns a theme based on the Synthwave '84 color scheme.
 func Synthwave() *Theme {
-	return fromPalette("synthwave", palette{
+	return fromPalette(themeNameSynthwave, palette{
 		heading:     lipgloss.Color("#fede5d"), // yellow
 		command:     lipgloss.Color("#72f1b8"), // green
 		subcommand:  lipgloss.Color("#36f9f6"), // cyan
@@ -398,7 +398,7 @@ func Synthwave() *Theme {
 
 // OneDark returns a theme based on the Atom One Dark color scheme.
 func OneDark() *Theme {
-	return fromPalette("one-dark", palette{
+	return fromPalette(themeNameOneDark, palette{
 		heading:     lipgloss.Color("#e5c07b"), // chalky/yellow
 		command:     lipgloss.Color("#98c379"), // sage/green
 		subcommand:  lipgloss.Color("#56b6c2"), // cyan

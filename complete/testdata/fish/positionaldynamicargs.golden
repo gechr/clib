@@ -28,6 +28,13 @@ function __acme_plugin_using_subcommand
     return 1
 end
 
+function __acme_plugin_using_primary_subcommand
+    set -l cmd (__acme_plugin_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c acme-plugin -n '__acme_plugin_needs_command' -a complete -d "Tab completions"
 complete -c acme-plugin -n '__acme_plugin_needs_command' -a resolve -d "Resolve values"
 complete -c acme-plugin -n '__acme_plugin_needs_command' -a send -d "Send notifications"
@@ -101,7 +108,7 @@ function __acme_plugin_complete_dynamic_args
     end
 end
 
-complete -c acme-plugin -n '__acme_plugin_using_subcommand complete; and __acme_plugin_complete_accepts_positional' -a "(__acme_plugin_complete_dynamic_args)" -f
+complete -c acme-plugin -n '__acme_plugin_using_primary_subcommand complete; and __acme_plugin_complete_accepts_positional' -a "(__acme_plugin_complete_dynamic_args)" -f
 
 
 function __acme_plugin_resolve_accepts_positional
@@ -170,6 +177,6 @@ function __acme_plugin_resolve_dynamic_args
     end
 end
 
-complete -c acme-plugin -n '__acme_plugin_using_subcommand resolve; and __acme_plugin_resolve_accepts_positional' -a "(__acme_plugin_resolve_dynamic_args)" -f
+complete -c acme-plugin -n '__acme_plugin_using_primary_subcommand resolve; and __acme_plugin_resolve_accepts_positional' -a "(__acme_plugin_resolve_dynamic_args)" -f
 
-complete -c acme-plugin -n '__acme_plugin_using_subcommand send' -l to -r -d "Recipient"
+complete -c acme-plugin -n '__acme_plugin_using_primary_subcommand send' -l to -r -d "Recipient"

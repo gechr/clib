@@ -28,13 +28,20 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
 complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
 
 complete -c myapp -n '__myapp_needs_command' -l verbose -d "Verbose"
 
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
 
-complete -c myapp -n '__myapp_using_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"

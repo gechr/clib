@@ -12,6 +12,15 @@ import (
 	cobra "github.com/spf13/cobra"
 )
 
+const (
+	groupFilters     = "Filters"
+	groupInteractive = "Interactive"
+	groupOutput      = "Output"
+
+	outputTable = "table"
+	sortName    = "name"
+)
+
 func main() {
 	th := theme.Default().With(theme.WithHelpDescBacktick(*theme.Default().Magenta))
 	r := help.NewRenderer(th)
@@ -30,32 +39,32 @@ func main() {
 	// Filters
 	f.StringP("query", "q", "", "Filter results by query")
 	clib.Extend(f.Lookup("query"), clib.FlagExtra{
-		Group: "Filters", Placeholder: "text", Terse: "Query", Complete: "predictor=query",
+		Group: groupFilters, Placeholder: "text", Terse: "Query", Complete: "predictor=query",
 	})
 
 	f.StringP("category", "g", "", "Filter by category")
 	clib.Extend(f.Lookup("category"), clib.FlagExtra{
-		Group: "Filters", Placeholder: "category",
+		Group: groupFilters, Placeholder: "category",
 	})
 
 	f.BoolP("hidden", "H", false, "Include hidden items")
-	clib.Extend(f.Lookup("hidden"), clib.FlagExtra{Group: "Filters"})
+	clib.Extend(f.Lookup("hidden"), clib.FlagExtra{Group: groupFilters})
 
 	f.StringP("created", "c", "", "Filter by creation date")
-	clib.Extend(f.Lookup("created"), clib.FlagExtra{Group: "Filters", Placeholder: "duration"})
+	clib.Extend(f.Lookup("created"), clib.FlagExtra{Group: groupFilters, Placeholder: "duration"})
 
 	f.StringSliceP("tag", "t", nil, "Filter by tag")
-	clib.Extend(f.Lookup("tag"), clib.FlagExtra{Group: "Filters"})
+	clib.Extend(f.Lookup("tag"), clib.FlagExtra{Group: groupFilters})
 
 	// Interactive
 	f.Bool("select", false, "Select matching items interactively")
-	clib.Extend(f.Lookup("select"), clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(f.Lookup("select"), clib.FlagExtra{Group: groupInteractive})
 
 	f.Bool("delete", false, "Delete matching items")
-	clib.Extend(f.Lookup("delete"), clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(f.Lookup("delete"), clib.FlagExtra{Group: groupInteractive})
 
 	f.BoolP("yes", "y", false, "Skip interactive confirmation prompt")
-	clib.Extend(f.Lookup("yes"), clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(f.Lookup("yes"), clib.FlagExtra{Group: groupInteractive})
 
 	// Actions
 	f.BoolP("open", "O", false, "Open matching items in browser")
@@ -65,28 +74,28 @@ func main() {
 	clib.Extend(f.Lookup("preview"), clib.FlagExtra{Group: "Actions"})
 
 	// Output
-	f.StringP("format", "f", "table", "Output format")
+	f.StringP("format", "f", outputTable, "Output format")
 	clib.Extend(f.Lookup("format"), clib.FlagExtra{
-		Group:       "Output",
+		Group:       groupOutput,
 		Placeholder: "format",
-		Enum:        []string{"table", "json", "yaml"},
-		EnumDefault: "table",
+		Enum:        []string{outputTable, "json", "yaml"},
+		EnumDefault: outputTable,
 	})
 
 	f.String("fields", "", "Fields to show (comma-separated)")
 	clib.Extend(f.Lookup("fields"), clib.FlagExtra{
-		Group: "Output", Placeholder: "field", Complete: "predictor=field,comma",
+		Group: groupOutput, Placeholder: "field", Complete: "predictor=field,comma",
 	})
 
 	f.IntP("limit", "L", 30, "Maximum results") //nolint:mnd // this is fine
-	clib.Extend(f.Lookup("limit"), clib.FlagExtra{Group: "Output", Placeholder: "n"})
+	clib.Extend(f.Lookup("limit"), clib.FlagExtra{Group: groupOutput, Placeholder: "n"})
 
-	f.String("sort", "name", "Sort by")
+	f.String("sort", sortName, "Sort by")
 	clib.Extend(f.Lookup("sort"), clib.FlagExtra{
-		Group:       "Output",
+		Group:       groupOutput,
 		Placeholder: "field",
-		Enum:        []string{"name", "created", "updated"},
-		EnumDefault: "name",
+		Enum:        []string{sortName, "created", "updated"},
+		EnumDefault: sortName,
 	})
 
 	// Miscellaneous

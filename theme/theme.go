@@ -94,7 +94,7 @@ func Default() *Theme {
 
 func defaultTheme() *Theme {
 	return &Theme{
-		name:      "default",
+		name:      themeNameDefault,
 		Bold:      new(lipgloss.NewStyle().Bold(true)),
 		Dim:       new(lipgloss.NewStyle().Faint(true)),
 		Red:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),

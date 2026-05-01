@@ -28,10 +28,17 @@ function __pdc_using_subcommand
     return 1
 end
 
+function __pdc_using_primary_subcommand
+    set -l cmd (__pdc_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c pdc -n '__pdc_needs_command' -a incident -d "Manage incidents"
 complete -c pdc -n '__pdc_needs_command' -a user -d "Manage users"
 
-complete -c pdc -n '__pdc_using_subcommand incident; and not __pdc_using_subcommand show' -a show -d "Show an incident"
+complete -c pdc -n '__pdc_using_primary_subcommand incident; and not __pdc_using_subcommand show' -a show -d "Show an incident"
 
 
 function __pdc_incident_show_dynamic_args
@@ -70,9 +77,9 @@ function __pdc_incident_show_dynamic_args
     end
 end
 
-complete -c pdc -n '__pdc_using_subcommand incident; and __pdc_using_subcommand show' -a "(__pdc_incident_show_dynamic_args)" -f
+complete -c pdc -n '__pdc_using_primary_subcommand incident; and __pdc_using_subcommand show' -a "(__pdc_incident_show_dynamic_args)" -f
 
-complete -c pdc -n '__pdc_using_subcommand user; and not __pdc_using_subcommand show' -a show -d "Show a user"
+complete -c pdc -n '__pdc_using_primary_subcommand user; and not __pdc_using_subcommand show' -a show -d "Show a user"
 
 
 function __pdc_user_show_dynamic_args
@@ -111,4 +118,4 @@ function __pdc_user_show_dynamic_args
     end
 end
 
-complete -c pdc -n '__pdc_using_subcommand user; and __pdc_using_subcommand show' -a "(__pdc_user_show_dynamic_args)" -f
+complete -c pdc -n '__pdc_using_primary_subcommand user; and __pdc_using_subcommand show' -a "(__pdc_user_show_dynamic_args)" -f

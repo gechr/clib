@@ -348,17 +348,24 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a build -d "Build the project"
 complete -c myapp -n '__myapp_needs_command' -a test -d "Run tests"
 
 complete -c myapp -n '__myapp_needs_command' -l color -x -a "auto always never" -d "Color mode"
 complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
 
-complete -c myapp -n '__myapp_using_subcommand build' -s o -l output -r -d "Output path"
-complete -c myapp -n '__myapp_using_subcommand build' -l release -d "Release build"
+complete -c myapp -n '__myapp_using_primary_subcommand build' -s o -l output -r -d "Output path"
+complete -c myapp -n '__myapp_using_primary_subcommand build' -l release -d "Release build"
 
-complete -c myapp -n '__myapp_using_subcommand test t' -l coverage -d "Enable coverage"
-complete -c myapp -n '__myapp_using_subcommand test t' -s r -l run -r -d "Test pattern"
+complete -c myapp -n '__myapp_using_primary_subcommand test t' -l coverage -d "Enable coverage"
+complete -c myapp -n '__myapp_using_primary_subcommand test t' -s r -l run -r -d "Test pattern"
 `
 	require.Equal(t, expected, out)
 }
@@ -397,16 +404,23 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
 complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
 
 complete -c myapp -n '__myapp_needs_command' -l verbose -d "Verbose"
 
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
-complete -c myapp -n '__myapp_using_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
 
-complete -c myapp -n '__myapp_using_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"
+complete -c myapp -n '__myapp_using_primary_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"
 `
 	require.Equal(t, expected, out)
 }
@@ -545,13 +559,20 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a edit -d "Edit files"
 complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
 
 complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
 
-complete -c myapp -n '__myapp_using_subcommand edit' -l editor -r -d "Editor command"
-complete -c myapp -n '__myapp_using_subcommand edit' -F
+complete -c myapp -n '__myapp_using_primary_subcommand edit' -l editor -r -d "Editor command"
+complete -c myapp -n '__myapp_using_primary_subcommand edit' -F
 `
 	require.Equal(t, expected, out)
 }
@@ -643,12 +664,19 @@ function __my_app_using_subcommand
     return 1
 end
 
+function __my_app_using_primary_subcommand
+    set -l cmd (__my_app_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"
 complete -c my-app -n '__my_app_needs_command' -a test -d "Run tests"
 
 complete -c my-app -n '__my_app_needs_command' -s v -l verbose -d "Verbose output"
 
-complete -c my-app -n '__my_app_using_subcommand build' -s o -l output -r -d "Output path"
+complete -c my-app -n '__my_app_using_primary_subcommand build' -s o -l output -r -d "Output path"
 `
 	require.Equal(t, expected, out)
 }

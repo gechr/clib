@@ -5,25 +5,55 @@ import (
 	"strings"
 )
 
+const (
+	themeNameDefault             = "default"
+	themeNamePlain               = "plain"
+	themeNameCatppuccinFrappe    = "catppuccin-frappe"
+	themeNameCatppuccinLatte     = "catppuccin-latte"
+	themeNameCatppuccinMacchiato = "catppuccin-macchiato"
+	themeNameCatppuccinMocha     = "catppuccin-mocha"
+	themeNameDracula             = "dracula"
+	themeNameGruvboxDark         = "gruvbox-dark"
+	themeNameGruvboxLight        = "gruvbox-light"
+	themeNameMonochrome          = "monochrome"
+	themeNameMonokai             = "monokai"
+	themeNameNord                = "nord"
+	themeNameOneDark             = "one-dark"
+	themeNameSynthwave           = "synthwave"
+	themeNameSolarized           = "solarized"
+	themeNameTokyoNight          = "tokyo-night"
+)
+
+const (
+	themeKeyCatppuccinFrappe    = "catppuccinfrappe"
+	themeKeyCatppuccinLatte     = "catppuccinlatte"
+	themeKeyCatppuccinMacchiato = "catppuccinmacchiato"
+	themeKeyCatppuccinMocha     = "catppuccinmocha"
+	themeKeyGruvboxDark         = "gruvboxdark"
+	themeKeyGruvboxLight        = "gruvboxlight"
+	themeKeyOneDark             = "onedark"
+	themeKeyTokyoNight          = "tokyonight"
+)
+
 var validThemeNames = []string{
-	"default",
+	themeNameDefault,
 
-	"plain", // no styling
+	themeNamePlain, // no styling
 
-	"catppuccin-frappe",
-	"catppuccin-latte",
-	"catppuccin-macchiato",
-	"catppuccin-mocha",
-	"dracula",
-	"gruvbox-dark",
-	"gruvbox-light",
-	"monochrome",
-	"monokai",
-	"nord",
-	"one-dark",
-	"synthwave",
-	"solarized",
-	"tokyo-night",
+	themeNameCatppuccinFrappe,
+	themeNameCatppuccinLatte,
+	themeNameCatppuccinMacchiato,
+	themeNameCatppuccinMocha,
+	themeNameDracula,
+	themeNameGruvboxDark,
+	themeNameGruvboxLight,
+	themeNameMonochrome,
+	themeNameMonokai,
+	themeNameNord,
+	themeNameOneDark,
+	themeNameSynthwave,
+	themeNameSolarized,
+	themeNameTokyoNight,
 }
 
 func normalizePresetName(name string) string {
@@ -59,37 +89,37 @@ func (t *Theme) UnmarshalText(text []byte) error {
 	}
 
 	switch normalizePresetName(string(text)) {
-	case "", "default":
+	case "", themeNameDefault:
 		*t = *defaultTheme()
-	case "plain":
+	case themeNamePlain:
 		*t = *Plain()
-	case "monochrome":
+	case themeNameMonochrome:
 		*t = *Monochrome()
-	case "monokai":
+	case themeNameMonokai:
 		*t = *Monokai()
-	case "catppuccinlatte":
+	case themeKeyCatppuccinLatte:
 		*t = *CatppuccinLatte()
-	case "catppuccinfrappe":
+	case themeKeyCatppuccinFrappe:
 		*t = *CatppuccinFrappe()
-	case "catppuccinmacchiato":
+	case themeKeyCatppuccinMacchiato:
 		*t = *CatppuccinMacchiato()
-	case "catppuccinmocha":
+	case themeKeyCatppuccinMocha:
 		*t = *CatppuccinMocha()
-	case "dracula":
+	case themeNameDracula:
 		*t = *Dracula()
-	case "gruvboxdark":
+	case themeKeyGruvboxDark:
 		*t = *GruvboxDark()
-	case "gruvboxlight":
+	case themeKeyGruvboxLight:
 		*t = *GruvboxLight()
-	case "nord":
+	case themeNameNord:
 		*t = *Nord()
-	case "onedark":
+	case themeKeyOneDark:
 		*t = *OneDark()
-	case "synthwave":
+	case themeNameSynthwave:
 		*t = *Synthwave()
-	case "solarized":
+	case themeNameSolarized:
 		*t = *Solarized()
-	case "tokyonight":
+	case themeKeyTokyoNight:
 		*t = *TokyoNight()
 	default:
 		return fmt.Errorf("unknown theme %q (valid: %s)", text, strings.Join(validThemeNames, ", "))

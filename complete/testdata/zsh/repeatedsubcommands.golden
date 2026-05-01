@@ -1,0 +1,159 @@
+#compdef tool
+
+autoload -U is-at-least
+
+_tool() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+        ':: :_tool_commands' \
+        '*::: :->tool' \
+    && ret=0
+
+    case $state in
+    (tool)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%%:*:*}:tool-command-$line[1]:"
+        case $line[1] in
+            (container)
+                _arguments "${_arguments_options[@]}" : \
+                    ':: :_tool__container_commands' \
+                    '*::: :->container' \
+                && ret=0
+
+                case $state in
+                (container)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:container-command-$line[1]:"
+                    case $line[1] in
+                        (login)
+                            _arguments "${_arguments_options[@]}" : \
+                                '--registry=[Registry URL]: :_default' \
+                            && ret=0
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+            (foo)
+                _arguments "${_arguments_options[@]}" : \
+                    ':: :_tool__foo_commands' \
+                    '*::: :->foo' \
+                && ret=0
+
+                case $state in
+                (foo)
+                    words=($line[1] "${words[@]}")
+                    (( CURRENT += 1 ))
+                    curcontext="${curcontext%%:*:*}:foo-command-$line[1]:"
+                    case $line[1] in
+                        (login)
+                            _arguments "${_arguments_options[@]}" : \
+                                ':: :_tool__foo__login_commands' \
+                                '*::: :->login' \
+                            && ret=0
+
+                            case $state in
+                            (login)
+                                words=($line[1] "${words[@]}")
+                                (( CURRENT += 1 ))
+                                curcontext="${curcontext%%:*:*}:login-command-$line[1]:"
+                                case $line[1] in
+                                    (bar)
+                                        _arguments "${_arguments_options[@]}" : \
+                                            ':: :_tool__foo__login__bar_commands' \
+                                            '*::: :->bar' \
+                                        && ret=0
+
+                                        case $state in
+                                        (bar)
+                                            words=($line[1] "${words[@]}")
+                                            (( CURRENT += 1 ))
+                                            curcontext="${curcontext%%:*:*}:bar-command-$line[1]:"
+                                            case $line[1] in
+                                                (login)
+                                                    _arguments "${_arguments_options[@]}" : \
+                                                        '--bar-token=[Bar token]: :_default' \
+                                                    && ret=0
+                                                ;;
+                                            esac
+                                        ;;
+                                        esac
+                                    ;;
+                                esac
+                            ;;
+                            esac
+                        ;;
+                    esac
+                ;;
+                esac
+            ;;
+            (login)
+                _arguments "${_arguments_options[@]}" : \
+                    '(-u --user)-u+[User name]: :_default' \
+                    '(-u --user)--user=[User name]: :_default' \
+                && ret=0
+            ;;
+        esac
+    ;;
+    esac
+}
+
+(( $+functions[_tool_commands] )) ||
+_tool_commands() {
+    local commands; commands=(
+        'container:Manage containers' \
+        'foo:Manage foo' \
+        'login:Log in' \
+    )
+    _describe -t commands 'tool commands' commands "$@"
+}
+
+(( $+functions[_tool__container_commands] )) ||
+_tool__container_commands() {
+    local commands; commands=(
+        'login:Log in to a container registry' \
+    )
+    _describe -t commands 'tool container commands' commands "$@"
+}
+
+(( $+functions[_tool__foo_commands] )) ||
+_tool__foo_commands() {
+    local commands; commands=(
+        'login:Log in to foo' \
+    )
+    _describe -t commands 'tool foo commands' commands "$@"
+}
+
+(( $+functions[_tool__foo__login_commands] )) ||
+_tool__foo__login_commands() {
+    local commands; commands=(
+        'bar:Manage bars' \
+    )
+    _describe -t commands 'tool foo login commands' commands "$@"
+}
+
+(( $+functions[_tool__foo__login__bar_commands] )) ||
+_tool__foo__login__bar_commands() {
+    local commands; commands=(
+        'login:Log in to a bar' \
+    )
+    _describe -t commands 'tool foo login bar commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_tool" ]; then
+    _tool "$@"
+else
+    compdef _tool tool
+fi

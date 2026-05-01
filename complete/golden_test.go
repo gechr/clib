@@ -356,6 +356,63 @@ func genCollidingSubDynamicArgs() *complete.Generator {
 	}
 }
 
+func genRepeatedSubcommandNames() *complete.Generator {
+	return &complete.Generator{
+		AppName: "tool",
+		Subs: []complete.SubSpec{
+			{
+				Name:  "foo",
+				Terse: "Manage foo",
+				Subs: []complete.SubSpec{
+					{
+						Name:  "login",
+						Terse: "Log in to foo",
+						Subs: []complete.SubSpec{
+							{
+								Name:  "bar",
+								Terse: "Manage bars",
+								Subs: []complete.SubSpec{
+									{
+										Name:  "login",
+										Terse: "Log in to a bar",
+										Specs: []complete.Spec{
+											{
+												LongFlag: "bar-token",
+												Terse:    "Bar token",
+												HasArg:   true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Name:  "container",
+				Terse: "Manage containers",
+				Subs: []complete.SubSpec{
+					{
+						Name:  "login",
+						Terse: "Log in to a container registry",
+						Specs: []complete.Spec{
+							{LongFlag: "registry", Terse: "Registry URL", HasArg: true},
+						},
+					},
+				},
+			},
+			{
+				Name:  "login",
+				Terse: "Log in",
+				Specs: []complete.Spec{
+					{LongFlag: "user", ShortFlag: "u", Terse: "User name", HasArg: true},
+				},
+			},
+		},
+	}
+}
+
 func genForwardDynamicArgs() *complete.Generator {
 	return &complete.Generator{
 		AppName:     "myapp",
@@ -429,6 +486,7 @@ func TestGolden(t *testing.T) {
 		"pathargs":                genPathArgs(),
 		"persistentflags":         genPersistentFlags(),
 		"positionaldynamicargs":   genPositionalDynamicArgs(),
+		"repeatedsubcommands":     genRepeatedSubcommandNames(),
 		"sharedflags":             genSharedFlags(),
 		"subcommands":             genSubcommands(),
 		"subdynamicargs":          genSubDynamicArgs(),

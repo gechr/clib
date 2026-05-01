@@ -13,6 +13,15 @@ import (
 	cli "github.com/urfave/cli/v3"
 )
 
+const (
+	groupFilters     = "Filters"
+	groupInteractive = "Interactive"
+	groupOutput      = "Output"
+
+	outputTable = "table"
+	sortName    = "name"
+)
+
 func main() {
 	th := theme.Default().With(theme.WithHelpDescBacktick(*theme.Default().Magenta))
 	r := help.NewRenderer(th)
@@ -24,7 +33,7 @@ func main() {
 		Usage:   "Filter results by query",
 	}
 	clib.Extend(queryFlag, clib.FlagExtra{
-		Group: "Filters", Placeholder: "text", Terse: "Query", Complete: "predictor=query",
+		Group: groupFilters, Placeholder: "text", Terse: "Query", Complete: "predictor=query",
 	})
 
 	categoryFlag := &cli.StringFlag{
@@ -33,7 +42,7 @@ func main() {
 		Usage:   "Filter by category",
 	}
 	clib.Extend(categoryFlag, clib.FlagExtra{
-		Group: "Filters", Placeholder: "category",
+		Group: groupFilters, Placeholder: "category",
 	})
 
 	hiddenFlag := &cli.BoolWithInverseFlag{
@@ -41,35 +50,35 @@ func main() {
 		Aliases: []string{"H"},
 		Usage:   "Include hidden items",
 	}
-	clib.Extend(hiddenFlag, clib.FlagExtra{Group: "Filters"})
+	clib.Extend(hiddenFlag, clib.FlagExtra{Group: groupFilters})
 
 	createdFlag := &cli.StringFlag{
 		Name:    "created",
 		Aliases: []string{"c"},
 		Usage:   "Filter by creation date",
 	}
-	clib.Extend(createdFlag, clib.FlagExtra{Group: "Filters", Placeholder: "duration"})
+	clib.Extend(createdFlag, clib.FlagExtra{Group: groupFilters, Placeholder: "duration"})
 
 	tagFlag := &cli.StringSliceFlag{
 		Name:    "tag",
 		Aliases: []string{"t"},
 		Usage:   "Filter by tag",
 	}
-	clib.Extend(tagFlag, clib.FlagExtra{Group: "Filters"})
+	clib.Extend(tagFlag, clib.FlagExtra{Group: groupFilters})
 
 	// Interactive
 	selectFlag := &cli.BoolFlag{Name: "select", Usage: "Select matching items interactively"}
-	clib.Extend(selectFlag, clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(selectFlag, clib.FlagExtra{Group: groupInteractive})
 
 	deleteFlag := &cli.BoolFlag{Name: "delete", Usage: "Delete matching items"}
-	clib.Extend(deleteFlag, clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(deleteFlag, clib.FlagExtra{Group: groupInteractive})
 
 	yesFlag := &cli.BoolFlag{
 		Name:    "yes",
 		Aliases: []string{"y"},
 		Usage:   "Skip interactive confirmation prompt",
 	}
-	clib.Extend(yesFlag, clib.FlagExtra{Group: "Interactive"})
+	clib.Extend(yesFlag, clib.FlagExtra{Group: groupInteractive})
 
 	// Actions
 	openFlag := &cli.BoolFlag{
@@ -91,13 +100,13 @@ func main() {
 		Name:    "format",
 		Aliases: []string{"f"},
 		Usage:   "Output format",
-		Value:   "table",
+		Value:   outputTable,
 	}
 	clib.Extend(formatFlag, clib.FlagExtra{
-		Group:       "Output",
+		Group:       groupOutput,
 		Placeholder: "format",
-		Enum:        []string{"table", "json", "yaml"},
-		EnumDefault: "table",
+		Enum:        []string{outputTable, "json", "yaml"},
+		EnumDefault: outputTable,
 	})
 
 	fieldsFlag := &cli.GenericFlag{
@@ -106,7 +115,7 @@ func main() {
 		Value: &clib.CSVFlag{},
 	}
 	clib.Extend(fieldsFlag, clib.FlagExtra{
-		Group: "Output", Placeholder: "field", Complete: "predictor=field,comma",
+		Group: groupOutput, Placeholder: "field", Complete: "predictor=field,comma",
 	})
 
 	limitFlag := &cli.IntFlag{
@@ -115,18 +124,18 @@ func main() {
 		Usage:   "Maximum results",
 		Value:   30, //nolint:mnd // this is fine
 	}
-	clib.Extend(limitFlag, clib.FlagExtra{Group: "Output", Placeholder: "n"})
+	clib.Extend(limitFlag, clib.FlagExtra{Group: groupOutput, Placeholder: "n"})
 
 	sortFlag := &cli.StringFlag{
 		Name:  "sort",
 		Usage: "Sort by",
-		Value: "name",
+		Value: sortName,
 	}
 	clib.Extend(sortFlag, clib.FlagExtra{
-		Group:       "Output",
+		Group:       groupOutput,
 		Placeholder: "field",
-		Enum:        []string{"name", "created", "updated"},
-		EnumDefault: "name",
+		Enum:        []string{sortName, "created", "updated"},
+		EnumDefault: sortName,
 	})
 
 	// Miscellaneous

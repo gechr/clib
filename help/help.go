@@ -154,6 +154,11 @@ const (
 	NoteClose     = ")"
 )
 
+const (
+	helpFlagLong = "help"
+	dashDashHelp = "--" + helpFlagLong
+)
+
 // ParseArg parses a docopt-style argument token into an Arg.
 // It handles optional brackets ([...]), angle brackets (<...>), and
 // ellipsis (...) for repeated arguments.
@@ -225,7 +230,7 @@ func IsLongHelp(args []string) bool {
 		if i == 0 {
 			continue
 		}
-		if arg == "--help" {
+		if arg == dashDashHelp {
 			return true
 		}
 		if arg == "--" {
@@ -324,7 +329,7 @@ func appendFlagGroupToSection(
 	}
 
 	appended := false
-	for i := len(sections) - 1; i >= 0; i-- {
+	for i := range slices.Backward(sections) {
 		section := &sections[i]
 		if hasFlagContent(section.Content) {
 			section.Content = append(section.Content, flagGroup)
@@ -345,12 +350,12 @@ func appendFlagGroupToSection(
 func newHelpFlagGroup(shortDesc, longDesc string) FlagGroup {
 	return FlagGroup{
 		{Short: "h", Desc: shortDesc},
-		{Long: "help", Desc: longDesc},
+		{Long: helpFlagLong, Desc: longDesc},
 	}
 }
 
 func isHelpFlag(flag Flag) bool {
-	return flag.Long == "help" || (flag.Long == "" && flag.Short == "h")
+	return flag.Long == helpFlagLong || (flag.Long == "" && flag.Short == "h")
 }
 
 // patchFlag walks sections looking for a flag by Long name and applies fn.
@@ -394,7 +399,7 @@ func removeFlagLong(content []Content, name string) []Content {
 func removeHelpFlags(sections []Section) []Section {
 	for i := range sections {
 		section := &sections[i]
-		section.Content = removeFlagLong(section.Content, "help")
+		section.Content = removeFlagLong(section.Content, helpFlagLong)
 	}
 	return cleanEmpty(sections)
 }

@@ -76,12 +76,19 @@ function __myapp_using_subcommand
     return 1
 end
 
+function __myapp_using_primary_subcommand
+    set -l cmd (__myapp_needs_command)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+
 complete -c myapp -n '__myapp_needs_command' -a get -d "Get item"
 complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
 
-complete -c myapp -n '__myapp_using_subcommand get' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
-complete -c myapp -n '__myapp_using_subcommand get' -l status -x -kra "(__myapp_complete_get_status)" -d "Filter by status"
+complete -c myapp -n '__myapp_using_primary_subcommand get' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_primary_subcommand get' -l status -x -kra "(__myapp_complete_get_status)" -d "Filter by status"
 
-complete -c myapp -n '__myapp_using_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
-complete -c myapp -n '__myapp_using_subcommand list' -l status -x -kra "(__myapp_complete_list_status)" -d "Filter by status"
-complete -c myapp -n '__myapp_using_subcommand list' -s v -l verbose -d "Verbose output"
+complete -c myapp -n '__myapp_using_primary_subcommand list' -l include -x -kra "(__myapp_complete_include)" -d "Fields to include"
+complete -c myapp -n '__myapp_using_primary_subcommand list' -l status -x -kra "(__myapp_complete_list_status)" -d "Filter by status"
+complete -c myapp -n '__myapp_using_primary_subcommand list' -s v -l verbose -d "Verbose output"

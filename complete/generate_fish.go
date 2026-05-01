@@ -28,6 +28,7 @@ func GenerateFish(g *Generator) (string, error) {
 	if hasSubs {
 		needsCmd := fmt.Sprintf("__%s_needs_command", funcID)
 		usingSub := fmt.Sprintf("__%s_using_subcommand", funcID)
+		usingPrimarySub := fmt.Sprintf("__%s_using_primary_subcommand", funcID)
 
 		fishWriteHelpers(g, &sb, funcID)
 
@@ -49,6 +50,7 @@ func GenerateFish(g *Generator) (string, error) {
 			&sb,
 			g.Subs,
 			usingSub,
+			usingPrimarySub,
 			"",
 			"",
 			funcID,
@@ -415,6 +417,7 @@ func fishWriteHelpers(g *Generator, sb *strings.Builder, funcID string) {
 	optspecsFn := fmt.Sprintf("__%s_global_optspecs", funcID)
 	needsFn := fmt.Sprintf("__%s_needs_command", funcID)
 	usingFn := fmt.Sprintf("__%s_using_subcommand", funcID)
+	usingPrimaryFn := fmt.Sprintf("__%s_using_primary_subcommand", funcID)
 
 	fmt.Fprintf(sb, "\nfunction %s\n    string join \\n --", optspecsFn)
 	for _, spec := range g.Specs {
@@ -463,7 +466,14 @@ function %[3]s
     end
     return 1
 end
-`, needsFn, optspecsFn, usingFn)
+
+function %[4]s
+    set -l cmd (%[1]s)
+    test -z "$cmd"
+    and return 1
+    contains -- $cmd[1] $argv
+end
+`, needsFn, optspecsFn, usingFn, usingPrimaryFn)
 }
 
 func fishWriteSubEntries(
@@ -481,7 +491,7 @@ func fishWriteSubTree(
 	g *Generator,
 	sb *strings.Builder,
 	subs []SubSpec,
-	usingSub, parentCondition, pathPrefix, funcID string,
+	usingSub, usingPrimarySub, parentCondition, pathPrefix, funcID string,
 	inheritedSpecs []Spec,
 	depth int,
 	funcLookup map[string]string,
@@ -489,7 +499,11 @@ func fishWriteSubTree(
 	for _, sub := range SortSubSpecs(subs) {
 		subPath := fishFuncPath(pathPrefix, sub.Name)
 		allNames := append([]string{sub.Name}, sub.Aliases...)
-		subSeen := usingSub + " " + strings.Join(allNames, " ")
+		subSeenFunc := usingSub
+		if depth == 1 {
+			subSeenFunc = usingPrimarySub
+		}
+		subSeen := subSeenFunc + " " + strings.Join(allNames, " ")
 
 		seenCondition := subSeen
 		if parentCondition != "" {
@@ -560,6 +574,7 @@ complete -c %s -n '%s' -a "(%s)" -f
 				sb,
 				sub.Subs,
 				usingSub,
+				usingPrimarySub,
 				seenCondition,
 				subPath,
 				funcID,
