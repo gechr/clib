@@ -1,0 +1,11 @@
+Usage
+
+  catalog [options]
+
+Options
+
+  -c, --channel CHANNEL  Channel ID, name, or alias
+  -M, --max-items N      Maximum messages to return
+  -v, --verbose          Verbose output
+
+  -h, --help             Print help

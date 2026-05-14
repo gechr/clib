@@ -1,0 +1,12 @@
+Usage
+
+  catalog [options]
+
+Filters
+
+  -q, --query <text>     Filter results by query
+      --tags <tag>       Filter by tags
+
+Output
+
+  -f, --format <format>  Output format [table, json]

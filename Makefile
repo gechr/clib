@@ -13,7 +13,7 @@ fmt:
 
 .PHONY: golden
 golden:
-	@$(GO) test ./complete -run TestGolden -update
+	@$(GO) test ./complete ./help ./cli/cobra ./cli/kong ./cli/urfave -run TestGolden -update
 
 .PHONY: lint
 lint:

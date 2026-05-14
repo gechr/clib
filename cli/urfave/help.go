@@ -50,7 +50,9 @@ func SectionsWithOptions(opts ...SectionsOption) func(*clilib.Command) []help.Se
 }
 
 func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
-	var cfg sectionsConfig
+	cfg := sectionsConfig{
+		lowercasePlaceholders: true,
+	}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
@@ -59,7 +61,7 @@ func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
 
 	var sections []help.Section
 
-	flagSections, hasFlags := buildFlagSections(cmd)
+	flagSections, hasFlags := buildFlagSections(cmd, cfg)
 
 	// Commands that only dispatch to subcommands have their flags suppressed -
 	// they cannot take effect without picking a subcommand.
@@ -135,7 +137,7 @@ func commandSection(cmds []*clilib.Command) help.Section {
 // If any visible flag has a group (via urfave Category or clib extra),
 // flags are split into group sections (alphabetical), with ungrouped local
 // flags under "Options" and ungrouped inherited flags under "Global Options".
-func buildFlagSections(cmd *clilib.Command) ([]help.Section, bool) {
+func buildFlagSections(cmd *clilib.Command, cfg sectionsConfig) ([]help.Section, bool) {
 	flagDepths := flagAncestorDepths(cmd)
 
 	var classified []help.ClassifiedFlag
@@ -153,7 +155,7 @@ func buildFlagSections(cmd *clilib.Command) ([]help.Section, bool) {
 			}
 		}
 		classified = append(classified, help.ClassifiedFlag{
-			Flag:          flagToHelp(cmd, f),
+			Flag:          flagToHelp(cfg, cmd, f),
 			Group:         flagGroup(cmd, f),
 			AncestorDepth: depth,
 		})
@@ -198,7 +200,7 @@ func flagGroup(cmd *clilib.Command, f clilib.Flag) string {
 	return ""
 }
 
-func flagToHelp(cmd *clilib.Command, f clilib.Flag) help.Flag {
+func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Flag {
 	names := f.Names()
 	var short, long string
 	var isNegatable bool
@@ -254,7 +256,7 @@ func flagToHelp(cmd *clilib.Command, f clilib.Flag) help.Flag {
 
 	extra := getFlagExtra(cmd, f)
 	if extra != nil && extra.Placeholder != "" {
-		hf.Placeholder = extra.Placeholder
+		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
 		hf.Repeatable = isMultiValue
 	} else if hasArg {
 		// Default placeholder is the flag name.
@@ -294,6 +296,13 @@ func flagToHelp(cmd *clilib.Command, f clilib.Flag) help.Flag {
 	}
 
 	return hf
+}
+
+func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
+	if !cfg.lowercasePlaceholders {
+		return placeholder
+	}
+	return strings.ToLower(placeholder)
 }
 
 // parseArgsUsage parses an ArgsUsage string into help.Arg entries.

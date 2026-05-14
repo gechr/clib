@@ -53,6 +53,7 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 	cfg := sectionsConfig{
 		keepGroupOrder:                  true,
 		hideInheritedFlagsOnSubcommands: true,
+		lowercasePlaceholders:           true,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -229,7 +230,7 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 				group = extra.Group
 			}
 			classified = append(classified, help.ClassifiedFlag{
-				Flag:          pflagToHelpFlag(f),
+				Flag:          pflagToHelpFlag(cfg, f),
 				Group:         group,
 				AncestorDepth: depth,
 			})
@@ -251,19 +252,24 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 	return sections, len(sections) > 0
 }
 
-func pflagToHelpFlag(f *pflag.Flag) help.Flag {
+func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
+	usagePlaceholder, usage, hasUsagePlaceholder := splitPflagUsagePlaceholder(f.Usage)
 	hf := help.Flag{
 		Short: f.Shorthand,
 		Long:  f.Name,
-		Desc:  f.Usage,
+		Desc:  usage,
 	}
 	typeName := f.Value.Type()
 	isRepeatable := strings.Contains(typeName, "Slice") || strings.Contains(typeName, "Array")
 	extra := getExtra(f)
-	if extra != nil && extra.Placeholder != "" {
-		hf.Placeholder = extra.Placeholder
+	switch {
+	case extra != nil && extra.Placeholder != "":
+		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
 		hf.Repeatable = isRepeatable
-	} else if typeName != pflagTypeBool {
+	case hasUsagePlaceholder:
+		hf.Placeholder = normalizePlaceholder(usagePlaceholder, cfg)
+		hf.Repeatable = isRepeatable
+	case typeName != pflagTypeBool:
 		hf.Placeholder = f.Name
 		hf.Repeatable = isRepeatable
 	}
@@ -295,6 +301,31 @@ func pflagToHelpFlag(f *pflag.Flag) help.Flag {
 	}
 
 	return hf
+}
+
+func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
+	if !cfg.lowercasePlaceholders {
+		return placeholder
+	}
+	return strings.ToLower(placeholder)
+}
+
+func splitPflagUsagePlaceholder(usage string) (string, string, bool) {
+	for i := range len(usage) {
+		if usage[i] != '`' {
+			continue
+		}
+		for j := i + 1; j < len(usage); j++ {
+			if usage[j] != '`' {
+				continue
+			}
+			placeholder := usage[i+1 : j]
+			unquotedUsage := usage[:i] + placeholder + usage[j+1:]
+			return placeholder, unquotedUsage, true
+		}
+		break
+	}
+	return "", usage, false
 }
 
 func parseUseArgs(use string) []help.Arg {

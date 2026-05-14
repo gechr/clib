@@ -258,6 +258,46 @@ func TestSections_Placeholder_Annotation(t *testing.T) {
 	require.Equal(t, "owner/repo", flags[0].Placeholder)
 }
 
+func TestSections_Placeholder_AnnotationLowercasedByDefault(t *testing.T) {
+	channelFlag := &clilib.StringFlag{
+		Name:    "channel",
+		Aliases: []string{"c"},
+		Usage:   "Channel ID, name, or alias",
+	}
+	urfavecli.Extend(channelFlag, urfavecli.FlagExtra{Placeholder: "CHANNEL"})
+
+	cmd := &clilib.Command{
+		Name:  "app",
+		Flags: []clilib.Flag{channelFlag},
+	}
+
+	sections := urfavecli.Sections(cmd)
+
+	flags := urfaveTestFlags(t, sections, "Options")
+	require.Len(t, flags, 1)
+	require.Equal(t, "channel", flags[0].Placeholder)
+}
+
+func TestSections_Placeholder_WithPreservePlaceholders(t *testing.T) {
+	channelFlag := &clilib.StringFlag{
+		Name:    "channel",
+		Aliases: []string{"c"},
+		Usage:   "Channel ID, name, or alias",
+	}
+	urfavecli.Extend(channelFlag, urfavecli.FlagExtra{Placeholder: "CHANNEL"})
+
+	cmd := &clilib.Command{
+		Name:  "app",
+		Flags: []clilib.Flag{channelFlag},
+	}
+
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithPreservePlaceholders())(cmd)
+
+	flags := urfaveTestFlags(t, sections, "Options")
+	require.Len(t, flags, 1)
+	require.Equal(t, "CHANNEL", flags[0].Placeholder)
+}
+
 func TestSections_Negatable(t *testing.T) {
 	cmd := &clilib.Command{
 		Name: "app",
@@ -795,4 +835,21 @@ func TestSections_CommandsAddSubcommandArg(t *testing.T) {
 	last := usage.Args[len(usage.Args)-1]
 	require.True(t, last.IsSubcommand)
 	require.Equal(t, "command", last.Name)
+}
+
+func urfaveTestFlags(t *testing.T, sections []help.Section, title string) help.FlagGroup {
+	t.Helper()
+
+	var flagSection *help.Section
+	for i := range sections {
+		if sections[i].Title == title {
+			flagSection = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, flagSection)
+
+	flags, ok := flagSection.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	return flags
 }

@@ -7,6 +7,7 @@ type sectionsConfig struct {
 	hideInheritedFlagsOnSubcommands bool
 	showInheritedFlagsOnSubcommands bool
 	subcommandOptional              bool
+	lowercasePlaceholders           bool
 	rawUsage                        bool
 }
 
@@ -52,6 +53,13 @@ func WithHideInheritedFlagsOnSubcommands() SectionsOption {
 // is genuinely runnable without a subcommand.
 func WithSubcommandOptional() SectionsOption {
 	return func(c *sectionsConfig) { c.subcommandOptional = true }
+}
+
+// WithPreservePlaceholders keeps placeholders exactly as provided by clib
+// metadata or pflag usage annotations. By default, explicit Cobra flag
+// placeholders are lowercased for consistency with clib's help style.
+func WithPreservePlaceholders() SectionsOption {
+	return func(c *sectionsConfig) { c.lowercasePlaceholders = false }
 }
 
 // WithShowInheritedFlagsOnSubcommands keeps inherited/global flags visible in

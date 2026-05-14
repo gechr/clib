@@ -375,6 +375,49 @@ func TestSections_Placeholder_Annotation(t *testing.T) {
 	require.Equal(t, "owner/repo", flags[0].Placeholder)
 }
 
+func TestSections_Placeholder_AnnotationLowercasedByDefault(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().StringP("channel", "c", "", "Channel ID, name, or alias")
+	cobra.Extend(cmd.Flags().Lookup("channel"), cobra.FlagExtra{Placeholder: "CHANNEL"})
+
+	sections := cobra.Sections(cmd)
+
+	flags := cobraTestFlags(t, sections, "Options")
+	require.Len(t, flags, 1)
+	require.Equal(t, "channel", flags[0].Placeholder)
+}
+
+func TestSections_Placeholder_PflagUsageLowercasedByDefault(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().StringP("channel", "c", "", "Channel `CHANNEL`, name, or alias")
+
+	sections := cobra.Sections(cmd)
+
+	flags := cobraTestFlags(t, sections, "Options")
+	require.Len(t, flags, 1)
+	require.Equal(t, "channel", flags[0].Placeholder)
+	require.Equal(t, "Channel CHANNEL, name, or alias", flags[0].Desc)
+
+	rendered := renderCobraTestSections(t, sections)
+	require.Contains(t, rendered, "-c, --channel <channel>")
+	require.NotContains(t, rendered, "<CHANNEL>")
+}
+
+func TestSections_Placeholder_WithPreservePlaceholders(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().StringP("channel", "c", "", "Channel `CHANNEL`, name, or alias")
+
+	sections := cobra.SectionsWithOptions(cobra.WithPreservePlaceholders())(cmd)
+
+	flags := cobraTestFlags(t, sections, "Options")
+	require.Len(t, flags, 1)
+	require.Equal(t, "CHANNEL", flags[0].Placeholder)
+	require.Equal(t, "Channel CHANNEL, name, or alias", flags[0].Desc)
+
+	rendered := renderCobraTestSections(t, sections)
+	require.Contains(t, rendered, "-c, --channel <CHANNEL>")
+}
+
 func TestSections_Flags_SlicePlaceholder(t *testing.T) {
 	cmd := &cobralib.Command{Use: "app"}
 	cmd.Flags().StringSlice("label", nil, "Add labels")
@@ -862,4 +905,30 @@ func TestSections_SubcommandGroups_AllGrouped(t *testing.T) {
 		titles = append(titles, s.Title)
 	}
 	require.Equal(t, []string{"Usage", "Core Commands"}, titles)
+}
+
+func cobraTestFlags(t *testing.T, sections []help.Section, title string) help.FlagGroup {
+	t.Helper()
+
+	var flagSection *help.Section
+	for i := range sections {
+		if sections[i].Title == title {
+			flagSection = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, flagSection)
+
+	flags, ok := flagSection.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	return flags
+}
+
+func renderCobraTestSections(t *testing.T, sections []help.Section) string {
+	t.Helper()
+
+	r := help.NewRenderer(theme.Default())
+	var buf bytes.Buffer
+	require.NoError(t, r.Render(&buf, sections))
+	return ansi.Strip(buf.String())
 }

@@ -1,0 +1,8 @@
+Usage
+
+  catalog [options]
+
+Options
+
+  -c, --channel <channel>  Channel CHANNEL, name, or alias
+  -M, --max-items <n>      Maximum messages to return
