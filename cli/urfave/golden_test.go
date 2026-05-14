@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
 	urfavecli "github.com/gechr/clib/cli/urfave"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
@@ -102,7 +101,7 @@ func TestGolden(t *testing.T) {
 			var buf bytes.Buffer
 			require.NoError(t, r.Render(&buf, sections))
 
-			got := ansi.Strip(buf.String())
+			got := buf.String()
 			goldenFile := filepath.Join("testdata", name+".golden")
 
 			if *update {

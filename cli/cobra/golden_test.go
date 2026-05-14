@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
 	cobracli "github.com/gechr/clib/cli/cobra"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
@@ -37,12 +36,27 @@ func sectionsPreservePlaceholders() []help.Section {
 	return cobracli.SectionsWithOptions(cobracli.WithPreservePlaceholders())(cmd)
 }
 
+// sectionsFlagRefsInBackticks exercises backticked content in flag
+// descriptions. Backticked flag references (`--foo`) and backticked
+// identifiers on bool flags must survive to the renderer as inline code
+// markers, never as value placeholders. Non-bool flags continue to honour
+// the standard pflag placeholder convention.
+func sectionsFlagRefsInBackticks() []help.Section {
+	cmd := &cobralib.Command{Use: "run"}
+	cmd.Flags().Bool("alpha", false, "Alias for `--foo=0`")
+	cmd.Flags().Bool("bravo", false, "Print totals (implies `--alpha`)")
+	cmd.Flags().Bool("charlie", false, "Use the `embedded` backend")
+	cmd.Flags().String("delta", "", "User `name` to set")
+	return cobracli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Default())
 
 	scenarios := map[string][]help.Section{
 		"lowercase_placeholders": sectionsLowercasePlaceholders(),
 		"preserve_placeholders":  sectionsPreservePlaceholders(),
+		"flag_refs_in_backticks": sectionsFlagRefsInBackticks(),
 	}
 
 	for name, sections := range scenarios {
@@ -50,7 +64,7 @@ func TestGolden(t *testing.T) {
 			var buf bytes.Buffer
 			require.NoError(t, r.Render(&buf, sections))
 
-			got := ansi.Strip(buf.String())
+			got := buf.String()
 			goldenFile := filepath.Join("testdata", name+".golden")
 
 			if *update {

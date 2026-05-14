@@ -1,12 +1,12 @@
-Usage
+[1;33mUsage[m
 
-  catalog [options]
+  [1;32mcatalog[m [31m[options][m
 
-Filters
+[1;33mFilters[m
 
-  -q, --query <text>     Filter results by query
-      --tags <tag>       Filter by tags
+  [31m-q[m, [31m--query[m[2;31m [m[2;31m<text>[m     Filter results by query
+      [31m--tags[m[2;31m [m[2;31m<tag>[m       Filter by tags
 
-Output
+[1;33mOutput[m
 
-  -f, --format <format>  Output format [table, json]
+  [31m-f[m, [31m--format[m[2;31m [m[2;31m<format>[m  Output format [2m[[m[2;32mtable[m[2m, [m[2mjson[m[2m][m

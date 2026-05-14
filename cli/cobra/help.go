@@ -253,24 +253,29 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 }
 
 func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
-	usagePlaceholder, usage, hasUsagePlaceholder := splitPflagUsagePlaceholder(f.Usage)
 	hf := help.Flag{
 		Short: f.Shorthand,
 		Long:  f.Name,
-		Desc:  usage,
+		Desc:  f.Usage,
 	}
 	typeName := f.Value.Type()
 	isRepeatable := strings.Contains(typeName, "Slice") || strings.Contains(typeName, "Array")
 	extra := getExtra(f)
+	// Only extract a backquoted placeholder for non-bool flags: bool flags
+	// take no value, so a placeholder is nonsensical and backticks in their
+	// usage are inline-code markers that must survive to the renderer.
 	switch {
 	case extra != nil && extra.Placeholder != "":
 		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
 		hf.Repeatable = isRepeatable
-	case hasUsagePlaceholder:
-		hf.Placeholder = normalizePlaceholder(usagePlaceholder, cfg)
-		hf.Repeatable = isRepeatable
 	case typeName != pflagTypeBool:
-		hf.Placeholder = f.Name
+		usagePlaceholder, usage, hasUsagePlaceholder := splitPflagUsagePlaceholder(f.Usage)
+		if hasUsagePlaceholder {
+			hf.Placeholder = normalizePlaceholder(usagePlaceholder, cfg)
+			hf.Desc = usage
+		} else {
+			hf.Placeholder = f.Name
+		}
 		hf.Repeatable = isRepeatable
 	}
 	if extra != nil && len(extra.Enum) > 0 {
@@ -310,6 +315,18 @@ func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
 	return strings.ToLower(placeholder)
 }
 
+// splitPflagUsagePlaceholder extracts the first backquoted token from a
+// pflag-style usage string and returns it as a value placeholder (mirroring
+// the convention used by `flag.UnquoteUsage`).
+//
+// Backquoted content that looks like a flag reference (e.g. `--verbose`) is
+// NOT treated as a placeholder — flag references in descriptions are common
+// (e.g. "Alias for `--quiet=0`") and should be rendered as inline code, not
+// pulled out as the placeholder. In that case the original usage string is
+// returned unchanged so downstream renderers can preserve the backticks as
+// inline code markers. When a backquoted token IS treated as a placeholder,
+// the surrounding backticks are stripped from the returned usage string
+// (pflag convention).
 func splitPflagUsagePlaceholder(usage string) (string, string, bool) {
 	for i := range len(usage) {
 		if usage[i] != '`' {
@@ -319,9 +336,14 @@ func splitPflagUsagePlaceholder(usage string) (string, string, bool) {
 			if usage[j] != '`' {
 				continue
 			}
-			placeholder := usage[i+1 : j]
-			unquotedUsage := usage[:i] + placeholder + usage[j+1:]
-			return placeholder, unquotedUsage, true
+			content := usage[i+1 : j]
+			// Backticked flag references are inline code, not placeholders.
+			// Preserve the original usage (with backticks) for the renderer.
+			if strings.HasPrefix(content, "-") {
+				return "", usage, false
+			}
+			unquotedUsage := usage[:i] + content + usage[j+1:]
+			return content, unquotedUsage, true
 		}
 		break
 	}

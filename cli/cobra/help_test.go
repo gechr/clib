@@ -199,6 +199,60 @@ func TestSections_Flags_Placeholder(t *testing.T) {
 	require.Empty(t, verboseFlag.Placeholder)
 }
 
+// TestSections_Flags_Placeholder_BoolBackticks ensures that backticked text in
+// a bool flag's usage string is treated as inline code formatting and the
+// backticks are preserved for the renderer, NOT extracted as a value
+// placeholder. Bool flags take no value, so attaching a placeholder to them
+// is nonsensical.
+func TestSections_Flags_Placeholder_BoolBackticks(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().Bool("alpha", false, "Print total (implies `--bravo`)")
+	cmd.Flags().Bool("charlie", false, "Use the `embedded` backend")
+	cmd.Flags().String("delta", "", "User `name` to set")
+
+	sections := cobra.Sections(cmd)
+
+	var flagSection *help.Section
+	for i := range sections {
+		if sections[i].Title == "Options" {
+			flagSection = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, flagSection)
+
+	flags, ok := flagSection.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	var alphaFlag, charlieFlag, deltaFlag *help.Flag
+	for i := range flags {
+		switch flags[i].Long {
+		case "alpha":
+			alphaFlag = &flags[i]
+		case "charlie":
+			charlieFlag = &flags[i]
+		case "delta":
+			deltaFlag = &flags[i]
+		}
+	}
+
+	// Bool flag with a backticked flag reference: no placeholder, backticks
+	// preserved verbatim so the renderer can style them as inline code.
+	require.NotNil(t, alphaFlag)
+	require.Empty(t, alphaFlag.Placeholder, "bool flag must not get a placeholder")
+	require.Equal(t, "Print total (implies `--bravo`)", alphaFlag.Desc)
+
+	// Bool flag with a backticked identifier (non flag-ref): also no
+	// placeholder, also preserves backticks.
+	require.NotNil(t, charlieFlag)
+	require.Empty(t, charlieFlag.Placeholder, "bool flag must not get a placeholder")
+	require.Equal(t, "Use the `embedded` backend", charlieFlag.Desc)
+
+	// Non-bool flag: backticks still extract the placeholder as before.
+	require.NotNil(t, deltaFlag)
+	require.Equal(t, "name", deltaFlag.Placeholder)
+}
+
 func TestSections_Subcommands(t *testing.T) {
 	noop := func(*cobralib.Command, []string) error { return nil }
 

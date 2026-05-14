@@ -1,8 +1,8 @@
-Usage
+[1;33mUsage[m
 
-  catalog [options]
+  [1;32mcatalog[m [31m[options][m
 
-Options
+[1;33mOptions[m
 
-  -c, --channel <CHANNEL>  Channel CHANNEL, name, or alias
-  -M, --max-items <N>      Maximum messages to return
+  [31m-c[m, [31m--channel[m[2;31m [m[2;31m<CHANNEL>[m  Channel CHANNEL, name, or alias
+  [31m-M[m, [31m--max-items[m[2;31m [m[2;31m<N>[m      Maximum messages to return
