@@ -73,6 +73,57 @@ func TestRender_Usage_Description(t *testing.T) {
 	)
 }
 
+func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "mycli widget", Args: []help.Arg{{Name: "name"}}},
+		}},
+		{Title: "Commands", Content: []help.Content{
+			help.CommandGroup{{Name: "inspect"}, {Name: "remove"}},
+		}},
+		{Title: "Description", Content: []help.Content{
+			help.Description(
+				"Pass `<name>` and choose `inspect` or `remove`. Unknown `<other>` stays plain.",
+			),
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	// Strip ANSI to compare structural output; styling is asserted indirectly
+	// via the wrap test theme - what we lock in here is that the renderer
+	// completes without changing the visible text when known references are
+	// involved (no extra brackets, no missing tokens).
+	out := ansi.Strip(buf.String())
+	require.Contains(
+		t,
+		out,
+		"Pass <name> and choose inspect or remove. Unknown <other> stays plain.",
+	)
+}
+
+func TestRender_Usage_Description_NormalisesWhitespace(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	// Pathological input: leading/trailing blank lines and a run of blank
+	// lines between paragraphs. The renderer should produce exactly one
+	// blank separator with no trailing pad on the blank line.
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "mycli widget"},
+			help.Description("\n\n\nfirst paragraph.\n\n\n\nsecond paragraph.\n\n"),
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		"Usage\n\n  mycli widget\n\n    first paragraph.\n\n    second paragraph.\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
 func TestRender_Usage_Description_NoWrap(t *testing.T) {
 	r := help.NewRenderer(testTheme(), help.WithMaxWidth(40), help.WithDescriptionWidth(0))
 	var buf bytes.Buffer

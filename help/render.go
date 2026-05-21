@@ -316,8 +316,12 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 // width is taken from [WithDescriptionWidth] when set, falling back to
 // [WithMaxWidth] so descriptions wrap to the same column as flag descriptions
 // by default. A width of 0 disables wrapping for descriptions specifically.
-// Author-supplied newlines are treated as paragraph breaks so callers retain
-// control over hard breaks.
+//
+// Whitespace normalisation: leading/trailing blank lines are trimmed, runs
+// of consecutive blank lines collapse to a single blank line, and the indent
+// pad is suppressed on blank lines so output never contains trailing
+// whitespace. Author-supplied non-blank newlines are preserved as paragraph
+// breaks.
 func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error {
 	text := strings.Trim(string(d), "\n")
 	if text == "" {
@@ -330,7 +334,19 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 	}
 	wrap := width > 0
 	avail := max(width-ind, 1)
+	prevBlank := false
 	for paragraph := range strings.SplitSeq(text, "\n") {
+		if paragraph == "" {
+			if prevBlank {
+				continue
+			}
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
+			prevBlank = true
+			continue
+		}
+		prevBlank = false
 		styled := r.renderBackticks(paragraph, nil)
 		lines := []string{styled}
 		if wrap {
