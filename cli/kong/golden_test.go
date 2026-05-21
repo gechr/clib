@@ -46,6 +46,41 @@ func sectionsGrouped() []help.Section {
 	return sections
 }
 
+// inspectCmd implements kong's HelpProvider so the Description section is
+// populated from Help() and we can exercise the smart backtick styling
+// against the command's own args.
+type inspectCmd struct {
+	Name    string `help:"Widget name to inspect" arg:""    optional:""`
+	Verbose bool   `help:"Show all fields"        short:"v"`
+}
+
+func (inspectCmd) Help() string {
+	return `Without ` + "`<name>`" + `, lists every known widget.
+
+With ` + "`<name>`" + `, prints that widget's details. Pass ` + "`--verbose`" + ` to
+include all fields, or use the ` + "`remove`" + ` command to delete it.`
+}
+
+func sectionsDescription() []help.Section {
+	type CLI struct {
+		Inspect inspectCmd `help:"Inspect a widget" cmd:""`
+		Remove  struct {
+			Name string `help:"Widget name" arg:""`
+		} `help:"Remove a widget"  cmd:""`
+	}
+
+	ctx := parseGoldenForHelp(
+		&CLI{},
+		[]string{"inspect", "--help"},
+		konglib.Name("widgets"),
+	)
+	sections, err := kong.NodeSections(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return sections
+}
+
 func parseGoldenForHelp(cli any, args []string, opts ...konglib.Option) *konglib.Context {
 	var captured *konglib.Context
 	printer := func(_ konglib.HelpOptions, ctx *konglib.Context) error {
@@ -75,8 +110,9 @@ func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Default())
 
 	scenarios := map[string][]help.Section{
-		"basic":   sectionsBasic(),
-		"grouped": sectionsGrouped(),
+		"basic":       sectionsBasic(),
+		"grouped":     sectionsGrouped(),
+		"description": sectionsDescription(),
 	}
 
 	for name, sections := range scenarios {

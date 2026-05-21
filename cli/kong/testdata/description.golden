@@ -1,0 +1,18 @@
+[1;33mUsage[m
+
+  [1;32mwidgets inspect[m [31m[options][m [34m[<name>][m
+
+    Without [34m<name>[m, lists every known widget.
+
+    With [34m<name>[m, prints that widget's details. Pass [31m--verbose[m to
+    include all fields, or use the [38;5;222mremove[m command to delete it.
+
+[1;33mArguments[m
+
+  [34m[<name>][m  Widget name to inspect
+
+[1;33mOptions[m
+
+  [31m-v[m, [31m--verbose[m  Show all fields
+
+  [31m-h[m, [31m--help[m     Print help

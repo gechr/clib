@@ -112,7 +112,7 @@ func defaultTheme() *Theme {
 			Faint(true).
 			Foreground(lipgloss.Color("4"))),
 		HelpCommand:      new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
-		HelpDescBacktick: new(lipgloss.NewStyle().Foreground(lipgloss.Color("189"))),
+		HelpDescBacktick: new(lipgloss.NewStyle().Foreground(lipgloss.Color("222"))),
 		HelpDim:          new(lipgloss.NewStyle().Faint(true)),
 		HelpEnumDefault: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("2")),
