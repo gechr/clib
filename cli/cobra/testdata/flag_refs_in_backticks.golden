@@ -6,5 +6,5 @@
 
   [31m--alpha[m         Alias for [31m--foo=0[m
   [31m--bravo[m         Print totals [2m(implies [m[2;31m--alpha[m[2m)[m
-  [31m--charlie[m       Use the [38;5;222membedded[m backend
+  [31m--charlie[m       Use the [38;5;183membedded[m backend
   [31m--delta[m[2;31m [m[2;31m<name>[m  User name to set
