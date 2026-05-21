@@ -57,7 +57,9 @@ func TestRender_Usage_Description(t *testing.T) {
 			help.Usage{Command: "mycli widget", ShowOptions: true, Args: []help.Arg{
 				{Name: "id"},
 			}},
-			help.Description("Without an id, prints a summary of available widgets. With an id, prints that widget's details."),
+			help.Description(
+				"Without an id, prints a summary of available widgets. With an id, prints that widget's details.",
+			),
 		}},
 	}
 	require.NoError(t, r.Render(&buf, sections))
@@ -77,7 +79,9 @@ func TestRender_Usage_Description_NoWrap(t *testing.T) {
 	sections := []help.Section{
 		{Title: "Usage", Content: []help.Content{
 			help.Usage{Command: "mycli widget"},
-			help.Description("Without an id, prints a summary of available widgets. With an id, prints that widget's details."),
+			help.Description(
+				"Without an id, prints a summary of available widgets. With an id, prints that widget's details.",
+			),
 		}},
 	}
 	require.NoError(t, r.Render(&buf, sections))

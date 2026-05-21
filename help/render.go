@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -328,11 +329,8 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		width = r.maxWidth
 	}
 	wrap := width > 0
-	avail := width - ind
-	if avail < 1 {
-		avail = 1
-	}
-	for _, paragraph := range strings.Split(text, "\n") {
+	avail := max(width-ind, 1)
+	for paragraph := range strings.SplitSeq(text, "\n") {
 		styled := r.renderBackticks(paragraph, nil)
 		lines := []string{styled}
 		if wrap {
@@ -432,8 +430,33 @@ func (r *Renderer) buildDescPart(f Flag) (string, error) {
 	return strings.Join(parts, " "), nil
 }
 
+// hasEmpty reports whether any element of vals is the empty string.
+func hasEmpty(vals []string) bool {
+	return slices.Contains(vals, "")
+}
+
+// dropEmptyEnum returns the enum and highlight slices with empty enum entries
+// removed, keeping the highlight slice index-aligned with the trimmed enum.
+func dropEmptyEnum(enum, highlight []string) ([]string, []string) {
+	outEnum := make([]string, 0, len(enum))
+	var outHL []string
+	if len(highlight) > 0 {
+		outHL = make([]string, 0, len(highlight))
+	}
+	for i, v := range enum {
+		if v == "" {
+			continue
+		}
+		outEnum = append(outEnum, v)
+		if i < len(highlight) {
+			outHL = append(outHL, highlight[i])
+		}
+	}
+	return outEnum, outHL
+}
+
 // renderEnum builds a styled enum suffix from f.Enum/EnumHighlight,
-// respecting Theme.EnumStyle.
+// respecting Theme.EnumStyle. Empty enum entries are dropped from the display.
 func (r *Renderer) renderEnum(f Flag) (string, error) {
 	if len(f.Enum) == 0 {
 		return "", nil
@@ -441,22 +464,30 @@ func (r *Renderer) renderEnum(f Flag) (string, error) {
 	if len(f.EnumHighlight) > 0 && len(f.EnumHighlight) != len(f.Enum) {
 		return "", fmt.Errorf("help: EnumHighlight length must match Enum length")
 	}
-	values := make([]theme.EnumValue, len(f.Enum))
-	for i, v := range f.Enum {
+	enum := f.Enum
+	highlight := f.EnumHighlight
+	if hasEmpty(enum) {
+		enum, highlight = dropEmptyEnum(enum, highlight)
+		if len(enum) == 0 {
+			return "", nil
+		}
+	}
+	values := make([]theme.EnumValue, len(enum))
+	for i, v := range enum {
 		ev := theme.EnumValue{Name: v}
 		switch r.Theme.EnumStyle {
 		case theme.EnumStylePlain:
 			// No highlighting.
 			break
 		case theme.EnumStyleHighlightPrefix:
-			if i < len(f.EnumHighlight) {
-				ev.Bold = f.EnumHighlight[i]
+			if i < len(highlight) {
+				ev.Bold = highlight[i]
 			}
 		case theme.EnumStyleHighlightDefault:
 			ev.IsDefault = f.EnumDefault != "" && v == f.EnumDefault
 		case theme.EnumStyleHighlightBoth:
-			if i < len(f.EnumHighlight) {
-				ev.Bold = f.EnumHighlight[i]
+			if i < len(highlight) {
+				ev.Bold = highlight[i]
 			}
 			ev.IsDefault = f.EnumDefault != "" && v == f.EnumDefault
 		}
