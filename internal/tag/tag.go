@@ -25,8 +25,8 @@ const (
 	NoIndent    = "no-indent"
 	Placeholder = "placeholder"
 	Positive    = "positive"
-	Raw         = "raw"
 	Terse       = "terse"
+	Usage       = "usage"
 )
 
 // Parse extracts the value for key from a clib tag string.

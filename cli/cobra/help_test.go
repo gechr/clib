@@ -96,6 +96,49 @@ func TestSections_Usage_NoFlags(t *testing.T) {
 	require.False(t, usage.ShowOptions)
 }
 
+func TestSections_Usage_LongDescription(t *testing.T) {
+	cmd := &cobralib.Command{
+		Use:   "deploy <env>",
+		Short: "Deploy the app",
+		Long:  "Deploy the app to a target environment,\nrunning pre-flight checks before cutover.",
+	}
+
+	sections := cobra.Sections(cmd)
+
+	require.Equal(t, "Usage", sections[0].Title)
+	require.Len(t, sections[0].Content, 2)
+	require.IsType(t, help.Usage{}, sections[0].Content[0])
+	desc, ok := sections[0].Content[1].(help.Description)
+	require.True(t, ok, "cmd.Long should produce a help.Description")
+	require.Equal(t, cmd.Long, string(desc))
+}
+
+func TestSections_Usage_NoLongDescription(t *testing.T) {
+	// cmd.Short alone must not emit a Description blurb: it already appears
+	// in the parent's command list.
+	cmd := &cobralib.Command{Use: "deploy", Short: "Deploy the app"}
+
+	sections := cobra.Sections(cmd)
+
+	require.Len(t, sections[0].Content, 1, "cmd.Short must not emit a Description")
+}
+
+func TestSections_Usage_LongDescriptionWithRawUsage(t *testing.T) {
+	// WithRawUsage overrides the usage line only; cmd.Long is independent
+	// and must still be surfaced.
+	cmd := &cobralib.Command{
+		Use:  "get [(-o|--output=)json|yaml]",
+		Long: "Display one or many resources.",
+	}
+
+	sections := cobra.SectionsWithOptions(cobra.WithRawUsage())(cmd)
+
+	require.Len(t, sections[0].Content, 2)
+	desc, ok := sections[0].Content[1].(help.Description)
+	require.True(t, ok)
+	require.Equal(t, cmd.Long, string(desc))
+}
+
 func TestSections_Aliases(t *testing.T) {
 	cmd := &cobralib.Command{
 		Use:     "app",

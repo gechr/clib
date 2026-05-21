@@ -88,27 +88,31 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 }
 
 func usageSection(cmd *cobralib.Command, hasFlags bool, cfg sectionsConfig) help.Section {
+	var u help.Usage
 	if cfg.rawUsage {
-		return help.Section{
-			Title:   "Usage",
-			Content: []help.Content{help.Usage{Command: cmd.CommandPath(), Raw: rawUseSuffix(cmd)}},
+		u = help.Usage{Command: cmd.CommandPath(), Raw: rawUseSuffix(cmd)}
+	} else {
+		u = help.Usage{
+			Command:     cmd.CommandPath(),
+			ShowOptions: hasFlags,
+			Args:        parseUseArgs(cmd.Use),
+		}
+		if len(availableCommands(cmd)) > 0 {
+			u.Args = append(
+				u.Args,
+				help.Arg{Name: "command", Required: !cfg.subcommandOptional, IsSubcommand: true},
+			)
 		}
 	}
-	u := help.Usage{
-		Command:     cmd.CommandPath(),
-		ShowOptions: hasFlags,
-		Args:        parseUseArgs(cmd.Use),
+
+	content := []help.Content{u}
+	// Surface cmd.Long as a Description blurb below the Usage line, mirroring
+	// the kong adapter's handling of node.Detail. cmd.Short is intentionally
+	// not used: it already appears in the parent's command list.
+	if cmd.Long != "" {
+		content = append(content, help.Description(cmd.Long))
 	}
-	if len(availableCommands(cmd)) > 0 {
-		u.Args = append(
-			u.Args,
-			help.Arg{Name: "command", Required: !cfg.subcommandOptional, IsSubcommand: true},
-		)
-	}
-	return help.Section{
-		Title:   "Usage",
-		Content: []help.Content{u},
-	}
+	return help.Section{Title: "Usage", Content: content}
 }
 
 // rawUseSuffix returns cmd.Use with the leading command name stripped, so the

@@ -50,6 +50,21 @@ func sectionsFlagRefsInBackticks() []help.Section {
 	return cobracli.Sections(cmd)
 }
 
+// sectionsLongDescription exercises a command-level long description
+// (cmd.Long), surfaced as a help.Description blurb below the Usage line and
+// rendered by the shared renderer (paragraph breaks, backtick styling).
+func sectionsLongDescription() []help.Section {
+	cmd := &cobralib.Command{
+		Use:   "deploy <env>",
+		Short: "Deploy the app",
+		Long: "Deploy the application to the named environment.\n\n" +
+			"Pre-flight checks run before cutover; the previous release\n" +
+			"is retained so `--rollback` can restore it on failure.",
+	}
+	cmd.Flags().Bool("rollback", false, "Restore the previous release")
+	return cobracli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Default())
 
@@ -57,6 +72,7 @@ func TestGolden(t *testing.T) {
 		"lowercase_placeholders": sectionsLowercasePlaceholders(),
 		"preserve_placeholders":  sectionsPreservePlaceholders(),
 		"flag_refs_in_backticks": sectionsFlagRefsInBackticks(),
+		"long_description":       sectionsLongDescription(),
 	}
 
 	for name, sections := range scenarios {

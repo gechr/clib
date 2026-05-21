@@ -87,6 +87,24 @@ func sectionsGrouped() []help.Section {
 	return urfavecli.Sections(cmd)
 }
 
+// sectionsLongDescription exercises a command-level long description
+// (cmd.Description), surfaced as a help.Description blurb below the Usage
+// line and rendered by the shared renderer (paragraph breaks, backticks).
+func sectionsLongDescription() []help.Section {
+	cmd := &clilib.Command{
+		Name:      "deploy",
+		ArgsUsage: "<env>",
+		Usage:     "Deploy the app",
+		Description: "Deploy the application to the named environment.\n\n" +
+			"Pre-flight checks run before cutover; the previous release\n" +
+			"is retained so `--rollback` can restore it on failure.",
+		Flags: []clilib.Flag{
+			&clilib.BoolFlag{Name: "rollback", Usage: "Restore the previous release"},
+		},
+	}
+	return urfavecli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Default())
 
@@ -94,6 +112,7 @@ func TestGolden(t *testing.T) {
 		"basic":                 sectionsBasic(),
 		"grouped":               sectionsGrouped(),
 		"preserve_placeholders": sectionsPreservePlaceholders(),
+		"long_description":      sectionsLongDescription(),
 	}
 
 	for name, sections := range scenarios {

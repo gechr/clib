@@ -161,53 +161,15 @@ func isSubcommandOnlyGrouper(node *konglib.Node) bool {
 
 // nodeUsageSection builds the Usage section for a node.
 func nodeUsageSection(node *konglib.Node) help.Section {
-	// Raw passthrough: clib:"raw='...'" on a command struct suppresses the
-	// computed positionals/options and emits the tag value verbatim after the
-	// command path. Use this when kong's computed usage does not fit (e.g.
+	// Usage passthrough: clib:"usage='...'" on a command struct suppresses
+	// the computed positionals/options and emits the tag value verbatim after
+	// the command path. Use this when kong's computed usage does not fit (e.g.
 	// mutually exclusive flag groups, shell-syntax alternatives).
-	if raw := nodeRawUsage(node); raw != "" {
-		return help.Section{
-			Title:   "Usage",
-			Content: []help.Content{help.Usage{Command: nodePath(node), Raw: raw}},
-		}
-	}
-
-	u := help.Usage{
-		Command: nodePath(node),
-	}
-
-	// Add positional args.
-	for _, pos := range node.Positional {
-		u.Args = append(u.Args, help.Arg{
-			Name:       pos.Name,
-			Required:   pos.Required,
-			Repeatable: pos.IsCumulative(),
-		})
-	}
-
-	// Add <command> if the node has visible children.
-	if hasVisibleChildren(node) {
-		u.Args = append(u.Args, help.Arg{Name: "command", Required: true, IsSubcommand: true})
-	}
-
-	// Show [options] if there are any visible flags - but not on
-	// subcommand-only grouper commands, since the Options section is
-	// hidden there.
-	if !isSubcommandOnlyGrouper(node) {
-		for _, f := range node.Flags {
-			if !f.Hidden {
-				u.ShowOptions = true
-				break
-			}
-		}
-		if !u.ShowOptions && node.Parent != nil {
-			for _, f := range ancestorFlags(node) {
-				if !f.Hidden {
-					u.ShowOptions = true
-					break
-				}
-			}
-		}
+	u := help.Usage{Command: nodePath(node)}
+	if raw := nodeUsageTag(node); raw != "" {
+		u.Raw = raw
+	} else {
+		fillComputedUsage(&u, node)
 	}
 
 	content := []help.Content{u}
@@ -224,17 +186,56 @@ func nodeUsageSection(node *konglib.Node) help.Section {
 	}
 }
 
-// nodeRawUsage reads clib:"raw='...'" from the node's struct tag, returning
-// the raw usage string or "" if unset or malformed.
-func nodeRawUsage(node *konglib.Node) string {
+// fillComputedUsage populates u with positional args, a <command> placeholder
+// for nodes with visible children, and the [options] marker - kong's standard
+// computed usage line, used when no clib:"usage='...'" tag overrides it.
+func fillComputedUsage(u *help.Usage, node *konglib.Node) {
+	for _, pos := range node.Positional {
+		u.Args = append(u.Args, help.Arg{
+			Name:       pos.Name,
+			Required:   pos.Required,
+			Repeatable: pos.IsCumulative(),
+		})
+	}
+
+	// Add <command> if the node has visible children.
+	if hasVisibleChildren(node) {
+		u.Args = append(u.Args, help.Arg{Name: "command", Required: true, IsSubcommand: true})
+	}
+
+	// Show [options] if there are any visible flags - but not on
+	// subcommand-only grouper commands, since the Options section is
+	// hidden there.
+	if isSubcommandOnlyGrouper(node) {
+		return
+	}
+	for _, f := range node.Flags {
+		if !f.Hidden {
+			u.ShowOptions = true
+			break
+		}
+	}
+	if !u.ShowOptions && node.Parent != nil {
+		for _, f := range ancestorFlags(node) {
+			if !f.Hidden {
+				u.ShowOptions = true
+				break
+			}
+		}
+	}
+}
+
+// nodeUsageTag reads clib:"usage='...'" from the node's struct tag, returning
+// the verbatim usage string or "" if unset or malformed.
+func nodeUsageTag(node *konglib.Node) string {
 	if node.Tag == nil {
 		return ""
 	}
-	raw, _, err := tag.Parse(node.Tag.Get(tagClib), tag.Raw)
+	usage, _, err := tag.Parse(node.Tag.Get(tagClib), tag.Usage)
 	if err != nil {
 		return ""
 	}
-	return raw
+	return usage
 }
 
 // nodePath walks parents to build the command path (e.g. "app run"),

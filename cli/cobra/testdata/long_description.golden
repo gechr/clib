@@ -1,0 +1,12 @@
+[1;33mUsage[m
+
+  [1;32mdeploy[m [31m[options][m [34m<env>[m
+
+    Deploy the application to the named environment.
+
+    Pre-flight checks run before cutover; the previous release
+    is retained so [31m--rollback[m can restore it on failure.
+
+[1;33mOptions[m
+
+  [31m--rollback[m  Restore the previous release

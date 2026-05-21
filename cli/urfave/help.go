@@ -86,33 +86,34 @@ func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
 }
 
 func usageSection(cmd *clilib.Command, hasFlags bool, cfg sectionsConfig) help.Section {
+	var u help.Usage
 	if cfg.rawUsage {
-		return help.Section{
-			Title:   "Usage",
-			Content: []help.Content{help.Usage{Command: cmd.FullName(), Raw: cmd.ArgsUsage}},
+		u = help.Usage{Command: cmd.FullName(), Raw: cmd.ArgsUsage}
+	} else {
+		u = help.Usage{
+			Command:     cmd.FullName(),
+			ShowOptions: hasFlags,
+		}
+		if cmd.ArgsUsage != "" {
+			u.Args = parseArgsUsage(cmd.ArgsUsage)
+		}
+		if cmds := cmd.VisibleCommands(); len(cmds) > 0 {
+			u.Args = append(
+				u.Args,
+				help.Arg{Name: "command", Required: cmd.Action == nil, IsSubcommand: true},
+			)
 		}
 	}
 
-	u := help.Usage{
-		Command:     cmd.FullName(),
-		ShowOptions: hasFlags,
+	content := []help.Content{u}
+	// Surface cmd.Description as a Description blurb below the Usage line,
+	// mirroring the kong adapter's handling of node.Detail. cmd.Usage (the
+	// short text) is intentionally not used: it already appears in the
+	// parent's command list.
+	if cmd.Description != "" {
+		content = append(content, help.Description(cmd.Description))
 	}
-
-	if cmd.ArgsUsage != "" {
-		u.Args = parseArgsUsage(cmd.ArgsUsage)
-	}
-
-	if cmds := cmd.VisibleCommands(); len(cmds) > 0 {
-		u.Args = append(
-			u.Args,
-			help.Arg{Name: "command", Required: cmd.Action == nil, IsSubcommand: true},
-		)
-	}
-
-	return help.Section{
-		Title:   "Usage",
-		Content: []help.Content{u},
-	}
+	return help.Section{Title: "Usage", Content: content}
 }
 
 func aliasSection(cmd *clilib.Command) help.Section {

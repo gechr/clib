@@ -81,6 +81,51 @@ func TestSections_Usage_NoFlags(t *testing.T) {
 	require.False(t, usage.ShowOptions)
 }
 
+func TestSections_Usage_LongDescription(t *testing.T) {
+	cmd := &clilib.Command{
+		Name:        "deploy",
+		ArgsUsage:   "<env>",
+		Usage:       "Deploy the app",
+		Description: "Deploy the app to a target environment,\nrunning pre-flight checks before cutover.",
+	}
+
+	sections := urfavecli.Sections(cmd)
+
+	require.Equal(t, "Usage", sections[0].Title)
+	require.Len(t, sections[0].Content, 2)
+	require.IsType(t, help.Usage{}, sections[0].Content[0])
+	desc, ok := sections[0].Content[1].(help.Description)
+	require.True(t, ok, "cmd.Description should produce a help.Description")
+	require.Equal(t, cmd.Description, string(desc))
+}
+
+func TestSections_Usage_NoLongDescription(t *testing.T) {
+	// cmd.Usage (the short text) alone must not emit a Description blurb:
+	// it already appears in the parent's command list.
+	cmd := &clilib.Command{Name: "deploy", Usage: "Deploy the app"}
+
+	sections := urfavecli.Sections(cmd)
+
+	require.Len(t, sections[0].Content, 1, "cmd.Usage must not emit a Description")
+}
+
+func TestSections_Usage_LongDescriptionWithRawUsage(t *testing.T) {
+	// WithRawUsage overrides the usage line only; cmd.Description is
+	// independent and must still be surfaced.
+	cmd := &clilib.Command{
+		Name:        "get",
+		ArgsUsage:   "[(-o|--output=)json|yaml]",
+		Description: "Display one or many resources.",
+	}
+
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithRawUsage())(cmd)
+
+	require.Len(t, sections[0].Content, 2)
+	desc, ok := sections[0].Content[1].(help.Description)
+	require.True(t, ok)
+	require.Equal(t, cmd.Description, string(desc))
+}
+
 func TestSections_Aliases(t *testing.T) {
 	cmd := &clilib.Command{
 		Name:    "app",

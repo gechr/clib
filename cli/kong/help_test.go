@@ -496,13 +496,13 @@ func TestNodeSections_Root(t *testing.T) {
 	require.Len(t, cg, 2)
 }
 
-func TestNodeSections_RawUsageTag(t *testing.T) {
-	// clib:"raw='...'" on a command struct passes a verbatim usage suffix
+func TestNodeSections_UsageTag(t *testing.T) {
+	// clib:"usage='...'" on a command struct passes a verbatim usage suffix
 	// through, bypassing kong's computed positional/[options] rendering.
 	type CLI struct {
 		Get struct {
 			Output string `name:"output" help:"Output format" short:"o"`
-		} `help:"Get resources" clib:"raw='[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]'" cmd:""`
+		} `help:"Get resources" clib:"usage='[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]'" cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"get", "--help"}, konglib.Name("myapp"))
@@ -515,8 +515,40 @@ func TestNodeSections_RawUsageTag(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "myapp get", u.Command)
 	require.Equal(t, "[(-o|--output=)json|yaml] <TYPE[.VERSION]> [NAME]", u.Raw)
-	require.Empty(t, u.Args, "raw usage must suppress computed positional args")
-	require.False(t, u.ShowOptions, "raw usage must suppress [options] injection")
+	require.Empty(t, u.Args, "usage tag must suppress computed positional args")
+	require.False(t, u.ShowOptions, "usage tag must suppress [options] injection")
+}
+
+// usageDetailCmd implements kong's HelpProvider so node.Detail is populated
+// alongside a clib:"usage='...'" tag.
+type usageDetailCmd struct {
+	Output string `name:"output" help:"Output format" short:"o"`
+}
+
+func (usageDetailCmd) Help() string { return "Display one or many resources." }
+
+func TestNodeSections_UsageTagWithDetail(t *testing.T) {
+	// A usage tag overrides the usage line only; the command's detailed
+	// help (Help()) is independent and must still surface as a Description.
+	type CLI struct {
+		Get usageDetailCmd `help:"Get resources" clib:"usage='[(-o|--output=)json|yaml]'" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"get", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	usage := findSection(sections, "Usage")
+	require.NotNil(t, usage)
+	require.Len(t, usage.Content, 2)
+
+	u, ok := usage.Content[0].(help.Usage)
+	require.True(t, ok)
+	require.Equal(t, "[(-o|--output=)json|yaml]", u.Raw)
+
+	desc, ok := usage.Content[1].(help.Description)
+	require.True(t, ok, "Help() detail must surface even with a usage tag")
+	require.Equal(t, "Display one or many resources.", string(desc))
 }
 
 func TestNodeSections_Subcommand(t *testing.T) {
