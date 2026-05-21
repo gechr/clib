@@ -49,6 +49,48 @@ func TestRender_Usage(t *testing.T) {
 	require.Equal(t, "Usage\n\n  mycli [options] [<query>]\n", ansi.Strip(buf.String()))
 }
 
+func TestRender_Usage_Description(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithMaxWidth(40))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "mycli widget", ShowOptions: true, Args: []help.Arg{
+				{Name: "id"},
+			}},
+			help.Description("Without an id, prints a summary of available widgets. With an id, prints that widget's details."),
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	// Description inherits MaxWidth (40) and is indented one step past the
+	// usage line (4 columns), so each line stays within the configured width.
+	require.Equal(
+		t,
+		"Usage\n\n  mycli widget [options] [<id>]\n\n    Without an id, prints a summary of\n    available widgets. With an id,\n    prints that widget's details.\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
+func TestRender_Usage_Description_NoWrap(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithMaxWidth(40), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "mycli widget"},
+			help.Description("Without an id, prints a summary of available widgets. With an id, prints that widget's details."),
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	// WithDescriptionWidth(0) opts the description out of wrapping even when
+	// MaxWidth is set; the paragraph emits as a single line.
+	require.Equal(
+		t,
+		"Usage\n\n  mycli widget\n\n    Without an id, prints a summary of available widgets. With an id, prints that widget's details.\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
 func TestRender_Usage_Raw(t *testing.T) {
 	r := help.NewRenderer(testTheme())
 	var buf bytes.Buffer

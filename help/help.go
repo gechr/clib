@@ -77,6 +77,15 @@ type Text string
 
 func (Text) helpContent() {}
 
+// Description is a long-form descriptive blurb (e.g. a command's detailed
+// help from kong's HelpProvider interface). It renders one indent step
+// deeper than other content so it visually nests under the preceding line
+// (typically the Usage syntax) rather than aligning flush with section
+// content.
+type Description string
+
+func (Description) helpContent() {}
+
 // Aliases is a list of alias names. Each name is styled with HelpAlias,
 // falling back to HelpCommand when HelpAlias is unset. Separators (", ")
 // between names are left unstyled.

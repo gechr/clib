@@ -59,6 +59,28 @@ func WithMaxWidth(n int) RendererOption {
 	}
 }
 
+// WithDescriptionIndent sets the extra indent (in columns) applied to
+// [Description] content beyond the section's normal content indent. The
+// default is 2, which nests a description visually under the preceding
+// content (e.g. a Usage line) rather than aligning flush with it. Pass 0
+// to align descriptions with regular section content.
+func WithDescriptionIndent(n int) RendererOption {
+	return func(r *Renderer) {
+		r.descriptionIndent = n
+	}
+}
+
+// WithDescriptionWidth sets the wrap width for [Description] content (e.g.
+// the long-form help surfaced by kong's HelpProvider interface). When left
+// unset, descriptions inherit the [WithMaxWidth] value so they wrap to the
+// same column as flag descriptions. Pass 0 to disable wrapping for
+// descriptions specifically while keeping flag/arg wrapping intact.
+func WithDescriptionWidth(n int) RendererOption {
+	return func(r *Renderer) {
+		r.descriptionWidth = n
+	}
+}
+
 // WithWrapStyle sets how wrapped description continuation lines are indented.
 // The default is [WrapBracketAlign], which aligns continuation lines to the
 // content after an unclosed '[' on the first line (e.g. for enum value lists).

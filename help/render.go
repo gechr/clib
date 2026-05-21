@@ -17,14 +17,16 @@ import (
 type Renderer struct {
 	Theme *theme.Theme
 
-	argPad       int       // padding between arg and description
-	cmdAlign     Alignment // command name alignment
-	cmdAlignMode AlignMode // per-section vs global command alignment
-	cmdPad       int       // padding between command and description
-	flagAlign    Alignment // flag name alignment
-	flagPad      int       // padding between flag and description
-	maxWidth     int       // max output width (0 = no wrapping)
-	wrapStyle    WrapStyle // continuation line indent style
+	argPad            int       // padding between arg and description
+	cmdAlign          Alignment // command name alignment
+	cmdAlignMode      AlignMode // per-section vs global command alignment
+	cmdPad            int       // padding between command and description
+	descriptionIndent int       // extra indent (cols) for Description beyond the section content indent
+	descriptionWidth  int       // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
+	flagAlign         Alignment // flag name alignment
+	flagPad           int       // padding between flag and description
+	maxWidth          int       // max output width (0 = no wrapping)
+	wrapStyle         WrapStyle // continuation line indent style
 }
 
 // NewRenderer creates a Renderer.
@@ -34,12 +36,14 @@ func NewRenderer(th *theme.Theme, opts ...RendererOption) *Renderer {
 	}
 
 	r := &Renderer{
-		Theme:    th.Init(),
-		argPad:   defaultArgPad,
-		cmdAlign: AlignLeft,
-		cmdPad:   defaultCmdPad,
-		flagPad:  defaultFlagPad,
-		maxWidth: autoMaxWidth,
+		Theme:             th.Init(),
+		argPad:            defaultArgPad,
+		cmdAlign:          AlignLeft,
+		cmdPad:            defaultCmdPad,
+		descriptionIndent: defaultDescriptionIndent,
+		descriptionWidth:  autoDescriptionWidth,
+		flagPad:           defaultFlagPad,
+		maxWidth:          autoMaxWidth,
 	}
 	for _, o := range opts {
 		o(r)
@@ -51,13 +55,15 @@ const (
 	indent     = 2
 	nestIndent = indent * 2 // additional indent per nesting depth
 
-	defaultFlagPad = 2 // padding between flag and description
-	defaultArgPad  = 2 // padding between arg and description
-	defaultCmdPad  = 2 // padding between command and description
+	defaultFlagPad           = 2 // padding between flag and description
+	defaultArgPad            = 2 // padding between arg and description
+	defaultCmdPad            = 2 // padding between command and description
+	defaultDescriptionIndent = 2 // extra indent for Description content beyond section content indent
 
 	overflowPad = 2 // minimum gap when name overflows past descCol
 
-	autoMaxWidth = -1
+	autoMaxWidth         = -1
+	autoDescriptionWidth = -1
 )
 
 // visibleWidth computes the visible width of a string, ignoring ANSI escapes.
@@ -145,6 +151,8 @@ func (r *Renderer) renderContent(
 	case Text:
 		_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), string(c))
 		return err
+	case Description:
+		return r.renderDescription(w, c, ind+r.descriptionIndent)
 	case Aliases:
 		style := r.Theme.HelpAlias
 		if style == nil {
@@ -301,6 +309,42 @@ func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
 	}
 	_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), strings.Join(parts, " "))
 	return err
+}
+
+// renderDescription writes a Description blurb at the given indent. The wrap
+// width is taken from [WithDescriptionWidth] when set, falling back to
+// [WithMaxWidth] so descriptions wrap to the same column as flag descriptions
+// by default. A width of 0 disables wrapping for descriptions specifically.
+// Author-supplied newlines are treated as paragraph breaks so callers retain
+// control over hard breaks.
+func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error {
+	text := strings.Trim(string(d), "\n")
+	if text == "" {
+		return nil
+	}
+	pad := strings.Repeat(" ", ind)
+	width := r.descriptionWidth
+	if width == autoDescriptionWidth {
+		width = r.maxWidth
+	}
+	wrap := width > 0
+	avail := width - ind
+	if avail < 1 {
+		avail = 1
+	}
+	for _, paragraph := range strings.Split(text, "\n") {
+		styled := r.renderBackticks(paragraph, nil)
+		lines := []string{styled}
+		if wrap {
+			lines = strings.Split(ansi.Wordwrap(styled, avail, " "), "\n")
+		}
+		for _, line := range lines {
+			if _, err := fmt.Fprintf(w, "%s%s\n", pad, line); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (r *Renderer) renderExamples(w io.Writer, examples Examples, ind int) error {

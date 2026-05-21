@@ -210,9 +210,17 @@ func nodeUsageSection(node *konglib.Node) help.Section {
 		}
 	}
 
+	content := []help.Content{u}
+	// Surface the detailed help string from kong's HelpProvider interface
+	// (i.e. a `Help() string` method on the command struct). Kong stores it
+	// in node.Detail; we render it nested below the Usage line so it reads
+	// as descriptive context for the command, not a peer section.
+	if node.Detail != "" {
+		content = append(content, help.Description(node.Detail))
+	}
 	return help.Section{
 		Title:   "Usage",
-		Content: []help.Content{u},
+		Content: content,
 	}
 }
 

@@ -320,7 +320,7 @@ func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
 // the convention used by `flag.UnquoteUsage`).
 //
 // Backquoted content that looks like a flag reference (e.g. `--verbose`) is
-// NOT treated as a placeholder — flag references in descriptions are common
+// NOT treated as a placeholder - flag references in descriptions are common
 // (e.g. "Alias for `--quiet=0`") and should be rendered as inline code, not
 // pulled out as the placeholder. In that case the original usage string is
 // returned unchanged so downstream renderers can preserve the backticks as
