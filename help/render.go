@@ -22,12 +22,23 @@ type Renderer struct {
 	cmdAlign          Alignment // command name alignment
 	cmdAlignMode      AlignMode // per-section vs global command alignment
 	cmdPad            int       // padding between command and description
+	descRefs          descRefs  // per-render index of names referenced in Description backticks
 	descriptionIndent int       // extra indent (cols) for Description beyond the section content indent
 	descriptionWidth  int       // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
 	flagAlign         Alignment // flag name alignment
 	flagPad           int       // padding between flag and description
 	maxWidth          int       // max output width (0 = no wrapping)
 	wrapStyle         WrapStyle // continuation line indent style
+}
+
+// descRefs indexes the names a Description blurb might reference back to:
+// positional arguments (matched as `name` or `<name>`), flags (`--name`,
+// `-x`, handled separately via isFlagLikeBacktick), and subcommands
+// (`name`). Built by collectDescRefs at Render time so backtick styling can
+// pick the same style the renderer would use elsewhere for the same name.
+type descRefs struct {
+	args     map[string]Arg
+	commands map[string]struct{}
 }
 
 // NewRenderer creates a Renderer.
@@ -77,6 +88,7 @@ func (r *Renderer) Render(w io.Writer, sections []Section) error {
 	rr := *r
 	rr.Theme = rr.Theme.Init()
 	rr.maxWidth = rr.resolveMaxWidth(w)
+	rr.descRefs = collectDescRefs(sections)
 
 	descCol := rr.computeDescCol(sections)
 	cmdDescCol := rr.computeCmdDescCol(sections)
@@ -659,21 +671,99 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 }
 
 func (r *Renderer) backtickStyle(text string) (lipgloss.Style, bool) {
-	if !isFlagLikeBacktick(text) {
+	if isFlagLikeBacktick(text) {
+		style, hasStyle := r.flagBacktickBaseStyle()
 		if r.Theme.HelpDescBacktick == nil {
-			return lipgloss.Style{}, false
+			return style, hasStyle
 		}
-		return *r.Theme.HelpDescBacktick, true
+		if !hasStyle {
+			return *r.Theme.HelpDescBacktick, true
+		}
+		return style.Inherit(*r.Theme.HelpDescBacktick), true
 	}
 
-	style, hasStyle := r.flagBacktickBaseStyle()
+	// Context-aware lookup: if the token matches a known positional arg
+	// (e.g. `name` or `<name>`) or a known subcommand collected from the
+	// rendered sections, prefer that style so descriptions stay consistent
+	// with how the same name renders elsewhere in the help screen.
+	if style, ok := r.descRefs.lookup(text, r.Theme); ok {
+		if r.Theme.HelpDescBacktick == nil {
+			return style, true
+		}
+		return style.Inherit(*r.Theme.HelpDescBacktick), true
+	}
+
 	if r.Theme.HelpDescBacktick == nil {
-		return style, hasStyle
+		return lipgloss.Style{}, false
 	}
-	if !hasStyle {
-		return *r.Theme.HelpDescBacktick, true
+	return *r.Theme.HelpDescBacktick, true
+}
+
+// collectDescRefs walks the rendered sections and indexes positional args
+// (from Usage and Args content) and subcommands (from CommandGroup content)
+// so backtick styling in Description can resolve them by name.
+func collectDescRefs(sections []Section) descRefs {
+	refs := descRefs{
+		args:     map[string]Arg{},
+		commands: map[string]struct{}{},
 	}
-	return style.Inherit(*r.Theme.HelpDescBacktick), true
+	for _, sec := range sections {
+		for _, c := range sec.Content {
+			switch v := c.(type) {
+			case Usage:
+				for _, a := range v.Args {
+					refs.args[a.Name] = a
+				}
+			case Args:
+				for _, a := range v {
+					refs.args[a.Name] = a
+				}
+			case CommandGroup:
+				for _, cmd := range v {
+					refs.commands[cmd.Name] = struct{}{}
+				}
+			}
+		}
+	}
+	return refs
+}
+
+// lookup returns the style to apply to a backticked token, if it resolves
+// to a known positional arg or subcommand. Returns false when the token
+// matches nothing known, letting the caller fall back to the default
+// description-backtick style.
+func (d descRefs) lookup(text string, th *theme.Theme) (lipgloss.Style, bool) {
+	// Strip <> wrappers so `<name>` and `name` both resolve.
+	name := strings.TrimSuffix(strings.TrimPrefix(text, "<"), ">")
+	if a, ok := d.args[name]; ok {
+		if style := argStyleForRef(a, d.args, th); style != nil {
+			return *style, true
+		}
+	}
+	if _, ok := d.commands[text]; ok {
+		if th.HelpSubcommand != nil {
+			return *th.HelpSubcommand, true
+		}
+		if th.HelpCommand != nil {
+			return *th.HelpCommand, true
+		}
+	}
+	return lipgloss.Style{}, false
+}
+
+// argStyleForRef mirrors Renderer.argStyle but operates on the args map
+// from descRefs, so backtick styling in descriptions picks the same
+// optional/required treatment as the Arguments section.
+func argStyleForRef(a Arg, all map[string]Arg, th *theme.Theme) *lipgloss.Style {
+	if a.Required {
+		return th.HelpArg
+	}
+	for _, o := range all {
+		if o.Required {
+			return th.HelpArgOptional
+		}
+	}
+	return th.HelpArg
 }
 
 func (r *Renderer) flagBacktickBaseStyle() (lipgloss.Style, bool) {
