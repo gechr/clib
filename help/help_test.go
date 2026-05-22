@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
@@ -101,6 +102,36 @@ func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
 		out,
 		"Pass <name> and choose inspect or remove. Unknown <other> stays plain.",
 	)
+}
+
+func TestRender_Description_BackticksPreservedWhenWriterIsPlain(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "mycli widget"},
+		}},
+		{Title: "Description", Content: []help.Content{
+			help.Description("Pass `<url>` to the `--channel` flag."),
+		}},
+	}
+
+	tests := []struct {
+		name    string
+		profile colorprofile.Profile
+		want    string
+	}{
+		{"NoTTY preserves backticks", colorprofile.NoTTY, "Pass `<url>` to the `--channel` flag."},
+		{"Ascii preserves backticks", colorprofile.Ascii, "Pass `<url>` to the `--channel` flag."},
+		{"TrueColor strips backticks", colorprofile.TrueColor, "Pass <url> to the --channel flag."},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+			var buf bytes.Buffer
+			cw := &colorprofile.Writer{Forward: &buf, Profile: tc.profile}
+			require.NoError(t, r.Render(cw, sections))
+			require.Contains(t, ansi.Strip(buf.String()), tc.want)
+		})
+	}
 }
 
 func TestRender_Usage_Description_NormalisesWhitespace(t *testing.T) {

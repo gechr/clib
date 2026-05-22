@@ -23,6 +23,7 @@ type Renderer struct {
 	cmdAlignMode      AlignMode // per-section vs global command alignment
 	cmdPad            int       // padding between command and description
 	descRefs          descRefs  // per-render index of names referenced in Description backticks
+	plain             bool      // per-render: true when the writer can't display styling, so leave backtick delimiters intact
 	descriptionIndent int       // extra indent (cols) for Description beyond the section content indent
 	descriptionWidth  int       // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
 	flagAlign         Alignment // flag name alignment
@@ -89,6 +90,7 @@ func (r *Renderer) Render(w io.Writer, sections []Section) error {
 	rr := *r
 	rr.Theme = rr.Theme.Init()
 	rr.maxWidth = rr.resolveMaxWidth(w)
+	rr.plain = writerIsPlain(w)
 	rr.descRefs = collectDescRefs(sections)
 
 	descCol := rr.computeDescCol(sections)
@@ -615,6 +617,9 @@ func (r *Renderer) renderDesc(desc string) string {
 // so contractions like "don't" are left intact.
 // When HelpDescBacktick is nil, delimiters are left intact.
 func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
+	if r.plain {
+		return s
+	}
 	if r.Theme.HelpDescBacktick == nil && base == nil {
 		return s
 	}
@@ -1122,6 +1127,17 @@ func writerWidth(w io.Writer) int {
 	default:
 		return 0
 	}
+}
+
+// writerIsPlain reports whether w will discard colour styling (no TTY, or
+// NO_COLOR / --color=never style downgrades). Used to keep markup delimiters
+// like backticks intact when there's no way to render them visually.
+func writerIsPlain(w io.Writer) bool {
+	cw, ok := w.(*colorprofile.Writer)
+	if !ok {
+		return false
+	}
+	return cw.Profile == colorprofile.NoTTY || cw.Profile == colorprofile.Ascii
 }
 
 func (r *Renderer) walkFlags(
