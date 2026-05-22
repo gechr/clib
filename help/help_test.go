@@ -86,7 +86,7 @@ func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
 		}},
 		{Title: "Description", Content: []help.Content{
 			help.Description(
-				"Pass `<name>` and choose `inspect` or `remove`. Unknown `<other>` stays plain.",
+				"Pass `<name>` and choose `inspect` or `remove`. Run `mycli other cmd` next. Unknown `<other>` stays plain.",
 			),
 		}},
 	}
@@ -95,13 +95,20 @@ func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
 	// Strip ANSI to compare structural output; styling is asserted indirectly
 	// via the wrap test theme - what we lock in here is that the renderer
 	// completes without changing the visible text when known references are
-	// involved (no extra brackets, no missing tokens).
+	// involved (no extra brackets, no missing tokens). The `mycli other cmd`
+	// token exercises the binary-prefix path: it isn't a known subcommand but
+	// matches the Usage command's first token, so it's styled as a command.
 	out := ansi.Strip(buf.String())
 	require.Contains(
 		t,
 		out,
-		"Pass <name> and choose inspect or remove. Unknown <other> stays plain.",
+		"Pass <name> and choose inspect or remove. Run mycli other cmd next. Unknown <other> stays plain.",
 	)
+	// The binary-prefix token "mycli other cmd" should be styled, not left as
+	// a plain backticked string. Looking for the literal substring before the
+	// ANSI strip would match either; instead require that the raw output does
+	// NOT contain the un-styled backticked form.
+	require.NotContains(t, buf.String(), "`mycli other cmd`")
 }
 
 func TestRender_Description_BackticksPreservedWhenWriterIsPlain(t *testing.T) {

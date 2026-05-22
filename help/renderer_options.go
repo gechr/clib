@@ -81,6 +81,15 @@ func WithDescriptionWidth(n int) RendererOption {
 	}
 }
 
+// WithBacktickStyle sets how backticked tokens in descriptions are styled.
+// See [BacktickStyle] for the supported modes. The default is
+// [BacktickStyleSmart].
+func WithBacktickStyle(s BacktickStyle) RendererOption {
+	return func(r *Renderer) {
+		r.backtickStyle = s
+	}
+}
+
 // WithHideDefaults suppresses the " (default: X)" annotation that the
 // renderer would otherwise append to non-enum flag descriptions for any flag
 // whose [Flag.Default] is set. Per-flag [Flag.HideDefault] is unaffected and

@@ -130,6 +130,28 @@ const (
 	AlignModeGlobal                   // Align across all sections using a shared column.
 )
 
+// BacktickStyle controls how backticked tokens in descriptions are styled.
+type BacktickStyle int
+
+const (
+	// BacktickStyleSmart resolves each backticked token against the help's
+	// own content (positional args, subcommands, binary-prefixed command
+	// paths like "mycli sub cmd") and applies the matching section's style.
+	// Tokens that don't resolve fall back to [theme.Theme.HelpDescBacktick].
+	// This is the default.
+	BacktickStyleSmart BacktickStyle = iota
+
+	// BacktickStylePlain skips the contextual lookup entirely. Every
+	// non-flag backticked token is styled with [theme.Theme.HelpDescBacktick],
+	// regardless of whether it names something elsewhere in the help.
+	// Flag-like tokens (--name, -x) are still detected.
+	BacktickStylePlain
+
+	// BacktickStyleNone disables backtick handling completely. Delimiters
+	// are left intact in the output and no styling is applied.
+	BacktickStyleNone
+)
+
 // WrapStyle controls how wrapped description continuation lines are indented.
 type WrapStyle int
 

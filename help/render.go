@@ -18,19 +18,20 @@ import (
 type Renderer struct {
 	Theme *theme.Theme
 
-	argPad            int       // padding between arg and description
-	cmdAlign          Alignment // command name alignment
-	cmdAlignMode      AlignMode // per-section vs global command alignment
-	cmdPad            int       // padding between command and description
-	descRefs          descRefs  // per-render index of names referenced in Description backticks
-	plain             bool      // per-render: true when the writer can't display styling, so leave backtick delimiters intact
-	descriptionIndent int       // extra indent (cols) for Description beyond the section content indent
-	descriptionWidth  int       // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
-	flagAlign         Alignment // flag name alignment
-	flagPad           int       // padding between flag and description
-	hideDefaults      bool      // suppress " (default: X)" annotations globally
-	maxWidth          int       // max output width (0 = no wrapping)
-	wrapStyle         WrapStyle // continuation line indent style
+	argPad            int           // padding between arg and description
+	cmdAlign          Alignment     // command name alignment
+	cmdAlignMode      AlignMode     // per-section vs global command alignment
+	cmdPad            int           // padding between command and description
+	descRefs          descRefs      // per-render index of names referenced in Description backticks
+	plain             bool          // per-render: true when the writer can't display styling, so leave backtick delimiters intact
+	descriptionIndent int           // extra indent (cols) for Description beyond the section content indent
+	descriptionWidth  int           // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
+	backtickStyle     BacktickStyle // how backticked tokens in descriptions are styled
+	flagAlign         Alignment     // flag name alignment
+	flagPad           int           // padding between flag and description
+	hideDefaults      bool          // suppress " (default: X)" annotations globally
+	maxWidth          int           // max output width (0 = no wrapping)
+	wrapStyle         WrapStyle     // continuation line indent style
 }
 
 // descRefs indexes the names a Description blurb might reference back to:
@@ -40,6 +41,7 @@ type Renderer struct {
 // pick the same style the renderer would use elsewhere for the same name.
 type descRefs struct {
 	args     map[string]Arg
+	binary   string // first token of the rendered Usage.Command (e.g. "mycli")
 	commands map[string]struct{}
 }
 
@@ -617,7 +619,7 @@ func (r *Renderer) renderDesc(desc string) string {
 // so contractions like "don't" are left intact.
 // When HelpDescBacktick is nil, delimiters are left intact.
 func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
-	if r.plain {
+	if r.plain || r.backtickStyle == BacktickStyleNone {
 		return s
 	}
 	if r.Theme.HelpDescBacktick == nil && base == nil {
@@ -635,7 +637,7 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 		sb.WriteString(text)
 	}
 	renderCode := func(text string) string {
-		style, hasStyle := r.backtickStyle(text)
+		style, hasStyle := r.getBacktickStyle(text)
 		if !hasStyle {
 			if base != nil {
 				return base.Render(text)
@@ -682,7 +684,7 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 	return sb.String()
 }
 
-func (r *Renderer) backtickStyle(text string) (lipgloss.Style, bool) {
+func (r *Renderer) getBacktickStyle(text string) (lipgloss.Style, bool) {
 	if isFlagLikeBacktick(text) {
 		style, hasStyle := r.flagBacktickBaseStyle()
 		if r.Theme.HelpDescBacktick == nil {
@@ -697,12 +699,15 @@ func (r *Renderer) backtickStyle(text string) (lipgloss.Style, bool) {
 	// Context-aware lookup: if the token matches a known positional arg
 	// (e.g. `name` or `<name>`) or a known subcommand collected from the
 	// rendered sections, prefer that style so descriptions stay consistent
-	// with how the same name renders elsewhere in the help screen.
-	if style, ok := r.descRefs.lookup(text, r.Theme); ok {
-		if r.Theme.HelpDescBacktick == nil {
-			return style, true
+	// with how the same name renders elsewhere in the help screen. Skipped
+	// when the renderer is configured for non-smart backtick styling.
+	if r.backtickStyle == BacktickStyleSmart {
+		if style, ok := r.descRefs.lookup(text, r.Theme); ok {
+			if r.Theme.HelpDescBacktick == nil {
+				return style, true
+			}
+			return style.Inherit(*r.Theme.HelpDescBacktick), true
 		}
-		return style.Inherit(*r.Theme.HelpDescBacktick), true
 	}
 
 	if r.Theme.HelpDescBacktick == nil {
@@ -725,6 +730,15 @@ func collectDescRefs(sections []Section) descRefs {
 			case Usage:
 				for _, a := range v.Args {
 					refs.args[a.Name] = a
+				}
+				// Capture the binary name (first token of the Usage command)
+				// so multi-segment command references like "mycli sub cmd" in
+				// Description backticks can be styled consistently with how
+				// the Usage line renders the same name.
+				if refs.binary == "" && v.Command != "" {
+					if first, _, _ := strings.Cut(v.Command, " "); first != "" {
+						refs.binary = first
+					}
 				}
 			case Args:
 				for _, a := range v {
@@ -756,6 +770,15 @@ func (d descRefs) lookup(text string, th *theme.Theme) (lipgloss.Style, bool) {
 		if th.HelpSubcommand != nil {
 			return *th.HelpSubcommand, true
 		}
+		if th.HelpCommand != nil {
+			return *th.HelpCommand, true
+		}
+	}
+	// Multi-segment command path: token is the binary itself or starts with
+	// "<binary> ", e.g. "mycli", "mycli sub", "mycli sub cmd". Style the
+	// whole token with HelpCommand so cross-command references render the
+	// same way the Usage line does.
+	if d.binary != "" && (text == d.binary || strings.HasPrefix(text, d.binary+" ")) {
 		if th.HelpCommand != nil {
 			return *th.HelpCommand, true
 		}
