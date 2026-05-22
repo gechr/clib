@@ -14,6 +14,7 @@ const (
 	Ext         = "ext"
 	Forward     = "forward"
 	Group       = "group"
+	HideDefault = "hide-default"
 	HideLong    = "hide-long"
 	HideShort   = "hide-short"
 	Highlight   = "highlight"

@@ -344,6 +344,12 @@ func kongFlagToHelp(f *konglib.Flag) (help.Flag, error) {
 	if meta.EnumDefault == "" && len(meta.Enum) > 0 && f.HasDefault {
 		meta.EnumDefault = f.Default
 	}
+	// Non-enum default annotation. Populated from kong's native `default:` tag
+	// for any flag with a default value - rendered as a "(default: X)" suffix
+	// when the flag has no enum.
+	if meta.Default == "" && f.HasDefault {
+		meta.Default = f.Default
+	}
 
 	hf := helpFlagFromMeta(meta)
 	hf.PlaceholderLiteral = placeholderLiteral
@@ -376,6 +382,11 @@ func applyClibTag(meta *complete.FlagMeta, clibTag string) error {
 		return err
 	} else if ok && v != "" {
 		meta.InversePrefix = v
+	}
+	if _, ok, err := parse(tag.HideDefault); err != nil {
+		return err
+	} else if ok {
+		meta.HideDefault = true
 	}
 	if _, ok, err := parse(tag.HideLong); err != nil {
 		return err
@@ -573,10 +584,12 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		Short:         short,
 		Long:          long,
 		NoIndent:      f.NoIndent,
+		Default:       f.Default,
 		Desc:          desc,
 		Enum:          f.Enum,
 		EnumDefault:   f.EnumDefault,
 		EnumHighlight: f.EnumHighlight,
+		HideDefault:   f.HideDefault,
 		Placeholder:   placeholder,
 		Repeatable:    repeatable,
 	}

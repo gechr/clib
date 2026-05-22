@@ -15,10 +15,12 @@ type Content interface {
 // Placeholder is rendered as <placeholder> (angle brackets added by renderer).
 // Set PlaceholderLiteral to true to render the placeholder as-is without <...>.
 type Flag struct {
+	Default            string // default value for non-enum flags, rendered as " (default: X)" suffix
 	Desc               string
 	Enum               []string // values to render as [v1, v2, ...]
 	EnumDefault        string   // default value annotation appended after enum list
 	EnumHighlight      []string // highlight substrings (parallel to Enum, used with EnumStyleHighlightPrefix)
+	HideDefault        bool     // true -> suppress the (default: X) annotation even when Default is set
 	Long               string   // "repo" -> rendered as --repo
 	NoIndent           bool     // true -> suppress short-flag alignment indent for long-only flags
 	Placeholder        string   // "repo" -> rendered as <repo>

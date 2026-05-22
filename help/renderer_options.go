@@ -81,6 +81,17 @@ func WithDescriptionWidth(n int) RendererOption {
 	}
 }
 
+// WithHideDefaults suppresses the " (default: X)" annotation that the
+// renderer would otherwise append to non-enum flag descriptions for any flag
+// whose [Flag.Default] is set. Per-flag [Flag.HideDefault] is unaffected and
+// always wins. Useful when the caller would rather surface defaults in their
+// own description text, or in a separate footer.
+func WithHideDefaults() RendererOption {
+	return func(r *Renderer) {
+		r.hideDefaults = true
+	}
+}
+
 // WithWrapStyle sets how wrapped description continuation lines are indented.
 // The default is [WrapBracketAlign], which aligns continuation lines to the
 // content after an unclosed '[' on the first line (e.g. for enum value lists).

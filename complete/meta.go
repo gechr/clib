@@ -11,6 +11,7 @@ import (
 type FlagMeta struct {
 	Aliases             []string // flag aliases
 	Complete            string   // completion directive
+	Default             string   // default value for non-enum flags (rendered as " (default: X)" suffix)
 	Enum                []string // enum values
 	EnumDefault         string   // default value annotation for enum display
 	EnumHighlight       []string // highlight hint substrings (parallel to Enum)
@@ -20,6 +21,7 @@ type FlagMeta struct {
 	Group               string   // help section group
 	HasArg              bool     // true if the flag takes a value (non-bool)
 	Help                string   // help text for --help output
+	HideDefault         bool     // suppress the default-value annotation in help output
 	Hidden              bool     // hidden flag
 	HideLong            bool     // hide the long flag from help output
 	HideShort           bool     // hide the short flag from help output
@@ -89,6 +91,8 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 			f.Forward = true
 		case tag.Group:
 			f.Group = val
+		case tag.HideDefault:
+			f.HideDefault = true
 		case tag.HideLong:
 			f.HideLong = true
 		case tag.HideShort:

@@ -27,6 +27,7 @@ type Renderer struct {
 	descriptionWidth  int       // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
 	flagAlign         Alignment // flag name alignment
 	flagPad           int       // padding between flag and description
+	hideDefaults      bool      // suppress " (default: X)" annotations globally
 	maxWidth          int       // max output width (0 = no wrapping)
 	wrapStyle         WrapStyle // continuation line indent style
 }
@@ -454,6 +455,12 @@ func (r *Renderer) buildDescPart(f Flag) (string, error) {
 	}
 	if enumStr != "" {
 		parts = append(parts, enumStr)
+	}
+	// Append "(default: X)" annotation for non-enum flags. Enums already
+	// surface their default inside the enum-list rendering via EnumDefault
+	// and would be redundant.
+	if f.Default != "" && !f.HideDefault && !r.hideDefaults && len(f.Enum) == 0 {
+		parts = append(parts, strings.TrimSpace(r.Theme.DimDefault(f.Default)))
 	}
 	return strings.Join(parts, " "), nil
 }
