@@ -581,7 +581,10 @@ func (r *Renderer) renderDesc(desc string) string {
 		}
 	}
 
-	// Try bracket patterns with specific prefix matching.
+	// Try bracket patterns with specific prefix matching. The wire format
+	// uses literal "[...]" so callers can author descriptions in a stable
+	// convention; the rendered output substitutes the theme's configurable
+	// bracket characters (HelpDefaultOpen/Close).
 	if open := strings.LastIndex(desc, OptOpen); open >= 0 && strings.HasSuffix(desc, OptClose) {
 		prefix := desc[:open]
 		if prefix == "" {
@@ -590,23 +593,34 @@ func (r *Renderer) renderDesc(desc string) string {
 		note := desc[open:]
 		inner := note[len(OptOpen) : len(note)-len(OptClose)]
 
-		// Pick style based on bracket content prefix.
+		// Pick style and themed brackets based on bracket content prefix.
+		// Untagged "[note]" suffixes keep their literal brackets and fall
+		// back to HelpDim.
 		style := r.Theme.HelpDim
+		var openTok, closeTok string
 		switch {
 		case strings.HasPrefix(inner, "default: "):
 			if r.Theme.HelpFlagDefault != nil {
 				style = r.Theme.HelpFlagDefault
 			}
+			openTok = r.Theme.HelpDefaultOpen
+			closeTok = r.Theme.HelpDefaultClose
 		case strings.HasPrefix(inner, "example: "):
 			if r.Theme.HelpFlagExample != nil {
 				style = r.Theme.HelpFlagExample
 			}
+			openTok = r.Theme.HelpExampleOpen
+			closeTok = r.Theme.HelpExampleClose
+		}
+		rendered := note
+		if openTok != "" {
+			rendered = openTok + inner + closeTok
 		}
 		return r.renderBackticks(
 			strings.TrimRight(prefix, " "),
 			nil,
 		) + " " + r.renderBackticks(
-			note,
+			rendered,
 			style,
 		)
 	}

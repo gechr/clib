@@ -1150,7 +1150,7 @@ func TestRender_DescBracketDefault(t *testing.T) {
 		th.HelpSection.Render("Flags")+"\n\n  "+
 			th.HelpFlag.Render(
 				"--output",
-			)+"  Output format "+th.HelpFlagDefault.Render("[default: table]")+"\n",
+			)+"  Output format "+th.HelpFlagDefault.Render("(default: table)")+"\n",
 		buf.String(),
 	)
 }
@@ -1172,7 +1172,7 @@ func TestRender_DescBracketExample(t *testing.T) {
 		th.HelpSection.Render("Flags")+"\n\n  "+
 			th.HelpFlag.Render(
 				"--format",
-			)+"  Format string "+th.HelpFlagExample.Render("[example: json]")+"\n",
+			)+"  Format string "+th.HelpFlagExample.Render("(example: json)")+"\n",
 		buf.String(),
 	)
 }

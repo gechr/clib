@@ -96,6 +96,25 @@ func WithHelpFlagBacktick(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpFlagBacktick = new(s) }
 }
 
+// WithHelpDefaultChars overrides the bracket characters used to wrap
+// [default: X] annotations in help output. Defaults to '[' and ']'.
+// Useful for callers who prefer e.g. (default: X).
+func WithHelpDefaultChars(openChar, closeChar rune) Option {
+	return func(t *Theme) {
+		t.HelpDefaultOpen = string(openChar)
+		t.HelpDefaultClose = string(closeChar)
+	}
+}
+
+// WithHelpExampleChars overrides the bracket characters used to wrap
+// [example: X] annotations in help output. Defaults to '[' and ']'.
+func WithHelpExampleChars(openChar, closeChar rune) Option {
+	return func(t *Theme) {
+		t.HelpExampleOpen = string(openChar)
+		t.HelpExampleClose = string(closeChar)
+	}
+}
+
 // WithHelpFlagDefault sets the style for flag default annotations in help output.
 func WithHelpFlagDefault(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpFlagDefault = new(s) }

@@ -75,20 +75,33 @@ func (th *Theme) fmtEnumValue(v EnumValue) string {
 	return s
 }
 
-// FmtEnumDefault formats an enum list followed by a dim default annotation.
+// FmtEnumDefault formats an enum list followed by a default annotation
+// rendered as "[default: X]" (brackets configurable via HelpDefaultOpen/Close).
 func (th *Theme) FmtEnumDefault(defaultVal string, values []EnumValue) string {
 	th = th.Init()
-	return th.FmtEnum(values) + th.HelpDim.Render(" (default: "+defaultVal+")")
+	return th.FmtEnum(values) + th.FmtDefaultAnnotation(defaultVal)
 }
 
-// DimDefault formats a default value annotation in dim.
-// Returns empty string if value is empty.
+// DimDefault formats a default value annotation as " [default: X]" (with a
+// leading space). The bracket characters are taken from HelpDefaultOpen and
+// HelpDefaultClose. Returns the empty string if value is empty.
 func (th *Theme) DimDefault(value string) string {
 	th = th.Init()
 	if value == "" {
 		return ""
 	}
-	return " " + th.HelpDim.Render("(default: "+value+")")
+	return th.FmtDefaultAnnotation(value)
+}
+
+// FmtDefaultAnnotation renders a leading-space "[default: X]" annotation
+// using the theme's HelpDefaultOpen/Close brackets and HelpFlagDefault style.
+func (th *Theme) FmtDefaultAnnotation(value string) string {
+	th = th.Init()
+	style := th.HelpFlagDefault
+	if style == nil {
+		style = th.HelpDim
+	}
+	return " " + style.Render(th.HelpDefaultOpen+"default: "+value+th.HelpDefaultClose)
 }
 
 // DimNote formats a parenthetical note in dim.

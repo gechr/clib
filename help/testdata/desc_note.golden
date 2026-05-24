@@ -1,4 +1,4 @@
 Options
 
   --mirror     Create a mirror clone (git only)
-  --depth <n>  Shallow clone [default: full]
+  --depth <n>  Shallow clone (default: full)

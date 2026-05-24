@@ -57,6 +57,10 @@ type Theme struct {
 	HelpEnumDefault            *lipgloss.Style // Default value in EnumStyleHighlightDefault lists (default: dim green).
 	HelpFlag                   *lipgloss.Style
 	HelpFlagBacktick           *lipgloss.Style // Override for backtick-enclosed flag-like text in descriptions (nil = fall back to HelpFlag).
+	HelpDefaultOpen            string          // Opening bracket for default-value annotations (default "(", e.g. "(default: X)").
+	HelpDefaultClose           string          // Closing bracket for default-value annotations (default ")").
+	HelpExampleOpen            string          // Opening bracket for example annotations (default "(", e.g. "(example: X)").
+	HelpExampleClose           string          // Closing bracket for example annotations (default ")").
 	HelpFlagDefault            *lipgloss.Style // [default: ...] annotations in flag descriptions.
 	HelpFlagExample            *lipgloss.Style // [example: ...] annotations in flag descriptions.
 	HelpFlagNote               *lipgloss.Style // Trailing (...) notes in flag descriptions.
@@ -117,6 +121,10 @@ func defaultTheme() *Theme {
 		HelpEnumDefault: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("2")),
 		),
+		HelpDefaultOpen:       "(",
+		HelpDefaultClose:      ")",
+		HelpExampleOpen:       "(",
+		HelpExampleClose:      ")",
 		HelpFlag:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
 		HelpFlagDefault:       new(lipgloss.NewStyle().Faint(true)),
 		HelpFlagExample:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
@@ -246,6 +254,18 @@ func (t *Theme) Init() *Theme {
 	}
 	if n.HelpKeyValueSeparator == 0 {
 		n.HelpKeyValueSeparator = ' '
+	}
+	if n.HelpDefaultOpen == "" {
+		n.HelpDefaultOpen = "("
+	}
+	if n.HelpDefaultClose == "" {
+		n.HelpDefaultClose = ")"
+	}
+	if n.HelpExampleOpen == "" {
+		n.HelpExampleOpen = "("
+	}
+	if n.HelpExampleClose == "" {
+		n.HelpExampleClose = ")"
 	}
 
 	return &n

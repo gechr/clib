@@ -126,6 +126,7 @@ func WithFlagDefault(flagLong, value string) Option {
 		}
 		patchFlag(sections, flagLong, func(f *Flag) {
 			f.Desc += " [default: " + value + "]"
+			f.HideDefault = true
 		})
 		return sections
 	})
