@@ -1,0 +1,140 @@
+# myapp bash completion
+_myapp() {
+    local i cur prev opts cmd
+    COMPREPLY=()
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${COMP_WORDS[COMP_CWORD]}"
+    fi
+    prev="$3"
+    local -a __fwd=()
+    _myapp_forwarded_flags
+    cmd=""
+    opts=""
+
+    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
+        case "${cmd},${i}" in
+            ",$1")
+                cmd="myapp"
+                ;;
+            myapp,deploy)
+                cmd="myapp__deploy"
+                ;;
+            *)
+                ;;
+        esac
+    done
+
+    case "${cmd}" in
+        myapp)
+            opts="--profile -p --verbose -v deploy"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            case "${prev}" in
+                --profile|-p)
+                    COMPREPLY=()
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+        myapp__deploy)
+            opts="--profile -p --tags --target"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+            case "${prev}" in
+                --profile|-p)
+                    COMPREPLY=()
+                    return 0
+                    ;;
+                --tags)
+                    local prefix=""
+                    local cur_val="${cur}"
+                    local all_vals=($(myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null))
+                    local -a avail=()
+                    if [[ "${cur}" == *,* ]]; then
+                        prefix="${cur%,*},"
+                        cur_val="${cur##*,}"
+                        IFS=',' read -ra selected <<< "${prefix}"
+                        for val in "${all_vals[@]}"; do
+                            local found=0
+                            for sel in "${selected[@]}"; do
+                                if [[ "${val}" == "${sel}" ]]; then
+                                    found=1
+                                    break
+                                fi
+                            done
+                            if [[ "${found}" -eq 0 ]]; then
+                                avail+=("${val}")
+                            fi
+                        done
+                    else
+                        avail=("${all_vals[@]}")
+                    fi
+                    COMPREPLY=($(compgen -W "${avail[*]}" -- "${cur_val}"))
+                    if [[ -n "${prefix}" ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
+                    fi
+                    compopt -o nospace
+                    return 0
+                    ;;
+                --target)
+                    COMPREPLY=($(compgen -W "$(myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null)" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+            return 0
+            ;;
+    esac
+}
+
+_myapp_forwarded_flags() {
+    __fwd=()
+    local j __skip_next=0 __fwd_name=""
+    for ((j=1; j<COMP_CWORD; j++)); do
+        if [[ "${__skip_next}" -eq 1 ]]; then
+            if [[ -n "${__fwd_name}" ]]; then
+                __fwd+=("--${__fwd_name}=${COMP_WORDS[j]}")
+                __fwd_name=""
+            fi
+            __skip_next=0
+            continue
+        fi
+        if [[ "${COMP_WORDS[j]}" == "--" ]]; then
+            break
+        fi
+        case "${COMP_WORDS[j]}" in
+            --profile|-p)
+                __skip_next=1
+                __fwd_name="profile"
+                ;;
+            --profile=*)
+                __fwd+=("${COMP_WORDS[j]}")
+                ;;
+            -p=*)
+                __fwd+=("--profile=${COMP_WORDS[j]#-p=}")
+                ;;
+            *)
+                ;;
+        esac
+    done
+}
+
+if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
+    complete -F _myapp -o nosort -o bashdefault -o default myapp
+else
+    complete -F _myapp -o bashdefault -o default myapp
+fi

@@ -18,6 +18,7 @@ func GenerateBash(g *Generator) (string, error) {
 	cmdName := bashCmdNameFromApp(command)
 	rootSpecs := SortVisibleSpecs(g.Specs)
 	inheritedSpecs := persistentSpecs(g.Specs)
+	fwdFn := bashForwardHelperName(g)
 
 	needsPrev := bashNeedsPrev(g.Specs, g.Subs)
 
@@ -37,6 +38,11 @@ func GenerateBash(g *Generator) (string, error) {
 `, command, funcName, localVars)
 	if needsPrev {
 		fmt.Fprint(&sb, "    prev=\"$3\"\n")
+	}
+	if fwdFn != "" {
+		// Collect forwardable context flags once; dynamic value completions
+		// pass them to the handler via "${__fwd[@]}".
+		fmt.Fprintf(&sb, "    local -a __fwd=()\n    %s\n", fwdFn)
 	}
 	fmt.Fprintf(&sb, `    cmd=""
     opts=""
@@ -83,9 +89,13 @@ func GenerateBash(g *Generator) (string, error) {
 		)
 	}
 
-	fmt.Fprintf(&sb, `    esac
-}
+	fmt.Fprint(&sb, "    esac\n}\n")
 
+	if fwdFn != "" {
+		bashWriteForwardedFlagsHelper(&sb, fwdFn, allForwardableSpecs(g))
+	}
+
+	fmt.Fprintf(&sb, `
 if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
     complete -F %s -o nosort -o bashdefault -o default %s
 else
@@ -94,6 +104,87 @@ fi
 `, funcName, command, funcName, command)
 
 	return sb.String(), nil
+}
+
+// bashForwardHelperName returns the name of the shared forwarded-flags helper
+// for g, or "" when no flag-value dynamic completion would consume it.
+func bashForwardHelperName(g *Generator) string {
+	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+		return ""
+	}
+	return "_" + strings.ReplaceAll(g.AppName, "-", "_") + "_forwarded_flags"
+}
+
+// bashDynamicExpr returns the command substitution that produces dynamic flag
+// completions, forwarding collected context flags when forwarding is active.
+func bashDynamicExpr(g *Generator, predictor string) string {
+	if bashForwardHelperName(g) != "" {
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			predictor,
+		)
+	}
+	return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, predictor)
+}
+
+// bashWriteForwardedFlagsHelper emits a function that scans the command line and
+// populates __fwd with each forwardable context flag as --name=value.
+func bashWriteForwardedFlagsHelper(sb *strings.Builder, helperName string, fwd []forwardSpec) {
+	fmt.Fprintf(sb, "\n%s() {\n", helperName)
+	fmt.Fprint(sb, "    __fwd=()\n")
+	fmt.Fprint(sb, "    local j __skip_next=0 __fwd_name=\"\"\n")
+	fmt.Fprint(sb, "    for ((j=1; j<COMP_CWORD; j++)); do\n")
+	fmt.Fprint(sb, `        if [[ "${__skip_next}" -eq 1 ]]; then
+            if [[ -n "${__fwd_name}" ]]; then
+                __fwd+=("--${__fwd_name}=${COMP_WORDS[j]}")
+                __fwd_name=""
+            fi
+            __skip_next=0
+            continue
+        fi
+        if [[ "${COMP_WORDS[j]}" == "--" ]]; then
+            break
+        fi
+        case "${COMP_WORDS[j]}" in
+`)
+	for _, f := range fwd {
+		var patterns []string
+		if f.LongFlag != "" {
+			patterns = append(patterns, "--"+f.LongFlag)
+		}
+		if f.ShortFlag != "" {
+			patterns = append(patterns, "-"+f.ShortFlag)
+		}
+		fmt.Fprintf(
+			sb,
+			"            %s)\n                __skip_next=1\n                __fwd_name=%q\n                ;;\n",
+			strings.Join(patterns, "|"),
+			f.LongFlag,
+		)
+		if f.ShortFlag != "" && f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"            --%s=*)\n                __fwd+=(\"${COMP_WORDS[j]}\")\n                ;;\n",
+				f.LongFlag,
+			)
+			fmt.Fprintf(
+				sb,
+				"            -%s=*)\n                __fwd+=(\"--%s=${COMP_WORDS[j]#-%s=}\")\n                ;;\n",
+				f.ShortFlag,
+				f.LongFlag,
+				f.ShortFlag,
+			)
+		} else if f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"            --%s=*)\n                __fwd+=(\"${COMP_WORDS[j]}\")\n                ;;\n",
+				f.LongFlag,
+			)
+		}
+	}
+	fmt.Fprint(sb, "            *)\n                ;;\n        esac\n    done\n}\n")
 }
 
 func bashNeedsPrev(specs []Spec, subs []SubSpec) bool {
@@ -385,10 +476,7 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 
 	switch {
 	case spec.CommaList && spec.Dynamic != "":
-		bashWriteCommaCompletion(
-			sb,
-			fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, spec.Dynamic),
-		)
+		bashWriteCommaCompletion(sb, bashDynamicExpr(g, spec.Dynamic))
 	case spec.CommaList && len(spec.Values) > 0:
 		bashWriteCommaCompletion(sb, strings.Join(spec.Values, " "))
 	case spec.CommaList && len(spec.ValueDescs) > 0:
@@ -400,10 +488,8 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 	case spec.Dynamic != "":
 		fmt.Fprintf(
 			sb,
-			"                    COMPREPLY=($(compgen -W \"$(%s --%s=%s 2>/dev/null)\" -- \"${cur}\"))\n",
-			g.AppName,
-			FlagComplete,
-			spec.Dynamic,
+			"                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n",
+			bashDynamicExpr(g, spec.Dynamic),
 		)
 	case len(spec.Values) > 0:
 		quoted := make([]string, len(spec.Values))

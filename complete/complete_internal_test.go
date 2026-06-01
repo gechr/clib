@@ -312,3 +312,47 @@ func TestZshHelpers(t *testing.T) {
 		})
 	}
 }
+
+func TestAllForwardableSpecs_DropsCollidingShortFlags(t *testing.T) {
+	// Sibling subcommands both use -p but for different long flags, so the
+	// global helper can't disambiguate the short form.
+	g := &Generator{
+		Subs: []SubSpec{
+			{Name: "one", Specs: []Spec{
+				{LongFlag: "profile", ShortFlag: "p", HasArg: true, Forward: true},
+			}},
+			{Name: "two", Specs: []Spec{
+				{LongFlag: "project", ShortFlag: "p", HasArg: true, Forward: true},
+			}},
+		},
+	}
+
+	byLong := map[string]forwardSpec{}
+	for _, fs := range allForwardableSpecs(g) {
+		byLong[fs.LongFlag] = fs
+	}
+	require.Len(t, byLong, 2)
+	// Both long forms survive; the ambiguous -p alias is dropped from both.
+	require.Empty(t, byLong["profile"].ShortFlag)
+	require.Empty(t, byLong["project"].ShortFlag)
+}
+
+func TestAllForwardableSpecs_KeepsUniqueShortFlags(t *testing.T) {
+	g := &Generator{
+		Subs: []SubSpec{
+			{Name: "one", Specs: []Spec{
+				{LongFlag: "profile", ShortFlag: "p", HasArg: true, Forward: true},
+			}},
+			{Name: "two", Specs: []Spec{
+				{LongFlag: "region", ShortFlag: "r", HasArg: true, Forward: true},
+			}},
+		},
+	}
+
+	byLong := map[string]forwardSpec{}
+	for _, fs := range allForwardableSpecs(g) {
+		byLong[fs.LongFlag] = fs
+	}
+	require.Equal(t, "p", byLong["profile"].ShortFlag)
+	require.Equal(t, "r", byLong["region"].ShortFlag)
+}

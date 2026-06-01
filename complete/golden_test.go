@@ -437,6 +437,39 @@ func genForwardDynamicArgs() *complete.Generator {
 	}
 }
 
+func genForwardFlagValue() *complete.Generator {
+	return &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{
+				LongFlag:   "profile",
+				ShortFlag:  "p",
+				Terse:      "Active profile",
+				HasArg:     true,
+				Forward:    true,
+				Persistent: true,
+			},
+			{LongFlag: "verbose", ShortFlag: "v", Terse: "Verbose output"},
+		},
+		Subs: []complete.SubSpec{
+			{
+				Name:  "deploy",
+				Terse: "Deploy a target",
+				Specs: []complete.Spec{
+					{LongFlag: "target", Terse: "Target name", HasArg: true, Dynamic: "target"},
+					{
+						LongFlag:  "tags",
+						Terse:     "Tags to apply",
+						HasArg:    true,
+						Dynamic:   "tag",
+						CommaList: true,
+					},
+				},
+			},
+		},
+	}
+}
+
 func genPositionalDynamicArgs() *complete.Generator {
 	return &complete.Generator{
 		AppName: "acme-plugin",
@@ -478,6 +511,7 @@ func TestGolden(t *testing.T) {
 		"ext":                     genExt(),
 		"flat":                    genFlat(),
 		"forwarddynamicargs":      genForwardDynamicArgs(),
+		"forwardflagvalue":        genForwardFlagValue(),
 		"globalflags":             genGlobalFlags(),
 		"hide":                    genHide(),
 		"hints":                   genHints(),

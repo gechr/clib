@@ -24,6 +24,10 @@ func GenerateFish(g *Generator) (string, error) {
 	resolved, funcLookup := fishBuildFuncPlan(g.AppName, g.Specs, g.Subs)
 	fishWriteCommaFunctions(g, &sb, resolved)
 
+	if fwdFn := fishForwardHelperName(g); fwdFn != "" {
+		fishWriteForwardedFlagsHelper(&sb, fwdFn, allForwardableSpecs(g))
+	}
+
 	hasSubs := len(g.Subs) > 0
 	if hasSubs {
 		needsCmd := fmt.Sprintf("__%s_needs_command", funcID)
@@ -123,6 +127,87 @@ func fishEscapeString(s string) string {
 	s = strings.ReplaceAll(s, "\r", " ")
 	s = strings.ReplaceAll(s, "\t", " ")
 	return s
+}
+
+// fishForwardHelperName returns the name of the shared forwarded-flags helper
+// for g, or "" when no flag-value dynamic completion would consume it.
+func fishForwardHelperName(g *Generator) string {
+	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+		return ""
+	}
+	return fmt.Sprintf("__%s_forwarded_flags", fishFuncName(g.AppName))
+}
+
+// fishDynamicCall returns the command that produces dynamic completions for a
+// flag value, appending forwarded context flags when forwarding is in play.
+func fishDynamicCall(g *Generator, predictor string) string {
+	call := fmt.Sprintf("%s --%s=%s", g.AppName, FlagComplete, predictor)
+	if fn := fishForwardHelperName(g); fn != "" {
+		call += fmt.Sprintf(" -- (%s)", fn)
+	}
+	return call
+}
+
+// fishWriteForwardedFlagsHelper emits a helper that scans the command line and
+// prints each forwardable context flag as --name=value, one per line.
+func fishWriteForwardedFlagsHelper(sb *strings.Builder, helperName string, fwd []forwardSpec) {
+	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
+	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
+	fmt.Fprint(sb, "    set -e tokens[1]\n")
+	fmt.Fprint(sb, "    set -l forwarded\n")
+	fmt.Fprint(sb, "    set -l skip_next 0\n")
+	fmt.Fprint(sb, "    set -l fwd_name\n")
+	fmt.Fprint(sb, "    for t in $tokens\n")
+	fmt.Fprint(sb, "        if test $skip_next -eq 1\n")
+	fmt.Fprint(sb, "            if set -q fwd_name[1]\n")
+	fmt.Fprint(sb, "                set -a forwarded \"--$fwd_name=$t\"\n")
+	fmt.Fprint(sb, "                set -e fwd_name\n")
+	fmt.Fprint(sb, "            end\n")
+	fmt.Fprint(sb, "            set skip_next 0\n")
+	fmt.Fprint(sb, "        else if test \"$t\" = --\n")
+	fmt.Fprint(sb, "            break\n")
+	fmt.Fprint(sb, "        else\n")
+	fmt.Fprint(sb, "            switch $t\n")
+	for _, f := range fwd {
+		var patterns []string
+		if f.LongFlag != "" {
+			patterns = append(patterns, "--"+f.LongFlag)
+		}
+		if f.ShortFlag != "" {
+			patterns = append(patterns, "-"+f.ShortFlag)
+		}
+		fmt.Fprintf(sb, "            case %s\n", strings.Join(patterns, " "))
+		fmt.Fprint(sb, "                set skip_next 1\n")
+		fmt.Fprintf(sb, "                set fwd_name %s\n", f.LongFlag)
+
+		var eqPatterns []string
+		if f.LongFlag != "" {
+			eqPatterns = append(eqPatterns, "'--"+f.LongFlag+"=*'")
+		}
+		if f.ShortFlag != "" {
+			eqPatterns = append(eqPatterns, "'-"+f.ShortFlag+"=*'")
+		}
+		fmt.Fprintf(sb, "            case %s\n", strings.Join(eqPatterns, " "))
+		if f.ShortFlag != "" && f.LongFlag != "" {
+			// "--" terminates string's option parsing; without it fish reads
+			// the "--long=" replacement as an unknown option.
+			fmt.Fprintf(
+				sb,
+				"                set -a forwarded (string replace -r -- '^-%s=' '--%s=' $t)\n",
+				f.ShortFlag,
+				f.LongFlag,
+			)
+		} else {
+			fmt.Fprint(sb, "                set -a forwarded $t\n")
+		}
+	}
+	fmt.Fprint(sb, "            end\n")
+	fmt.Fprint(sb, "        end\n")
+	fmt.Fprint(sb, "    end\n")
+	fmt.Fprint(sb, "    if set -q forwarded[1]\n")
+	fmt.Fprintf(sb, "        printf '%%s\\n' $forwarded\n")
+	fmt.Fprint(sb, "    end\n")
+	fmt.Fprint(sb, "end\n")
 }
 
 func fishWriteDynamicArgsHelper(
@@ -627,14 +712,7 @@ end
 	} else {
 		switch {
 		case spec.Dynamic != "":
-			fmt.Fprintf(
-				sb,
-				"    set -l %s (%s --%s=%s)\n",
-				varName,
-				g.AppName,
-				FlagComplete,
-				spec.Dynamic,
-			)
+			fmt.Fprintf(sb, "    set -l %s (%s)\n", varName, fishDynamicCall(g, spec.Dynamic))
 		default:
 			fmt.Fprintf(sb, "    set -l %s %s\n", varName, fishQuotedWords(spec.Values))
 		}
@@ -748,7 +826,7 @@ func fishSpecArgParts(
 		parts = append(
 			parts,
 			"-x",
-			fmt.Sprintf(`-a "(%s --%s=%s)"`, g.AppName, FlagComplete, spec.Dynamic),
+			fmt.Sprintf(`-a "(%s)"`, fishDynamicCall(g, spec.Dynamic)),
 		)
 		return parts
 	case len(spec.ValueDescs) > 0:

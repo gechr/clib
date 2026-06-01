@@ -981,3 +981,87 @@ func genNested() *complete.Generator {
 		},
 	}
 }
+
+// TestForwardFlagValue_ForwardsContext verifies that dynamic flag-value
+// completions forward collected context flags to the handler, and that the
+// forwarded-flags helper is emitted, for every shell.
+func TestForwardFlagValue_ForwardsContext(t *testing.T) {
+	cases := map[string]struct {
+		helper    string
+		plainCall string
+		commaCall string
+	}{
+		"fish": {
+			helper:    "function __myapp_forwarded_flags",
+			plainCall: "myapp --@complete=target -- (__myapp_forwarded_flags)",
+			commaCall: "myapp --@complete=tag -- (__myapp_forwarded_flags)",
+		},
+		"bash": {
+			helper:    "_myapp_forwarded_flags() {",
+			plainCall: `myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null`,
+			commaCall: `myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null`,
+		},
+		"zsh": {
+			helper:    "_myapp_forwarded_flags() {",
+			plainCall: `myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null`,
+			commaCall: `myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null`,
+		},
+	}
+
+	for sh, want := range cases {
+		t.Run(sh, func(t *testing.T) {
+			var buf strings.Builder
+			require.NoError(t, genForwardFlagValue().Print(&buf, sh))
+			got := buf.String()
+			require.Contains(t, got, want.helper, "forwarded-flags helper should be defined")
+			require.Contains(t, got, want.plainCall, "dynamic flag value should forward context")
+			require.Contains(
+				t,
+				got,
+				want.commaCall,
+				"comma dynamic flag value should forward context",
+			)
+		})
+	}
+}
+
+// TestForwardFlagValue_StopsAtTerminator verifies that the forwarded-flags
+// helper stops scanning at the "--" terminator, so tokens after it (which are
+// positional, not flags) are never collected as forwarded context.
+func TestForwardFlagValue_StopsAtTerminator(t *testing.T) {
+	terminatorBreak := map[string]string{
+		"fish": "        else if test \"$t\" = --\n            break\n",
+		"bash": "        if [[ \"${COMP_WORDS[j]}\" == \"--\" ]]; then\n            break\n",
+		"zsh":  "        if [[ $token == -- ]]; then\n            break\n",
+	}
+
+	for sh, want := range terminatorBreak {
+		t.Run(sh, func(t *testing.T) {
+			var buf strings.Builder
+			require.NoError(t, genForwardFlagValue().Print(&buf, sh))
+			require.Contains(t, buf.String(), want,
+				"forwarded-flags helper must break on the -- terminator")
+		})
+	}
+}
+
+// TestForwardFlagValue_NoForwardSpecs verifies that without any forwardable
+// flag, dynamic completions stay context-free and no helper is emitted.
+func TestForwardFlagValue_NoForwardSpecs(t *testing.T) {
+	gen := &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{LongFlag: "target", Terse: "Target name", HasArg: true, Dynamic: "target"},
+		},
+	}
+
+	for _, sh := range []string{"fish", "bash", "zsh"} {
+		t.Run(sh, func(t *testing.T) {
+			var buf strings.Builder
+			require.NoError(t, gen.Print(&buf, sh))
+			got := buf.String()
+			require.NotContains(t, got, "forwarded_flags")
+			require.NotContains(t, got, "--@complete=target --")
+		})
+	}
+}

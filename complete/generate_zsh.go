@@ -37,6 +37,12 @@ _%[2]s() {
     local context curcontext="$curcontext" state line
 `, g.AppName, funcName)
 
+	if fwdFn := zshForwardHelperName(g); fwdFn != "" {
+		// Collect forwardable context flags once; dynamic value completions
+		// pass them to the handler via "${__fwd[@]}".
+		fmt.Fprintf(&sb, "    local -a __fwd=()\n    %s\n", fwdFn)
+	}
+
 	if len(sortedSubs) > 0 {
 		zshWriteArguments(
 			g,
@@ -67,6 +73,10 @@ _%[2]s() {
 	}
 
 	fmt.Fprint(&sb, "}\n")
+
+	if fwdFn := zshForwardHelperName(g); fwdFn != "" {
+		zshWriteForwardedFlagsHelper(&sb, fwdFn, allForwardableSpecs(g))
+	}
 
 	if len(sortedSubs) > 0 {
 		zshWriteDescribeTree(&sb, sortedSubs, funcName, g.AppName)
@@ -372,12 +382,7 @@ func zshWriteSpec(g *Generator, sb *strings.Builder, spec Spec, indent string) {
 func zshCompleter(g *Generator, spec Spec) string {
 	switch {
 	case spec.CommaList && spec.Dynamic != "":
-		return fmt.Sprintf(
-			"{_sequence compadd - $(%s --%s=%s)}",
-			g.AppName,
-			FlagComplete,
-			spec.Dynamic,
-		)
+		return "{_sequence compadd - " + zshDynamicExpr(g, spec.Dynamic) + "}"
 	case spec.CommaList && len(spec.Values) > 0:
 		escaped := make([]string, len(spec.Values))
 		for i, v := range spec.Values {
@@ -385,7 +390,7 @@ func zshCompleter(g *Generator, spec Spec) string {
 		}
 		return "{_sequence compadd - " + strings.Join(escaped, " ") + "}"
 	case spec.Dynamic != "":
-		return fmt.Sprintf("($(%s --%s=%s))", g.AppName, FlagComplete, spec.Dynamic)
+		return "(" + zshDynamicExpr(g, spec.Dynamic) + ")"
 	case len(spec.ValueDescs) > 0:
 		var parts []string
 		for _, vd := range spec.ValueDescs {
@@ -409,6 +414,88 @@ func zshCompleter(g *Generator, spec Spec) string {
 	default:
 		return zshDefaultCompleter
 	}
+}
+
+// zshForwardHelperName returns the name of the shared forwarded-flags helper
+// for g, or "" when no flag-value dynamic completion would consume it.
+func zshForwardHelperName(g *Generator) string {
+	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+		return ""
+	}
+	return "_" + zshFuncName(g.AppName) + "_forwarded_flags"
+}
+
+// zshDynamicExpr returns the command substitution that produces dynamic flag
+// completions, forwarding collected context flags when forwarding is active.
+func zshDynamicExpr(g *Generator, predictor string) string {
+	if zshForwardHelperName(g) != "" {
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			predictor,
+		)
+	}
+	return fmt.Sprintf("$(%s --%s=%s)", g.AppName, FlagComplete, predictor)
+}
+
+// zshWriteForwardedFlagsHelper emits a function that scans the command line and
+// populates __fwd with each forwardable context flag as --name=value.
+func zshWriteForwardedFlagsHelper(sb *strings.Builder, helperName string, fwd []forwardSpec) {
+	fmt.Fprintf(sb, "\n%s() {\n", helperName)
+	fmt.Fprint(sb, "    local __skip_next=0 __fwd_name=\"\" token i\n")
+	fmt.Fprint(sb, "    __fwd=()\n")
+	fmt.Fprint(sb, "    for ((i=2; i<CURRENT; i++)); do\n")
+	fmt.Fprint(sb, "        token=${words[i]}\n")
+	fmt.Fprint(sb, "        if (( __skip_next )); then\n")
+	fmt.Fprint(sb, "            if [[ -n \"${__fwd_name}\" ]]; then\n")
+	fmt.Fprint(sb, "                __fwd+=(\"--${__fwd_name}=${token}\")\n")
+	fmt.Fprint(sb, "                __fwd_name=\"\"\n")
+	fmt.Fprint(sb, "            fi\n")
+	fmt.Fprint(sb, "            __skip_next=0\n")
+	fmt.Fprint(sb, "            continue\n")
+	fmt.Fprint(sb, "        fi\n")
+	fmt.Fprint(sb, "        if [[ $token == -- ]]; then\n")
+	fmt.Fprint(sb, "            break\n")
+	fmt.Fprint(sb, "        fi\n")
+	fmt.Fprint(sb, "        case $token in\n")
+	for _, f := range fwd {
+		var patterns []string
+		if f.LongFlag != "" {
+			patterns = append(patterns, "--"+f.LongFlag)
+		}
+		if f.ShortFlag != "" {
+			patterns = append(patterns, "-"+f.ShortFlag)
+		}
+		fmt.Fprintf(
+			sb,
+			"            (%s)\n                __skip_next=1\n                __fwd_name=%q\n                ;;\n",
+			strings.Join(patterns, "|"),
+			f.LongFlag,
+		)
+		if f.ShortFlag != "" && f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"            (--%s=*)\n                __fwd+=(\"$token\")\n                ;;\n",
+				f.LongFlag,
+			)
+			fmt.Fprintf(
+				sb,
+				"            (-%s=*)\n                __fwd+=(\"--%s=${token#-%s=}\")\n                ;;\n",
+				f.ShortFlag,
+				f.LongFlag,
+				f.ShortFlag,
+			)
+		} else if f.LongFlag != "" {
+			fmt.Fprintf(
+				sb,
+				"            (--%s=*)\n                __fwd+=(\"$token\")\n                ;;\n",
+				f.LongFlag,
+			)
+		}
+	}
+	fmt.Fprint(sb, "            (*)\n                ;;\n        esac\n    done\n")
+	fmt.Fprint(sb, "}\n")
 }
 
 func zshWriteSubcommandCase(

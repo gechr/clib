@@ -426,6 +426,67 @@ func forwardableSpecs(specs []Spec) []forwardSpec {
 	return result
 }
 
+// allForwardableSpecs returns the forwardable specs across the entire generator
+// tree, deduplicated by long flag. Forwardable context flags are usually
+// persistent/global, so a single command-line scan can collect them regardless
+// of which subcommand the cursor sits in.
+//
+// A short flag that maps to more than one long flag across scopes (e.g. two
+// sibling subcommands both using -p, one for --profile and one for --project)
+// is ambiguous: a single global helper can't tell which subcommand's flag the
+// short refers to, so forwarding it could misattribute the value. In that case
+// the short alias is dropped from every entry; the long forms still forward
+// unambiguously.
+func allForwardableSpecs(g *Generator) []forwardSpec {
+	seen := map[string]bool{}
+	shortLongs := map[string]map[string]bool{}
+	var result []forwardSpec
+	var walk func(specs []Spec, subs []SubSpec)
+	walk = func(specs []Spec, subs []SubSpec) {
+		for _, fs := range forwardableSpecs(specs) {
+			if fs.ShortFlag != "" {
+				if shortLongs[fs.ShortFlag] == nil {
+					shortLongs[fs.ShortFlag] = map[string]bool{}
+				}
+				shortLongs[fs.ShortFlag][fs.LongFlag] = true
+			}
+			if seen[fs.LongFlag] {
+				continue
+			}
+			seen[fs.LongFlag] = true
+			result = append(result, fs)
+		}
+		for _, sub := range subs {
+			walk(sub.Specs, sub.Subs)
+		}
+	}
+	walk(g.Specs, g.Subs)
+
+	for i := range result {
+		if s := result[i].ShortFlag; s != "" && len(shortLongs[s]) > 1 {
+			result[i].ShortFlag = ""
+		}
+	}
+	return result
+}
+
+// hasDynamicFlagValue reports whether any flag in the tree completes its value
+// dynamically (spec.Dynamic). Used to decide whether a forwarded-flags helper
+// is worth emitting.
+func hasDynamicFlagValue(specs []Spec, subs []SubSpec) bool {
+	for _, spec := range specs {
+		if spec.Dynamic != "" {
+			return true
+		}
+	}
+	for _, sub := range subs {
+		if hasDynamicFlagValue(sub.Specs, sub.Subs) {
+			return true
+		}
+	}
+	return false
+}
+
 // nonForwardArgValuePatterns returns argValuePatterns excluding Forward specs.
 // Use this in dynamic-args helpers where forwarded flags are captured separately.
 func nonForwardArgValuePatterns(specs []Spec) ([]string, []string) {
