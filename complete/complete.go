@@ -487,16 +487,32 @@ func hasDynamicFlagValue(specs []Spec, subs []SubSpec) bool {
 	return false
 }
 
-// nonForwardArgValuePatterns returns argValuePatterns excluding Forward specs.
-// Use this in dynamic-args helpers where forwarded flags are captured separately.
-func nonForwardArgValuePatterns(specs []Spec) ([]string, []string) {
-	filtered := make([]Spec, 0, len(specs))
-	for _, spec := range specs {
-		if !spec.Forward {
-			filtered = append(filtered, spec)
-		}
+// hasDynamicArgs reports whether the tree has any positional dynamic-args
+// completion that forwards context to the handler.
+func hasDynamicArgs(g *Generator) bool {
+	if len(g.DynamicArgs) > 0 {
+		return true
 	}
-	return argValuePatterns(filtered)
+	var walk func(subs []SubSpec) bool
+	walk = func(subs []SubSpec) bool {
+		for _, sub := range subs {
+			if len(sub.DynamicArgs) > 0 || walk(sub.Subs) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(g.Subs)
+}
+
+// forwardingActive reports whether g should emit a shared forwarded-flags
+// helper: it needs forwardable specs and at least one dynamic completion
+// (flag value or positional) that would consume them.
+func forwardingActive(g *Generator) bool {
+	if len(allForwardableSpecs(g)) == 0 {
+		return false
+	}
+	return hasDynamicFlagValue(g.Specs, g.Subs) || hasDynamicArgs(g)
 }
 
 func argValuePatterns(specs []Spec) ([]string, []string) {

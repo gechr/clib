@@ -132,7 +132,7 @@ func fishEscapeString(s string) string {
 // fishForwardHelperName returns the name of the shared forwarded-flags helper
 // for g, or "" when no flag-value dynamic completion would consume it.
 func fishForwardHelperName(g *Generator) string {
-	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+	if !forwardingActive(g) {
 		return ""
 	}
 	return fmt.Sprintf("__%s_forwarded_flags", fishFuncName(g.AppName))
@@ -218,18 +218,17 @@ func fishWriteDynamicArgsHelper(
 	dynamicArgs []string,
 	cmdSkip int,
 ) {
-	fwd := forwardableSpecs(specs)
-	hasFwd := len(fwd) > 0
-	exact, equals := nonForwardArgValuePatterns(specs)
+	// Forwardable flags are classified as ordinary value flags so their values
+	// are skipped rather than counted as positionals. Forwarded context is
+	// collected separately below and passed alongside the real positionals.
+	exact, equals := argValuePatterns(specs)
+	fwdFn := fishForwardHelperName(g)
 	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
 	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
 	fmt.Fprint(sb, "    set -e tokens[1]\n")
 	fmt.Fprint(sb, "    set -l positional\n")
 	fmt.Fprint(sb, "    set -l skip_next 0\n")
 	fmt.Fprint(sb, "    set -l dashdash 0\n")
-	if hasFwd {
-		fmt.Fprint(sb, "    set -l fwd_name\n")
-	}
 	if cmdSkip > 0 {
 		fmt.Fprintf(sb, "    set -l cmd_skip %d\n", cmdSkip)
 	}
@@ -237,40 +236,47 @@ func fishWriteDynamicArgsHelper(
 	fmt.Fprint(sb, "        if test $dashdash -eq 1\n")
 	fmt.Fprint(sb, "            set -a positional $t\n")
 	fmt.Fprint(sb, "        else if test $skip_next -eq 1\n")
-	if hasFwd {
-		fmt.Fprint(sb, "            if set -q fwd_name[1]\n")
-		fmt.Fprint(sb, "                set -a positional \"--$fwd_name=$t\"\n")
-		fmt.Fprint(sb, "                set -e fwd_name\n")
-		fmt.Fprint(sb, "            end\n")
-	}
 	fmt.Fprint(sb, "            set skip_next 0\n")
 	fmt.Fprint(sb, `        else if test "$t" = --
 `)
 	fmt.Fprint(sb, "            set dashdash 1\n")
 	fmt.Fprint(sb, "        else\n")
-	fishWriteTokenClassifier(sb, exact, equals, fwd, cmdSkip, "            ")
+	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
 	fmt.Fprint(sb, "        end\n")
 	fmt.Fprint(sb, "    end\n")
 	fmt.Fprint(sb, "    set -l nargs (count $positional)\n")
+	if fwdFn != "" {
+		fmt.Fprintf(sb, "    set -l forwarded (%s)\n", fwdFn)
+	}
 	fmt.Fprint(sb, "    switch $nargs\n")
 	for i, da := range dynamicArgs {
 		fmt.Fprintf(sb, "        case %d\n", i)
-		if i == 0 {
-			fmt.Fprintf(sb, "            %s --%s=%s\n", g.AppName, FlagComplete, da)
-			continue
-		}
-
-		fmt.Fprintf(sb, "            %s --%s=%s -- $positional\n", g.AppName, FlagComplete, da)
+		fmt.Fprintf(sb, "            %s\n", fishDynamicArgsCall(g, da, fwdFn, i == 0))
 	}
 	fmt.Fprint(sb, "        case '*'\n")
 	fmt.Fprintf(
 		sb,
-		"            %s --%s=%s -- $positional\n",
-		g.AppName,
-		FlagComplete,
-		dynamicArgs[len(dynamicArgs)-1],
+		"            %s\n",
+		fishDynamicArgsCall(g, dynamicArgs[len(dynamicArgs)-1], fwdFn, false),
 	)
 	fmt.Fprint(sb, "    end\nend\n")
+}
+
+// fishDynamicArgsCall builds the handler invocation for a positional dynamic
+// completion slot. The first slot has no preceding positionals; forwarded
+// context flags (when present) are passed ahead of any real positionals.
+func fishDynamicArgsCall(g *Generator, da, fwdFn string, first bool) string {
+	call := fmt.Sprintf("%s --%s=%s", g.AppName, FlagComplete, da)
+	switch {
+	case fwdFn != "" && first:
+		return call + " -- $forwarded"
+	case fwdFn != "":
+		return call + " -- $forwarded $positional"
+	case first:
+		return call
+	default:
+		return call + " -- $positional"
+	}
 }
 
 func fishWritePositionalCountHelper(
@@ -299,7 +305,7 @@ func fishWritePositionalCountHelper(
 `)
 	fmt.Fprint(sb, "            set dashdash 1\n")
 	fmt.Fprint(sb, "        else\n")
-	fishWriteTokenClassifier(sb, exact, equals, nil, cmdSkip, "            ")
+	fishWriteTokenClassifier(sb, exact, equals, cmdSkip, "            ")
 	fmt.Fprint(sb, "        end\n")
 	fmt.Fprint(sb, "    end\n")
 	fmt.Fprintf(sb, "    test (count $positional) -lt %d\n", maxPositionalArgs)
@@ -309,45 +315,10 @@ func fishWritePositionalCountHelper(
 func fishWriteTokenClassifier(
 	sb *strings.Builder,
 	exact, equals []string,
-	fwd []forwardSpec,
 	cmdSkip int,
 	indent string,
 ) {
 	fmt.Fprintf(sb, "%sswitch $t\n", indent)
-	for _, f := range fwd {
-		// Forward exact: --flag value / -f value → capture with fwd_name
-		var patterns []string
-		if f.LongFlag != "" {
-			patterns = append(patterns, "--"+f.LongFlag)
-		}
-		if f.ShortFlag != "" {
-			patterns = append(patterns, "-"+f.ShortFlag)
-		}
-		fmt.Fprintf(sb, "%scase %s\n", indent, strings.Join(patterns, " "))
-		fmt.Fprintf(sb, "%s    set skip_next 1\n", indent)
-		fmt.Fprintf(sb, "%s    set fwd_name %s\n", indent, f.LongFlag)
-
-		// Forward equals: --flag=value / -f=value → normalize to --flag=value
-		var eqPatterns []string
-		if f.LongFlag != "" {
-			eqPatterns = append(eqPatterns, "'--"+f.LongFlag+"=*'")
-		}
-		if f.ShortFlag != "" {
-			eqPatterns = append(eqPatterns, "'-"+f.ShortFlag+"=*'")
-		}
-		fmt.Fprintf(sb, "%scase %s\n", indent, strings.Join(eqPatterns, " "))
-		if f.ShortFlag != "" && f.LongFlag != "" {
-			fmt.Fprintf(
-				sb,
-				"%s    set -a positional (string replace -r '^-%s=' '--%s=' -- $t)\n",
-				indent,
-				f.ShortFlag,
-				f.LongFlag,
-			)
-		} else {
-			fmt.Fprintf(sb, "%s    set -a positional $t\n", indent)
-		}
-	}
 	if len(exact) > 0 {
 		fmt.Fprintf(sb, "%scase %s\n", indent, strings.Join(exact, " "))
 		fmt.Fprintf(sb, "%s    set skip_next 1\n", indent)

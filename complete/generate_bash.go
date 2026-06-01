@@ -109,7 +109,7 @@ fi
 // bashForwardHelperName returns the name of the shared forwarded-flags helper
 // for g, or "" when no flag-value dynamic completion would consume it.
 func bashForwardHelperName(g *Generator) string {
-	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+	if !forwardingActive(g) {
 		return ""
 	}
 	return "_" + strings.ReplaceAll(g.AppName, "-", "_") + "_forwarded_flags"
@@ -127,6 +127,38 @@ func bashDynamicExpr(g *Generator, predictor string) string {
 		)
 	}
 	return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, predictor)
+}
+
+// bashDynamicArgsExpr builds the handler command substitution for a positional
+// dynamic completion slot. first==true means no preceding positionals; when
+// forwarding is active, collected context flags precede the real positionals.
+func bashDynamicArgsExpr(g *Generator, da string, first bool) string {
+	forward := bashForwardHelperName(g) != ""
+	switch {
+	case forward && first:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	case forward:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" "${__dyn_pos[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	case first:
+		return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, da)
+	default:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__dyn_pos[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	}
 }
 
 // bashWriteForwardedFlagsHelper emits a function that scans the command line and
@@ -321,30 +353,24 @@ func bashWriteCmdCase(
 			if i == 0 {
 				fmt.Fprintf(
 					sb,
-					"                %d)\n                    COMPREPLY=($(compgen -W \"${opts} $(%s --%s=%s 2>/dev/null)\" -- \"${cur}\"))\n                    ;;\n",
+					"                %d)\n                    COMPREPLY=($(compgen -W \"${opts} %s\" -- \"${cur}\"))\n                    ;;\n",
 					i,
-					g.AppName,
-					FlagComplete,
-					da,
+					bashDynamicArgsExpr(g, da, true),
 				)
 				continue
 			}
 
 			fmt.Fprintf(
 				sb,
-				"                %d)\n                    COMPREPLY=($(compgen -W \"$(%s --%s=%s -- \"${__dyn_pos[@]}\" 2>/dev/null)\" -- \"${cur}\"))\n                    ;;\n",
+				"                %d)\n                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n                    ;;\n",
 				i,
-				g.AppName,
-				FlagComplete,
-				da,
+				bashDynamicArgsExpr(g, da, false),
 			)
 		}
 		fmt.Fprintf(
 			sb,
-			"                *)\n                    COMPREPLY=($(compgen -W \"$(%s --%s=%s -- \"${__dyn_pos[@]}\" 2>/dev/null)\" -- \"${cur}\"))\n                    ;;\n",
-			g.AppName,
-			FlagComplete,
-			dynamicArgs[len(dynamicArgs)-1],
+			"                *)\n                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n                    ;;\n",
+			bashDynamicArgsExpr(g, dynamicArgs[len(dynamicArgs)-1], false),
 		)
 		fmt.Fprint(sb, "            esac\n")
 	default:
@@ -355,15 +381,13 @@ func bashWriteCmdCase(
 
 func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
 	cmdSkip := depth - 1
-	fwd := forwardableSpecs(specs)
-	hasFwd := len(fwd) > 0
-	exact, equals := nonForwardArgValuePatterns(specs)
+	// Forwardable flags are classified as ordinary value flags so their values
+	// are skipped rather than counted as positionals; forwarded context is
+	// collected separately in __fwd.
+	exact, equals := argValuePatterns(specs)
 	fmt.Fprint(sb, "            local -a __dyn_pos=()\n")
 	fmt.Fprint(sb, "            local __skip_next=0\n")
 	fmt.Fprint(sb, "            local __after_dd=0\n")
-	if hasFwd {
-		fmt.Fprint(sb, "            local __fwd_name=\"\"\n")
-	}
 	if cmdSkip > 0 {
 		fmt.Fprintf(sb, "            local __cmd_skip=%d\n", cmdSkip)
 	}
@@ -373,15 +397,7 @@ func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
                     continue
                 fi
                 if [[ "${__skip_next}" -eq 1 ]]; then
-`)
-	if hasFwd {
-		fmt.Fprint(sb, `                    if [[ -n "${__fwd_name}" ]]; then
-                        __dyn_pos+=("--${__fwd_name}=${COMP_WORDS[j]}")
-                        __fwd_name=""
-                    fi
-`)
-	}
-	fmt.Fprint(sb, `                    __skip_next=0
+                    __skip_next=0
                     continue
                 fi
                 if [[ "${COMP_WORDS[j]}" == "--" ]]; then
@@ -390,43 +406,6 @@ func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {
                 fi
                 case "${COMP_WORDS[j]}" in
 `)
-	for _, f := range fwd {
-		// Forward exact: --flag value / -f value
-		var patterns []string
-		if f.LongFlag != "" {
-			patterns = append(patterns, "--"+f.LongFlag)
-		}
-		if f.ShortFlag != "" {
-			patterns = append(patterns, "-"+f.ShortFlag)
-		}
-		fmt.Fprintf(
-			sb,
-			"                    %s)\n                        __skip_next=1\n                        __fwd_name=%q\n                        ;;\n",
-			strings.Join(patterns, "|"),
-			f.LongFlag,
-		)
-		// Forward equals: --flag=value passes through; -f=value normalized
-		if f.ShortFlag != "" && f.LongFlag != "" {
-			fmt.Fprintf(
-				sb,
-				"                    --%s=*)\n                        __dyn_pos+=(\"${COMP_WORDS[j]}\")\n                        ;;\n",
-				f.LongFlag,
-			)
-			fmt.Fprintf(
-				sb,
-				"                    -%s=*)\n                        __dyn_pos+=(\"--%s=${COMP_WORDS[j]#-%s=}\")\n                        ;;\n",
-				f.ShortFlag,
-				f.LongFlag,
-				f.ShortFlag,
-			)
-		} else if f.LongFlag != "" {
-			fmt.Fprintf(
-				sb,
-				"                    --%s=*)\n                        __dyn_pos+=(\"${COMP_WORDS[j]}\")\n                        ;;\n",
-				f.LongFlag,
-			)
-		}
-	}
 	if len(exact) > 0 {
 		fmt.Fprintf(
 			sb,

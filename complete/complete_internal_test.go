@@ -245,7 +245,6 @@ func TestFishWriteTokenClassifier(t *testing.T) {
 		&sb,
 		[]string{"--output", "-o"},
 		[]string{"--output=*", "-o=*"},
-		nil,
 		1,
 		"    ",
 	)

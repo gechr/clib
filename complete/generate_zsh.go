@@ -165,9 +165,10 @@ func zshWriteDynamicArgsCases(
 	indent string,
 ) {
 	inner := indent + "    "
-	fwd := forwardableSpecs(specs)
-	hasFwd := len(fwd) > 0
-	exact, equals := nonForwardArgValuePatterns(specs)
+	// Forwardable flags are classified as ordinary value flags so they are
+	// skipped rather than collected as positionals; forwarded context lives in
+	// __fwd and is passed separately to the handler.
+	exact, equals := argValuePatterns(specs)
 	fmt.Fprintf(sb, "\n%scase $state in\n", indent)
 	limit := len(dynamicArgs)
 	if hasMaxPositionalArgs && maxPositionalArgs < limit {
@@ -176,41 +177,21 @@ func zshWriteDynamicArgsCases(
 	for i := range limit {
 		da := dynamicArgs[i]
 		fmt.Fprintf(sb, "%s(dyn_%d)\n", indent, i+1)
-		zshWriteDynTokenParser(sb, inner, exact, equals, fwd, hasFwd)
+		zshWriteDynTokenParser(sb, inner, exact, equals)
 		fmt.Fprintf(sb, "%slocal -a items\n", inner)
-		if i == 0 {
-			fmt.Fprintf(
-				sb,
-				"%sitems=(${(f)\"$(%s --%s=%s 2>/dev/null)\"})\n",
-				inner,
-				g.AppName,
-				FlagComplete,
-				da,
-			)
-		} else {
-			fmt.Fprintf(
-				sb,
-				"%sitems=(${(f)\"$(%s --%s=%s -- \"${__pos[@]}\" 2>/dev/null)\"})\n",
-				inner,
-				g.AppName,
-				FlagComplete,
-				da,
-			)
-		}
+		fmt.Fprintf(sb, "%sitems=(${(f)\"%s\"})\n", inner, zshDynamicArgsExpr(g, da, i == 0))
 		fmt.Fprintf(sb, "%scompadd -a items\n", inner)
 		fmt.Fprintf(sb, "%s;;\n", indent)
 	}
 	if !hasMaxPositionalArgs {
 		fmt.Fprintf(sb, "%s(dyn_rest)\n", indent)
-		zshWriteDynTokenParser(sb, inner, exact, equals, fwd, hasFwd)
+		zshWriteDynTokenParser(sb, inner, exact, equals)
 		fmt.Fprintf(sb, "%slocal -a items\n", inner)
 		fmt.Fprintf(
 			sb,
-			"%sitems=(${(f)\"$(%s --%s=%s -- \"${__pos[@]}\" 2>/dev/null)\"})\n",
+			"%sitems=(${(f)\"%s\"})\n",
 			inner,
-			g.AppName,
-			FlagComplete,
-			dynamicArgs[len(dynamicArgs)-1],
+			zshDynamicArgsExpr(g, dynamicArgs[len(dynamicArgs)-1], false),
 		)
 		fmt.Fprintf(sb, "%scompadd -a items\n", inner)
 		fmt.Fprintf(sb, "%s;;\n", indent)
@@ -218,19 +199,46 @@ func zshWriteDynamicArgsCases(
 	fmt.Fprintf(sb, "%sesac\n", indent)
 }
 
+// zshDynamicArgsExpr builds the handler command substitution for a positional
+// dynamic completion slot. first==true means no preceding positionals; when
+// forwarding is active, collected context flags precede the real positionals.
+func zshDynamicArgsExpr(g *Generator, da string, first bool) string {
+	forward := zshForwardHelperName(g) != ""
+	switch {
+	case forward && first:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	case forward:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__fwd[@]}" "${__pos[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	case first:
+		return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, da)
+	default:
+		return fmt.Sprintf(
+			`$(%s --%s=%s -- "${__pos[@]}" 2>/dev/null)`,
+			g.AppName,
+			FlagComplete,
+			da,
+		)
+	}
+}
+
 func zshWriteDynTokenParser(
 	sb *strings.Builder,
 	inner string,
 	exact, equals []string,
-	fwd []forwardSpec,
-	hasFwd bool,
 ) {
 	fmt.Fprintf(sb, "%slocal -a __pos=()\n", inner)
 	fmt.Fprintf(sb, "%slocal __skip_next=0\n", inner)
 	fmt.Fprintf(sb, "%slocal __after_dd=0\n", inner)
-	if hasFwd {
-		fmt.Fprintf(sb, "%slocal __fwd_name=\"\"\n", inner)
-	}
 	fmt.Fprintf(sb, "%slocal token\n", inner)
 	fmt.Fprintf(sb, "%sfor ((i=2; i<CURRENT; i++)); do\n", inner)
 	fmt.Fprintf(sb, "%s    token=${words[i]}\n", inner)
@@ -239,12 +247,6 @@ func zshWriteDynTokenParser(
 	fmt.Fprintf(sb, "%s        continue\n", inner)
 	fmt.Fprintf(sb, "%s    fi\n", inner)
 	fmt.Fprintf(sb, "%s    if (( __skip_next )); then\n", inner)
-	if hasFwd {
-		fmt.Fprintf(sb, "%s        if [[ -n \"${__fwd_name}\" ]]; then\n", inner)
-		fmt.Fprintf(sb, "%s            __pos+=(\"--${__fwd_name}=${token}\")\n", inner)
-		fmt.Fprintf(sb, "%s            __fwd_name=\"\"\n", inner)
-		fmt.Fprintf(sb, "%s        fi\n", inner)
-	}
 	fmt.Fprintf(sb, "%s        __skip_next=0\n", inner)
 	fmt.Fprintf(sb, "%s        continue\n", inner)
 	fmt.Fprintf(sb, "%s    fi\n", inner)
@@ -253,50 +255,6 @@ func zshWriteDynTokenParser(
 	fmt.Fprintf(sb, "%s        continue\n", inner)
 	fmt.Fprintf(sb, "%s    fi\n", inner)
 	fmt.Fprintf(sb, "%s    case $token in\n", inner)
-	for _, f := range fwd {
-		// Forward exact: --flag value / -f value
-		var patterns []string
-		if f.LongFlag != "" {
-			patterns = append(patterns, "--"+f.LongFlag)
-		}
-		if f.ShortFlag != "" {
-			patterns = append(patterns, "-"+f.ShortFlag)
-		}
-		fmt.Fprintf(
-			sb,
-			"%s        (%s)\n%s            __skip_next=1\n%s            __fwd_name=%q\n%s            ;;\n",
-			inner,
-			strings.Join(patterns, "|"),
-			inner,
-			inner,
-			f.LongFlag,
-			inner,
-		)
-		// Forward equals: --flag=value / -f=value → normalize to --flag=value
-		if f.ShortFlag != "" && f.LongFlag != "" {
-			fmt.Fprintf(
-				sb,
-				"%s        (--%s=*)\n%s            __pos+=(\"$token\")\n%s            ;;\n",
-				inner, f.LongFlag, inner, inner,
-			)
-			fmt.Fprintf(
-				sb,
-				"%s        (-%s=*)\n%s            __pos+=(\"--%s=${token#-%s=}\")\n%s            ;;\n",
-				inner,
-				f.ShortFlag,
-				inner,
-				f.LongFlag,
-				f.ShortFlag,
-				inner,
-			)
-		} else if f.LongFlag != "" {
-			fmt.Fprintf(
-				sb,
-				"%s        (--%s=*)\n%s            __pos+=(\"$token\")\n%s            ;;\n",
-				inner, f.LongFlag, inner, inner,
-			)
-		}
-	}
 	if len(exact) > 0 {
 		fmt.Fprintf(
 			sb,
@@ -419,7 +377,7 @@ func zshCompleter(g *Generator, spec Spec) string {
 // zshForwardHelperName returns the name of the shared forwarded-flags helper
 // for g, or "" when no flag-value dynamic completion would consume it.
 func zshForwardHelperName(g *Generator) string {
-	if len(allForwardableSpecs(g)) == 0 || !hasDynamicFlagValue(g.Specs, g.Subs) {
+	if !forwardingActive(g) {
 		return ""
 	}
 	return "_" + zshFuncName(g.AppName) + "_forwarded_flags"

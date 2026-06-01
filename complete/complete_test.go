@@ -1045,6 +1045,61 @@ func TestForwardFlagValue_StopsAtTerminator(t *testing.T) {
 	}
 }
 
+// TestForwardDynamicArgs_NotCountedAsPositional verifies that a forwarded flag
+// value is not stored in the positional-counting array (which would shift the
+// active completion slot) and that forwarded context still reaches the first
+// slot's handler call.
+func TestForwardDynamicArgs_NotCountedAsPositional(t *testing.T) {
+	cases := map[string]struct {
+		firstSlotForwards string // handler call for the first positional slot
+		positionalAppend  string // old (buggy) append of the forwarded value
+	}{
+		"fish": {
+			firstSlotForwards: "myapp --@complete=items -- $forwarded",
+			positionalAppend:  "set -a positional (string replace -r '^-c=' '--category='",
+		},
+		"bash": {
+			firstSlotForwards: `myapp --@complete=items -- "${__fwd[@]}"`,
+			positionalAppend:  `__dyn_pos+=("--category=`,
+		},
+		"zsh": {
+			firstSlotForwards: `myapp --@complete=items -- "${__fwd[@]}"`,
+			positionalAppend:  `__pos+=("--category=`,
+		},
+	}
+
+	for sh, want := range cases {
+		t.Run(sh, func(t *testing.T) {
+			var buf strings.Builder
+			require.NoError(t, genForwardDynamicArgs().Print(&buf, sh))
+			got := buf.String()
+			require.Contains(t, got, want.firstSlotForwards,
+				"first slot must forward context, proving the forwarded flag is not counted")
+			require.NotContains(t, got, want.positionalAppend,
+				"forwarded flag value must not be appended to the positional array")
+		})
+	}
+}
+
+// TestForwardDynamicArgs_StopsAtTerminator verifies that positional dynamic
+// completions, which route forwarded context through the shared helper, do not
+// collect forwardable flags that appear after the "--" terminator.
+func TestForwardDynamicArgs_StopsAtTerminator(t *testing.T) {
+	terminatorBreak := map[string]string{
+		"fish": "        else if test \"$t\" = --\n            break\n",
+		"bash": "        if [[ \"${COMP_WORDS[j]}\" == \"--\" ]]; then\n            break\n",
+		"zsh":  "        if [[ $token == -- ]]; then\n            break\n",
+	}
+	for sh, want := range terminatorBreak {
+		t.Run(sh, func(t *testing.T) {
+			var buf strings.Builder
+			require.NoError(t, genForwardDynamicArgs().Print(&buf, sh))
+			require.Contains(t, buf.String(), want,
+				"positional forwarded-flags helper must break on the -- terminator")
+		})
+	}
+}
+
 // TestForwardFlagValue_NoForwardSpecs verifies that without any forwardable
 // flag, dynamic completions stay context-free and no helper is emitted.
 func TestForwardFlagValue_NoForwardSpecs(t *testing.T) {

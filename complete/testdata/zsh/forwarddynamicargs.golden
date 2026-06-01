@@ -14,6 +14,8 @@ _myapp() {
     fi
 
     local context curcontext="$curcontext" state line
+    local -a __fwd=()
+    _myapp_forwarded_flags
     _arguments "${_arguments_options[@]}" : \
         '(-c --category)-c+[Target category]:category:(alpha beta gamma)' \
         '(-c --category)--category=[Target category]:category:(alpha beta gamma)' \
@@ -30,7 +32,6 @@ _myapp() {
         local -a __pos=()
         local __skip_next=0
         local __after_dd=0
-        local __fwd_name=""
         local token
         for ((i=2; i<CURRENT; i++)); do
             token=${words[i]}
@@ -39,10 +40,6 @@ _myapp() {
                 continue
             fi
             if (( __skip_next )); then
-                if [[ -n "${__fwd_name}" ]]; then
-                    __pos+=("--${__fwd_name}=${token}")
-                    __fwd_name=""
-                fi
                 __skip_next=0
                 continue
             fi
@@ -51,22 +48,10 @@ _myapp() {
                 continue
             fi
             case $token in
-                (--category|-c)
+                (--category|-c|--filter)
                     __skip_next=1
-                    __fwd_name="category"
                     ;;
-                (--category=*)
-                    __pos+=("$token")
-                    ;;
-                (-c=*)
-                    __pos+=("--category=${token#-c=}")
-                    ;;
-                (--filter)
-                    __skip_next=1
-                    __fwd_name="filter"
-                    ;;
-                (--filter=*)
-                    __pos+=("$token")
+                (--category=*|-c=*|--filter=*)
                     ;;
                 (-*)
                     ;;
@@ -76,14 +61,13 @@ _myapp() {
             esac
         done
         local -a items
-        items=(${(f)"$(myapp --@complete=items 2>/dev/null)"})
+        items=(${(f)"$(myapp --@complete=items -- "${__fwd[@]}" 2>/dev/null)"})
         compadd -a items
     ;;
     (dyn_2)
         local -a __pos=()
         local __skip_next=0
         local __after_dd=0
-        local __fwd_name=""
         local token
         for ((i=2; i<CURRENT; i++)); do
             token=${words[i]}
@@ -92,10 +76,6 @@ _myapp() {
                 continue
             fi
             if (( __skip_next )); then
-                if [[ -n "${__fwd_name}" ]]; then
-                    __pos+=("--${__fwd_name}=${token}")
-                    __fwd_name=""
-                fi
                 __skip_next=0
                 continue
             fi
@@ -104,22 +84,10 @@ _myapp() {
                 continue
             fi
             case $token in
-                (--category|-c)
+                (--category|-c|--filter)
                     __skip_next=1
-                    __fwd_name="category"
                     ;;
-                (--category=*)
-                    __pos+=("$token")
-                    ;;
-                (-c=*)
-                    __pos+=("--category=${token#-c=}")
-                    ;;
-                (--filter)
-                    __skip_next=1
-                    __fwd_name="filter"
-                    ;;
-                (--filter=*)
-                    __pos+=("$token")
+                (--category=*|-c=*|--filter=*)
                     ;;
                 (-*)
                     ;;
@@ -129,14 +97,13 @@ _myapp() {
             esac
         done
         local -a items
-        items=(${(f)"$(myapp --@complete=values -- "${__pos[@]}" 2>/dev/null)"})
+        items=(${(f)"$(myapp --@complete=values -- "${__fwd[@]}" "${__pos[@]}" 2>/dev/null)"})
         compadd -a items
     ;;
     (dyn_rest)
         local -a __pos=()
         local __skip_next=0
         local __after_dd=0
-        local __fwd_name=""
         local token
         for ((i=2; i<CURRENT; i++)); do
             token=${words[i]}
@@ -145,10 +112,6 @@ _myapp() {
                 continue
             fi
             if (( __skip_next )); then
-                if [[ -n "${__fwd_name}" ]]; then
-                    __pos+=("--${__fwd_name}=${token}")
-                    __fwd_name=""
-                fi
                 __skip_next=0
                 continue
             fi
@@ -157,22 +120,10 @@ _myapp() {
                 continue
             fi
             case $token in
-                (--category|-c)
+                (--category|-c|--filter)
                     __skip_next=1
-                    __fwd_name="category"
                     ;;
-                (--category=*)
-                    __pos+=("$token")
-                    ;;
-                (-c=*)
-                    __pos+=("--category=${token#-c=}")
-                    ;;
-                (--filter)
-                    __skip_next=1
-                    __fwd_name="filter"
-                    ;;
-                (--filter=*)
-                    __pos+=("$token")
+                (--category=*|-c=*|--filter=*)
                     ;;
                 (-*)
                     ;;
@@ -182,10 +133,50 @@ _myapp() {
             esac
         done
         local -a items
-        items=(${(f)"$(myapp --@complete=values -- "${__pos[@]}" 2>/dev/null)"})
+        items=(${(f)"$(myapp --@complete=values -- "${__fwd[@]}" "${__pos[@]}" 2>/dev/null)"})
         compadd -a items
     ;;
     esac
+}
+
+_myapp_forwarded_flags() {
+    local __skip_next=0 __fwd_name="" token i
+    __fwd=()
+    for ((i=2; i<CURRENT; i++)); do
+        token=${words[i]}
+        if (( __skip_next )); then
+            if [[ -n "${__fwd_name}" ]]; then
+                __fwd+=("--${__fwd_name}=${token}")
+                __fwd_name=""
+            fi
+            __skip_next=0
+            continue
+        fi
+        if [[ $token == -- ]]; then
+            break
+        fi
+        case $token in
+            (--category|-c)
+                __skip_next=1
+                __fwd_name="category"
+                ;;
+            (--category=*)
+                __fwd+=("$token")
+                ;;
+            (-c=*)
+                __fwd+=("--category=${token#-c=}")
+                ;;
+            (--filter)
+                __skip_next=1
+                __fwd_name="filter"
+                ;;
+            (--filter=*)
+                __fwd+=("$token")
+                ;;
+            (*)
+                ;;
+        esac
+    done
 }
 
 if [ "$funcstack[1]" = "_myapp" ]; then
