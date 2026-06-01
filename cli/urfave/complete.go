@@ -145,10 +145,11 @@ func commandSubSpecs(cmd *clilib.Command) []complete.SubSpec {
 		}
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		sub.Subs = commandSubSpecs(child)
-		// Subcommand-only groupers: flags at this level cannot take effect
-		// without picking a subcommand, so drop them from completions to
-		// match help output.
-		if len(sub.Subs) > 0 {
+		// Pure grouper commands (no Action of their own) can't take effect
+		// without picking a subcommand, so drop their flags from completions
+		// to match help output. A runnable command keeps its local flags even
+		// when it also has subcommands, since "<cmd> --flag" is still valid.
+		if len(sub.Subs) > 0 && child.Action == nil {
 			sub.Specs = nil
 		}
 		subs = append(subs, sub)

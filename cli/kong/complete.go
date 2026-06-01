@@ -154,15 +154,29 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		// Recurse into nested subcommands.
 		sub.Subs = nodeSubSpecs(child)
-		// Subcommand-only groupers: flags at this level cannot take effect
-		// without picking a subcommand, so drop them from completions to
-		// match help output.
-		if len(sub.Subs) > 0 {
+		// Pure grouper commands (no Run method) can't take effect without
+		// picking a subcommand, so drop their flags from completions to match
+		// help output. A runnable command keeps its local flags even when it
+		// also has subcommands, since "<cmd> --flag" is still valid.
+		if len(sub.Subs) > 0 && !nodeRunnable(child) {
 			sub.Specs = nil
 		}
 		subs = append(subs, sub)
 	}
 	return subs
+}
+
+// nodeRunnable reports whether a kong node has executable behavior of its own,
+// i.e. a Run method on its target struct. This mirrors kong's own runnability
+// convention (a command runs by virtue of having a Run method).
+func nodeRunnable(node *konglib.Node) bool {
+	if node == nil || !node.Target.IsValid() {
+		return false
+	}
+	if node.Target.MethodByName("Run").IsValid() {
+		return true
+	}
+	return node.Target.CanAddr() && node.Target.Addr().MethodByName("Run").IsValid()
 }
 
 func positionalLimit(node *konglib.Node) (int, bool) {

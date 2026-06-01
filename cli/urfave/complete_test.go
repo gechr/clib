@@ -623,6 +623,46 @@ func TestSubcommands_Nested(t *testing.T) {
 	require.Equal(t, "Log out", logoutSub.Terse)
 }
 
+func TestSubcommands_RunnableParentKeepsFlags(t *testing.T) {
+	child := &clilib.Command{Name: "child", Usage: "Child command"}
+	// "parent" has an Action, so "myapp parent --all" is valid and the flag
+	// must survive even though parent also has a subcommand.
+	parent := &clilib.Command{
+		Name:     "parent",
+		Usage:    "Parent command",
+		Action:   func(context.Context, *clilib.Command) error { return nil },
+		Commands: []*clilib.Command{child},
+		Flags:    []clilib.Flag{&clilib.BoolFlag{Name: "all", Usage: "Operate on everything"}},
+	}
+	root := &clilib.Command{Name: "myapp", Commands: []*clilib.Command{parent}}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "all", subs[0].Specs[0].LongFlag)
+}
+
+func TestSubcommands_GrouperParentDropsFlags(t *testing.T) {
+	child := &clilib.Command{Name: "child", Usage: "Child command"}
+	// "parent" has no Action, so it is a pure grouper and its flags are
+	// dropped from completions.
+	parent := &clilib.Command{
+		Name:     "parent",
+		Usage:    "Parent command",
+		Commands: []*clilib.Command{child},
+		Flags:    []clilib.Flag{&clilib.BoolFlag{Name: "all", Usage: "Operate on everything"}},
+	}
+	root := &clilib.Command{Name: "myapp", Commands: []*clilib.Command{parent}}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Empty(t, subs[0].Specs)
+}
+
 // --- CompletionCommand tests ---
 
 func completionRoot(genFunc func() *complete.Generator) *clilib.Command {

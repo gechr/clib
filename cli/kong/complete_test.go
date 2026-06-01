@@ -640,6 +640,77 @@ func TestSubcommands_Nested(t *testing.T) {
 	require.Equal(t, "Log out", logout.Terse)
 }
 
+type runnableChildCmd struct{}
+
+type runnableParentCmd struct {
+	All   bool             `name:"all"           help:"Operate on everything"`
+	Child runnableChildCmd `help:"Child command" cmd:""`
+}
+
+// Run makes runnableParentCmd executable in its own right (kong's runnability
+// convention), so it is not a pure grouper.
+func (runnableParentCmd) Run() error { return nil }
+
+func TestSubcommands_RunnableParentKeepsFlags(t *testing.T) {
+	var cli struct {
+		Parent runnableParentCmd `help:"Parent command" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "all", subs[0].Specs[0].LongFlag)
+}
+
+type ptrRunnableParentCmd struct {
+	All   bool             `name:"all"           help:"Operate on everything"`
+	Child runnableChildCmd `help:"Child command" cmd:""`
+}
+
+// Run has a pointer receiver, so it is only discoverable via Target.Addr();
+// this pins the Addr() branch of nodeRunnable.
+func (*ptrRunnableParentCmd) Run() error { return nil }
+
+func TestSubcommands_RunnableParentKeepsFlags_PointerReceiver(t *testing.T) {
+	var cli struct {
+		Parent ptrRunnableParentCmd `help:"Parent command" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "all", subs[0].Specs[0].LongFlag)
+}
+
+func TestSubcommands_GrouperParentDropsFlags(t *testing.T) {
+	// No Run method anywhere, so "parent" is a pure grouper and its flag is
+	// dropped from completions.
+	type ChildCmd struct{}
+	type ParentCmd struct {
+		All   bool     `name:"all"           help:"Operate on everything"`
+		Child ChildCmd `help:"Child command" cmd:""`
+	}
+	var cli struct {
+		Parent ParentCmd `help:"Parent command" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Empty(t, subs[0].Specs)
+}
+
 // --- CompletionCommand tests ---
 
 func TestCompletionCommand_Fish(t *testing.T) {

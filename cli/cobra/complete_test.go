@@ -596,7 +596,9 @@ func TestGenerator_PersistentFlagsPropagateToNestedSubcommands(t *testing.T) {
 	root.Flags().Bool("root-local", false, "Root local")
 	root.PersistentFlags().Bool("root-persistent", false, "Root persistent")
 
-	parent := &cobralib.Command{Use: "parent", Short: "Parent command", Run: noop}
+	// "parent" is a pure grouper (no Run/RunE), so its own flags are
+	// suppressed from completions; only the leaf "child" carries specs.
+	parent := &cobralib.Command{Use: "parent", Short: "Parent command"}
 	parent.Flags().Bool("parent-local", false, "Parent local")
 	parent.PersistentFlags().Bool("parent-persistent", false, "Parent persistent")
 
@@ -613,8 +615,6 @@ func TestGenerator_PersistentFlagsPropagateToNestedSubcommands(t *testing.T) {
 		{LongFlag: "root-local", Terse: "Root local", HasArg: false},
 		{LongFlag: "root-persistent", Terse: "Root persistent", HasArg: false, Persistent: true},
 	}, gen.Specs)
-	// "parent" is a subcommand-only grouper, so its own flags are suppressed
-	// from completions. Only the leaf "child" carries specs.
 	require.Equal(t, []complete.SubSpec{
 		{
 			Name:  "parent",
@@ -630,6 +630,41 @@ func TestGenerator_PersistentFlagsPropagateToNestedSubcommands(t *testing.T) {
 			},
 		},
 	}, gen.Subs)
+}
+
+func TestSubcommands_RunnableParentKeepsFlags(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	// "parent" is runnable in its own right (Run is set) and also has a
+	// subcommand, so "myapp parent --all" is valid and the flag must survive.
+	parent := &cobralib.Command{Use: "parent", Short: "Parent command", Run: noop}
+	parent.Flags().Bool("all", false, "Operate on everything")
+	child := &cobralib.Command{Use: "child", Short: "Child command", Run: noop}
+	parent.AddCommand(child)
+	root.AddCommand(parent)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "all", subs[0].Specs[0].LongFlag)
+}
+
+func TestSubcommands_GrouperParentDropsFlags(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	// "parent" has no Run/RunE, so it is a pure grouper: its flags can't take
+	// effect without a subcommand and are dropped from completions.
+	parent := &cobralib.Command{Use: "parent", Short: "Parent command"}
+	parent.Flags().Bool("all", false, "Operate on everything")
+	child := &cobralib.Command{Use: "child", Short: "Child command", Run: noop}
+	parent.AddCommand(child)
+	root.AddCommand(parent)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Equal(t, "parent", subs[0].Name)
+	require.Len(t, subs[0].Subs, 1)
+	require.Empty(t, subs[0].Specs)
 }
 
 // --- CompletionCommand tests ---
