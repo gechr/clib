@@ -585,7 +585,7 @@ func (r *Renderer) renderDesc(desc string) string {
 	// uses literal "[...]" so callers can author descriptions in a stable
 	// convention; the rendered output substitutes the theme's configurable
 	// bracket characters (HelpDefaultOpen/Close).
-	if open := strings.LastIndex(desc, OptOpen); open >= 0 && strings.HasSuffix(desc, OptClose) {
+	if open, ok := trailingBalancedSuffixStart(desc, OptOpen, OptClose); ok {
 		prefix := desc[:open]
 		if prefix == "" {
 			return desc
@@ -843,8 +843,8 @@ func (r *Renderer) styledSuffix(
 	desc, openTok, closeTok string,
 	style lipgloss.Style,
 ) (string, bool) {
-	idx := strings.LastIndex(desc, openTok)
-	if idx < 0 || !strings.HasSuffix(desc, closeTok) {
+	idx, ok := trailingBalancedSuffixStart(desc, openTok, closeTok)
+	if !ok {
 		return "", false
 	}
 	prefix := desc[:idx]
@@ -864,6 +864,30 @@ func (r *Renderer) styledSuffix(
 		note,
 		&style,
 	), true
+}
+
+func trailingBalancedSuffixStart(s, openTok, closeTok string) (int, bool) {
+	if openTok == "" || closeTok == "" || !strings.HasSuffix(s, closeTok) {
+		return -1, false
+	}
+
+	depth := 0
+	for i := len(s); i > 0; {
+		switch {
+		case strings.HasSuffix(s[:i], closeTok):
+			depth++
+			i -= len(closeTok)
+		case strings.HasSuffix(s[:i], openTok):
+			depth--
+			i -= len(openTok)
+			if depth == 0 {
+				return i, true
+			}
+		default:
+			i--
+		}
+	}
+	return -1, false
 }
 
 func (r *Renderer) buildFlagPart(f Flag, hasShort bool) string {

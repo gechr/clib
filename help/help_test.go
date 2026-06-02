@@ -1077,6 +1077,33 @@ func TestRender_DescNoteBackticksKeepsClosingParenStyled(t *testing.T) {
 	)
 }
 
+func TestRender_DescNoteNestedParensKeepsWholeSuffixStyled(t *testing.T) {
+	th := testTheme()
+	note := lipgloss.NewStyle().Faint(true)
+	th.HelpFlagNote = &note
+
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{
+					Long: "env",
+					Desc: "Emit environment statements to stdout for eval (e.g. eval (tool auth login --env))",
+				},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--env")+"  Emit environment statements to stdout for eval "+
+			note.Render("(e.g. eval (tool auth login --env))")+"\n",
+		buf.String(),
+	)
+}
+
 func TestRender_DescFlagBackticksUseHelpFlagByDefault(t *testing.T) {
 	th := testTheme()
 	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
@@ -1173,6 +1200,27 @@ func TestRender_DescBracketExample(t *testing.T) {
 			th.HelpFlag.Render(
 				"--format",
 			)+"  Format string "+th.HelpFlagExample.Render("(example: json)")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_DescBracketExampleNestedBrackets(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "filter", Desc: "Filter expression [example: status in [active, pending]]"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--filter")+"  Filter expression "+
+			th.HelpFlagExample.Render("(example: status in [active, pending])")+"\n",
 		buf.String(),
 	)
 }
