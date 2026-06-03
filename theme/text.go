@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	themeNameDefault             = "default"
+	themeNameDark                = "dark"
+	themeNameLight               = "light"
 	themeNamePlain               = "plain"
 	themeNameCatppuccinFrappe    = "catppuccin-frappe"
 	themeNameCatppuccinLatte     = "catppuccin-latte"
@@ -20,26 +21,33 @@ const (
 	themeNameNord                = "nord"
 	themeNameOneDark             = "one-dark"
 	themeNameSynthwave           = "synthwave"
-	themeNameSolarized           = "solarized"
+	themeNameSolarizedDark       = "solarized-dark"
+	themeNameSolarizedLight      = "solarized-light"
 	themeNameTokyoNight          = "tokyo-night"
 )
 
 const (
+	themeKeyDark                = "dark"
+	themeKeyLight               = "light"
 	themeKeyCatppuccinFrappe    = "catppuccinfrappe"
 	themeKeyCatppuccinLatte     = "catppuccinlatte"
 	themeKeyCatppuccinMacchiato = "catppuccinmacchiato"
 	themeKeyCatppuccinMocha     = "catppuccinmocha"
 	themeKeyGruvboxDark         = "gruvboxdark"
 	themeKeyGruvboxLight        = "gruvboxlight"
+	themeKeyMonochromeDark      = "monochromedark"
+	themeKeyMonochromeLight     = "monochromelight"
 	themeKeyOneDark             = "onedark"
+	themeKeyPlainDark           = "plaindark"
+	themeKeyPlainLight          = "plainlight"
+	themeKeySolarizedDark       = "solarizeddark"
+	themeKeySolarizedLight      = "solarizedlight"
 	themeKeyTokyoNight          = "tokyonight"
 )
 
 var validThemeNames = []string{
-	themeNameDefault,
-
-	themeNamePlain, // no styling
-
+	themeNameDark,
+	themeNameLight,
 	themeNameCatppuccinFrappe,
 	themeNameCatppuccinLatte,
 	themeNameCatppuccinMacchiato,
@@ -47,12 +55,16 @@ var validThemeNames = []string{
 	themeNameDracula,
 	themeNameGruvboxDark,
 	themeNameGruvboxLight,
-	themeNameMonochrome,
 	themeNameMonokai,
+	themeNameForBackground(themeNameMonochrome, BackgroundDark),
+	themeNameForBackground(themeNameMonochrome, BackgroundLight),
 	themeNameNord,
 	themeNameOneDark,
+	themeNameForBackground(themeNamePlain, BackgroundDark),
+	themeNameForBackground(themeNamePlain, BackgroundLight),
 	themeNameSynthwave,
-	themeNameSolarized,
+	themeNameSolarizedDark,
+	themeNameSolarizedLight,
 	themeNameTokyoNight,
 }
 
@@ -60,6 +72,10 @@ func normalizePresetName(name string) string {
 	name = strings.TrimSpace(strings.ToLower(name))
 	replacer := strings.NewReplacer("-", "", "_", "", " ", "")
 	return replacer.Replace(name)
+}
+
+func themeNameForBackground(name string, bg Background) string {
+	return name + "-" + bg.String()
 }
 
 // String returns the preset name for built-in themes, or "custom" for themes
@@ -89,12 +105,18 @@ func (t *Theme) UnmarshalText(text []byte) error {
 	}
 
 	switch normalizePresetName(string(text)) {
-	case "", themeNameDefault:
-		*t = *defaultTheme()
-	case themeNamePlain:
-		*t = *Plain()
-	case themeNameMonochrome:
-		*t = *Monochrome()
+	case themeKeyDark:
+		*t = *Dark()
+	case themeKeyLight:
+		*t = *Light()
+	case themeKeyPlainDark:
+		*t = *Plain(BackgroundDark)
+	case themeKeyPlainLight:
+		*t = *Plain(BackgroundLight)
+	case themeKeyMonochromeDark:
+		*t = *Monochrome(BackgroundDark)
+	case themeKeyMonochromeLight:
+		*t = *Monochrome(BackgroundLight)
 	case themeNameMonokai:
 		*t = *Monokai()
 	case themeKeyCatppuccinLatte:
@@ -117,8 +139,10 @@ func (t *Theme) UnmarshalText(text []byte) error {
 		*t = *OneDark()
 	case themeNameSynthwave:
 		*t = *Synthwave()
-	case themeNameSolarized:
-		*t = *Solarized()
+	case themeKeySolarizedDark:
+		*t = *SolarizedDark()
+	case themeKeySolarizedLight:
+		*t = *SolarizedLight()
 	case themeKeyTokyoNight:
 		*t = *TokyoNight()
 	default:

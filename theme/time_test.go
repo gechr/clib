@@ -10,14 +10,14 @@ import (
 )
 
 func TestRenderTimeAgo_Now_TTY(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderTimeAgo(time.Now().UTC().Add(-10*time.Second), true)
 	plain := ansi.Strip(got)
 	require.Equal(t, "now", plain)
 }
 
 func TestRenderTimeAgo_NoTTY(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 
 	got := th.RenderTimeAgo(time.Now().UTC().Add(-5*time.Minute), false)
 	require.Equal(t, "5 minutes ago", got)
@@ -27,7 +27,7 @@ func TestRenderTimeAgo_NoTTY(t *testing.T) {
 }
 
 func TestRenderTimeAgo_BeyondAllThresholds_FallsBackToRed(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	// 365 days ago exceeds all default thresholds (max is 30 days).
 	old := time.Now().UTC().Add(-365 * 24 * time.Hour)
 	got := th.RenderTimeAgo(old, true)
@@ -41,7 +41,7 @@ func TestRenderTimeAgo_BeyondAllThresholds_FallsBackToRed(t *testing.T) {
 }
 
 func TestRenderTimeAgo_FutureTime(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	// Future time - the absolute duration should still match a threshold.
 	future := time.Now().UTC().Add(30 * time.Second)
 	got := th.RenderTimeAgo(future, true)
@@ -52,7 +52,7 @@ func TestRenderTimeAgo_FutureTime(t *testing.T) {
 }
 
 func TestRenderTimeAgo_EachThreshold(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 
 	tests := []struct {
 		name   string
@@ -87,7 +87,7 @@ func TestRenderTimeAgo_NilRed_DoesNotPanic(t *testing.T) {
 }
 
 func TestRenderTimeAgo_NoThresholds_AlwaysRed(t *testing.T) {
-	th := theme.Default().With(theme.WithTimeAgoThresholds(nil))
+	th := theme.Dark().With(theme.WithTimeAgoThresholds(nil))
 	got := th.RenderTimeAgo(time.Now().UTC().Add(-5*time.Second), true)
 	plain := ansi.Strip(got)
 	require.NotEmpty(t, plain)
@@ -97,7 +97,7 @@ func TestRenderTimeAgo_NoThresholds_AlwaysRed(t *testing.T) {
 }
 
 func TestRenderTimeAgoCompact_NoTTY(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 
 	got := th.RenderTimeAgoCompact(time.Now().UTC().Add(-5*time.Minute), false)
 	require.Equal(t, "5m ago", got)
@@ -107,7 +107,7 @@ func TestRenderTimeAgoCompact_NoTTY(t *testing.T) {
 }
 
 func TestRenderTimeAgoCompact_TTY(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderTimeAgoCompact(time.Now().UTC().Add(-30*time.Second), true)
 	require.NotEqual(t, ansi.Strip(got), got)
 }

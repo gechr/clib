@@ -9,7 +9,7 @@ import (
 )
 
 func TestFmtEnum_PlainValues(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open"},
 		{Name: "closed"},
@@ -19,7 +19,7 @@ func TestFmtEnum_PlainValues(t *testing.T) {
 }
 
 func TestFmtEnum_WithBoldHighlights(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "o"},
 		{Name: "closed", Bold: "c"},
@@ -32,7 +32,7 @@ func TestFmtEnum_WithBoldHighlights(t *testing.T) {
 }
 
 func TestFmtEnum_SingleValue(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "all"},
 	})
@@ -41,7 +41,7 @@ func TestFmtEnum_SingleValue(t *testing.T) {
 }
 
 func TestFmtEnum_DuplicateBold_Renders(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "o"},
 		{Name: "other", Bold: "o"},
@@ -50,7 +50,7 @@ func TestFmtEnum_DuplicateBold_Renders(t *testing.T) {
 }
 
 func TestFmtEnum_BoldNotFoundInName(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	// Bold substring doesn't appear in Name - should render as plain dim.
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "z"},
@@ -60,7 +60,7 @@ func TestFmtEnum_BoldNotFoundInName(t *testing.T) {
 }
 
 func TestFmtEnum_BoldAtStart(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "op"},
 	})
@@ -70,7 +70,7 @@ func TestFmtEnum_BoldAtStart(t *testing.T) {
 }
 
 func TestFmtEnum_BoldAtEnd(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "en"},
 	})
@@ -80,7 +80,7 @@ func TestFmtEnum_BoldAtEnd(t *testing.T) {
 }
 
 func TestFmtEnum_BoldInMiddle(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "closed", Bold: "los"},
 	})
@@ -90,7 +90,7 @@ func TestFmtEnum_BoldInMiddle(t *testing.T) {
 }
 
 func TestFmtEnum_MixedBoldAndPlain(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnum([]theme.EnumValue{
 		{Name: "open", Bold: "o"},
 		{Name: "all"},
@@ -100,7 +100,7 @@ func TestFmtEnum_MixedBoldAndPlain(t *testing.T) {
 }
 
 func TestFmtEnumDefault(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.FmtEnumDefault("open", []theme.EnumValue{
 		{Name: "open", Bold: "o"},
 		{Name: "closed", Bold: "c"},
@@ -110,20 +110,20 @@ func TestFmtEnumDefault(t *testing.T) {
 }
 
 func TestDimDefault_Empty(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.DimDefault("")
 	require.Empty(t, got)
 }
 
 func TestDimDefault_NonEmpty(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.DimDefault("foo")
 	plain := ansi.Strip(got)
 	require.Equal(t, " (default: foo)", plain)
 }
 
 func TestDimNote(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.DimNote("required")
 	plain := ansi.Strip(got)
 	require.Equal(t, "(required)", plain)

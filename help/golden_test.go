@@ -183,7 +183,7 @@ func goldenSections() map[string][]help.Section {
 }
 
 func TestGolden(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	r := help.NewRenderer(th)
 
 	for name, sections := range goldenSections() {

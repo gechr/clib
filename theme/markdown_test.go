@@ -9,14 +9,14 @@ import (
 )
 
 func TestRenderMarkdownInline_NoCode(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderMarkdown("plain text")
 	plain := ansi.Strip(got)
 	require.Equal(t, "plain text", plain)
 }
 
 func TestRenderMarkdownInline_WithCode(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderMarkdown("run `go test` now")
 	plain := ansi.Strip(got)
 	require.Equal(t, "run `go test` now", plain)
@@ -26,14 +26,14 @@ func TestRenderMarkdownInline_WithCode(t *testing.T) {
 }
 
 func TestRenderMarkdownInline_OnlyCode(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderMarkdown("`code`")
 	plain := ansi.Strip(got)
 	require.Equal(t, "`code`", plain)
 }
 
 func TestRenderMarkdownInline_MultipleCode(t *testing.T) {
-	th := theme.Default()
+	th := theme.Dark()
 	got := th.RenderMarkdown("`a` and `b`")
 	plain := ansi.Strip(got)
 	require.Equal(t, "`a` and `b`", plain)

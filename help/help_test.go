@@ -15,7 +15,7 @@ import (
 )
 
 func testTheme() *theme.Theme {
-	return theme.Default()
+	return theme.Dark()
 }
 
 type failingWriter struct{}

@@ -1,6 +1,8 @@
 package theme_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/gechr/clib/theme"
@@ -8,26 +10,43 @@ import (
 )
 
 func TestPresets(t *testing.T) {
-	presets := map[string]func() *theme.Theme{
-		"Monochrome":          theme.Monochrome,
-		"Monokai":             theme.Monokai,
-		"CatppuccinLatte":     theme.CatppuccinLatte,
-		"CatppuccinFrappe":    theme.CatppuccinFrappe,
-		"CatppuccinMacchiato": theme.CatppuccinMacchiato,
-		"CatppuccinMocha":     theme.CatppuccinMocha,
-		"Dracula":             theme.Dracula,
-		"GruvboxDark":         theme.GruvboxDark,
-		"GruvboxLight":        theme.GruvboxLight,
-		"Nord":                theme.Nord,
-		"OneDark":             theme.OneDark,
-		"Synthwave":           theme.Synthwave,
-		"Solarized":           theme.Solarized,
-		"TokyoNight":          theme.TokyoNight,
+	presets := map[string]struct {
+		fn           func() *theme.Theme
+		entityColors bool
+	}{
+		"Dark":  {fn: theme.Dark, entityColors: true},
+		"Light": {fn: theme.Light, entityColors: true},
+		"PlainDark": {
+			fn: func() *theme.Theme { return theme.Plain(theme.BackgroundDark) },
+		},
+		"PlainLight": {
+			fn: func() *theme.Theme { return theme.Plain(theme.BackgroundLight) },
+		},
+		"MonochromeDark": {
+			fn: func() *theme.Theme { return theme.Monochrome(theme.BackgroundDark) },
+		},
+		"MonochromeLight": {
+			fn: func() *theme.Theme { return theme.Monochrome(theme.BackgroundLight) },
+		},
+		"Monokai":             {fn: theme.Monokai, entityColors: true},
+		"CatppuccinLatte":     {fn: theme.CatppuccinLatte, entityColors: true},
+		"CatppuccinFrappe":    {fn: theme.CatppuccinFrappe, entityColors: true},
+		"CatppuccinMacchiato": {fn: theme.CatppuccinMacchiato, entityColors: true},
+		"CatppuccinMocha":     {fn: theme.CatppuccinMocha, entityColors: true},
+		"Dracula":             {fn: theme.Dracula, entityColors: true},
+		"GruvboxDark":         {fn: theme.GruvboxDark, entityColors: true},
+		"GruvboxLight":        {fn: theme.GruvboxLight, entityColors: true},
+		"Nord":                {fn: theme.Nord, entityColors: true},
+		"OneDark":             {fn: theme.OneDark, entityColors: true},
+		"Synthwave":           {fn: theme.Synthwave, entityColors: true},
+		"SolarizedDark":       {fn: theme.SolarizedDark, entityColors: true},
+		"SolarizedLight":      {fn: theme.SolarizedLight, entityColors: true},
+		"TokyoNight":          {fn: theme.TokyoNight, entityColors: true},
 	}
 
-	for name, fn := range presets {
+	for name, preset := range presets {
 		t.Run(name, func(t *testing.T) {
-			th := fn()
+			th := preset.fn()
 			require.NotNil(t, th)
 
 			// All style pointers must be non-nil.
@@ -64,14 +83,18 @@ func TestPresets(t *testing.T) {
 			require.True(t, th.HelpRepeatEllipsisEnabled)
 			require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
 			require.Nil(t, th.HelpFlagBacktick)
-			require.Len(t, th.EntityColors, 20)
+			if preset.entityColors {
+				require.Len(t, th.EntityColors, 20)
+			} else {
+				require.Empty(t, th.EntityColors)
+			}
 			require.Len(t, th.TimeAgoThresholds, 5)
 		})
 	}
 }
 
 func TestMonochrome_NoColors(t *testing.T) {
-	th := theme.Monochrome()
+	th := theme.Monochrome(theme.BackgroundDark)
 
 	// Semantic color styles should render without any ANSI color codes -
 	// they use only bold/dim/plain formatting.
@@ -94,8 +117,18 @@ func TestThemeUnmarshalText(t *testing.T) {
 		input string
 		want  func() *theme.Theme
 	}{
-		{name: "default", input: "default", want: theme.Default},
-		{name: "monochrome", input: "monochrome", want: theme.Monochrome},
+		{name: "dark", input: "dark", want: theme.Dark},
+		{name: "light", input: "LIGHT", want: theme.Light},
+		{
+			name:  "plain dark",
+			input: "plain dark",
+			want:  func() *theme.Theme { return theme.Plain(theme.BackgroundDark) },
+		},
+		{
+			name:  "monochrome light",
+			input: "monochrome_light",
+			want:  func() *theme.Theme { return theme.Monochrome(theme.BackgroundLight) },
+		},
 		{name: "monokai", input: "MONOKAI", want: theme.Monokai},
 		{name: "catppuccin hyphen", input: "catppuccin-mocha", want: theme.CatppuccinMocha},
 		{
@@ -110,7 +143,8 @@ func TestThemeUnmarshalText(t *testing.T) {
 		{name: "nord", input: "nord", want: theme.Nord},
 		{name: "one-dark", input: "one-dark", want: theme.OneDark},
 		{name: "synthwave", input: "synthwave", want: theme.Synthwave},
-		{name: "solarized", input: "solarized", want: theme.Solarized},
+		{name: "solarized dark", input: "solarized-dark", want: theme.SolarizedDark},
+		{name: "solarized light", input: "solarized-light", want: theme.SolarizedLight},
 		{name: "tokyo-night", input: "tokyo-night", want: theme.TokyoNight},
 	}
 
@@ -133,14 +167,55 @@ func TestThemeMarshalText(t *testing.T) {
 }
 
 func TestThemeMarshalTextCustom(t *testing.T) {
-	_, err := theme.Default().With(theme.WithHelpKeyValueSeparator('=')).MarshalText()
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "custom theme")
+	_, err := theme.Dark().With(theme.WithHelpKeyValueSeparator('=')).MarshalText()
+	require.EqualError(t, err, "cannot marshal custom theme")
 }
 
 func TestThemeUnmarshalTextInvalid(t *testing.T) {
 	var got theme.Theme
 	err := got.UnmarshalText([]byte("bogus"))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "unknown theme")
+	require.EqualError(t, err, unknownThemeError("bogus"))
+}
+
+func TestThemeUnmarshalTextInvalidNames(t *testing.T) {
+	for _, input := range []string{
+		"default",
+		"default-dark",
+		"default-light",
+		"plain",
+		"monochrome",
+		"solarized",
+	} {
+		t.Run(input, func(t *testing.T) {
+			var got theme.Theme
+			err := got.UnmarshalText([]byte(input))
+			require.EqualError(t, err, unknownThemeError(input))
+		})
+	}
+}
+
+func unknownThemeError(input string) string {
+	valid := []string{
+		"dark",
+		"light",
+		"catppuccin-frappe",
+		"catppuccin-latte",
+		"catppuccin-macchiato",
+		"catppuccin-mocha",
+		"dracula",
+		"gruvbox-dark",
+		"gruvbox-light",
+		"monokai",
+		"monochrome-dark",
+		"monochrome-light",
+		"nord",
+		"one-dark",
+		"plain-dark",
+		"plain-light",
+		"synthwave",
+		"solarized-dark",
+		"solarized-light",
+		"tokyo-night",
+	}
+	return fmt.Sprintf("unknown theme %q (valid: %s)", input, strings.Join(valid, ", "))
 }

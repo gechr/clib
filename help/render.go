@@ -48,7 +48,7 @@ type descRefs struct {
 // NewRenderer creates a Renderer.
 func NewRenderer(th *theme.Theme, opts ...RendererOption) *Renderer {
 	if th == nil {
-		th = theme.Default()
+		th = theme.Auto()
 	}
 
 	r := &Renderer{

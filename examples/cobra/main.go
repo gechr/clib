@@ -22,8 +22,13 @@ const (
 )
 
 func main() {
-	th := theme.Default().With(theme.WithHelpDescBacktick(*theme.Default().Magenta))
-	r := help.NewRenderer(th)
+	light := theme.Light()
+	dark := theme.Dark()
+	themes := theme.MustPair(
+		light.With(theme.WithHelpDescBacktick(*light.Magenta)),
+		dark.With(theme.WithHelpDescBacktick(*dark.Magenta)),
+	)
+	r := help.NewRenderer(themes.Auto())
 
 	root := &cobra.Command{
 		Use: "catalog [<query>...]",

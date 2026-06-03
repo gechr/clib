@@ -23,18 +23,39 @@ go get github.com/gechr/clib
 
 ### Theme
 
-Create a theme with defaults or customize individual styles:
+Use the built-in light/dark pair, or build an explicit pair for your terminal
+backgrounds:
 
 ```go
-// Use defaults.
-th := theme.Default()
+// Auto-detect the terminal background and select from clib's defaults.
+th := theme.Auto()
 
-// Or customize with options.
-th := theme.Default().With(
-    theme.WithRed(lipgloss.NewStyle().Foreground(lipgloss.Color("9"))),
-    theme.WithEntityColors([]lipgloss.Color{"208", "51", "226"}),
+// Or require an explicit light/dark pair.
+themes := theme.MustPair(
+    theme.Light().With(
+        theme.WithRed(lipgloss.NewStyle().Foreground(lipgloss.Color("#a11d33"))),
+        theme.WithEntityColors([]color.Color{lipgloss.Color("#5d4037"), lipgloss.Color("#00695c")}),
+    ),
+    theme.Dark().With(
+        theme.WithRed(lipgloss.NewStyle().Foreground(lipgloss.Color("9"))),
+        theme.WithEntityColors([]color.Color{lipgloss.Color("208"), lipgloss.Color("51")}),
+    ),
 )
+th = themes.Auto()
 ```
+
+To let users pick themes via the environment, build the pair from `<PREFIX>_THEME_LIGHT` and `<PREFIX>_THEME_DARK` (both required):
+
+```go
+// Reads CLIB_THEME_LIGHT and CLIB_THEME_DARK (override the prefix with SetEnvPrefix).
+themes, err := theme.PairFromEnv()
+if err != nil {
+    return err
+}
+th := themes.Auto()
+```
+
+Setting the single `<PREFIX>_THEME` (e.g. `CLIB_THEME=dracula`) forces that theme regardless of the terminal background, taking precedence over the light/dark pair. Any `Auto()` call honors it, including the default `theme.Auto()` and `help.NewRenderer(nil)`. An unknown name is ignored and detection proceeds as normal.
 
 ### Help Rendering
 

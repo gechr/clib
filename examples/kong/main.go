@@ -45,10 +45,13 @@ type CLI struct {
 }
 
 func main() {
-	th := theme.Default().With(
-		theme.WithHelpDescBacktick(*theme.Default().Magenta),
+	light := theme.Light()
+	dark := theme.Dark()
+	themes := theme.MustPair(
+		light.With(theme.WithHelpDescBacktick(*light.Magenta)),
+		dark.With(theme.WithHelpDescBacktick(*dark.Magenta)),
 	)
-	r := help.NewRenderer(th)
+	r := help.NewRenderer(themes.Auto())
 
 	var cli CLI
 	flags, err := clib.Reflect(&cli)

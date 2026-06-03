@@ -15,7 +15,7 @@ import (
 
 func TestHelpPrinter(t *testing.T) {
 	var buf bytes.Buffer
-	renderer := help.NewRenderer(theme.Default())
+	renderer := help.NewRenderer(theme.Dark())
 
 	var called bool
 	printer := kong.HelpPrinter(renderer, func() ([]help.Section, error) {
@@ -56,7 +56,7 @@ func TestHelpPrinter(t *testing.T) {
 
 func TestHelpPrinter_MultipleSections(t *testing.T) {
 	var buf bytes.Buffer
-	renderer := help.NewRenderer(theme.Default())
+	renderer := help.NewRenderer(theme.Dark())
 
 	printer := kong.HelpPrinter(renderer, func() ([]help.Section, error) {
 		return []help.Section{
@@ -443,7 +443,7 @@ func parseForHelp(t *testing.T, cli any, args []string, opts ...konglib.Option) 
 
 func TestHelpPrinterFunc(t *testing.T) {
 	var buf bytes.Buffer
-	renderer := help.NewRenderer(theme.Default())
+	renderer := help.NewRenderer(theme.Dark())
 
 	var receivedCtx *konglib.Context
 	printer := kong.HelpPrinterFunc(renderer, func(ctx *konglib.Context) ([]help.Section, error) {

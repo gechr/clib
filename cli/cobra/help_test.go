@@ -80,7 +80,7 @@ func TestSections_WithRawUsage(t *testing.T) {
 
 	// End-to-end: render the section and confirm the raw string appears verbatim
 	// after the command name, with no bracketed arg styling.
-	r := help.NewRenderer(theme.Default())
+	r := help.NewRenderer(theme.Dark())
 	var buf bytes.Buffer
 	require.NoError(t, r.Render(&buf, sections))
 	require.Contains(t, ansi.Strip(buf.String()), use)
@@ -689,7 +689,7 @@ func TestSectionsWithOptions_PerLevelAncestorDepth(t *testing.T) {
 }
 
 func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {
-	r := help.NewRenderer(theme.Default())
+	r := help.NewRenderer(theme.Dark())
 	cmd := &cobralib.Command{Use: "app"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -715,7 +715,7 @@ func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {
 }
 
 func TestHelpFunc_RendersOutput(t *testing.T) {
-	r := help.NewRenderer(theme.Default())
+	r := help.NewRenderer(theme.Dark())
 	cmd := &cobralib.Command{Use: "app"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -1024,7 +1024,7 @@ func cobraTestFlags(t *testing.T, sections []help.Section, title string) help.Fl
 func renderCobraTestSections(t *testing.T, sections []help.Section) string {
 	t.Helper()
 
-	r := help.NewRenderer(theme.Default())
+	r := help.NewRenderer(theme.Dark())
 	var buf bytes.Buffer
 	require.NoError(t, r.Render(&buf, sections))
 	return ansi.Strip(buf.String())

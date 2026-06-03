@@ -106,7 +106,7 @@ func sectionsLongDescription() []help.Section {
 }
 
 func TestGolden(t *testing.T) {
-	r := help.NewRenderer(theme.Default())
+	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
 		"basic":                 sectionsBasic(),

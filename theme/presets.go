@@ -8,6 +8,8 @@ import (
 	"github.com/gechr/x/human"
 )
 
+const entityLightDarkenPercent = 0.45
+
 // palette holds the core colors that define a theme preset.
 // Each preset maps these onto the full [Theme] struct.
 type palette struct {
@@ -22,18 +24,19 @@ type palette struct {
 }
 
 // fromPalette builds a full [Theme] from a [palette].
-func fromPalette(name string, p palette) *Theme {
+func fromPalette(name string, background Background, p palette) *Theme {
 	return &Theme{
-		name:      name,
-		Bold:      new(lipgloss.NewStyle().Bold(true)),
-		Dim:       new(lipgloss.NewStyle().Faint(true)),
-		Red:       new(lipgloss.NewStyle().Foreground(p.flag)),
-		Green:     new(lipgloss.NewStyle().Foreground(p.arg)),
-		Yellow:    new(lipgloss.NewStyle().Foreground(p.heading)),
-		Blue:      new(lipgloss.NewStyle().Foreground(p.command)),
-		Magenta:   new(lipgloss.NewStyle().Foreground(p.backtick)),
-		Orange:    new(lipgloss.NewStyle().Foreground(p.backtick)),
-		BoldGreen: new(lipgloss.NewStyle().Bold(true).Foreground(p.arg)),
+		name:       name,
+		Background: background,
+		Bold:       new(lipgloss.NewStyle().Bold(true)),
+		Dim:        new(lipgloss.NewStyle().Faint(true)),
+		Red:        new(lipgloss.NewStyle().Foreground(p.flag)),
+		Green:      new(lipgloss.NewStyle().Foreground(p.arg)),
+		Yellow:     new(lipgloss.NewStyle().Foreground(p.heading)),
+		Blue:       new(lipgloss.NewStyle().Foreground(p.command)),
+		Magenta:    new(lipgloss.NewStyle().Foreground(p.backtick)),
+		Orange:     new(lipgloss.NewStyle().Foreground(p.backtick)),
+		BoldGreen:  new(lipgloss.NewStyle().Bold(true).Foreground(p.arg)),
 
 		HelpSection:     new(lipgloss.NewStyle().Bold(true).Foreground(p.heading)),
 		HelpCommand:     new(lipgloss.NewStyle().Bold(true).Foreground(p.command)),
@@ -87,12 +90,12 @@ func fromPalette(name string, p palette) *Theme {
 			},
 		},
 
-		EntityColors: defaultEntityColors(),
+		EntityColors: defaultEntityColors(background),
 	}
 }
 
-func defaultEntityColors() []color.Color {
-	return []color.Color{
+func defaultEntityColors(background Background) []color.Color {
+	colors := []color.Color{
 		lipgloss.Color(
 			"208",
 		),
@@ -122,23 +125,33 @@ func defaultEntityColors() []color.Color {
 		lipgloss.Color("229"),
 		lipgloss.Color("123"),
 	}
+	if background != BackgroundLight {
+		return colors
+	}
+
+	lightColors := make([]color.Color, 0, len(colors))
+	for _, c := range colors {
+		lightColors = append(lightColors, lipgloss.Darken(c, entityLightDarkenPercent))
+	}
+	return lightColors
 }
 
 // Plain returns a theme with no styling at all.
-func Plain() *Theme {
+func Plain(background Background) *Theme {
 	plain := lipgloss.NewStyle()
 
 	return &Theme{
-		name:      themeNamePlain,
-		Bold:      new(plain),
-		Dim:       new(plain),
-		Red:       new(plain),
-		Green:     new(plain),
-		Yellow:    new(plain),
-		Blue:      new(plain),
-		Magenta:   new(plain),
-		Orange:    new(plain),
-		BoldGreen: new(plain),
+		name:       themeNameForBackground(themeNamePlain, background),
+		Background: background,
+		Bold:       new(plain),
+		Dim:        new(plain),
+		Red:        new(plain),
+		Green:      new(plain),
+		Yellow:     new(plain),
+		Blue:       new(plain),
+		Magenta:    new(plain),
+		Orange:     new(plain),
+		BoldGreen:  new(plain),
 
 		HelpSection:                new(plain),
 		HelpCommand:                new(plain),
@@ -154,9 +167,12 @@ func Plain() *Theme {
 		HelpFlagExample:            new(plain),
 		HelpFlagNote:               new(plain),
 		HelpFlagDefault:            new(plain),
+		HelpDescBacktick:           new(plain),
 		HelpKeyValueSeparator:      ' ',
 		HelpKeyValueSeparatorStyle: new(plain),
 		HelpRepeatEllipsis:         new(plain),
+		HelpRepeatEllipsisEnabled:  true,
+		EnumStyle:                  EnumStyleHighlightDefault,
 
 		MarkdownCode: new(plain),
 		MarkdownText: new(plain),
@@ -169,28 +185,29 @@ func Plain() *Theme {
 			{MaxAge: 30 * human.HoursPerDay * time.Hour, Style: plain},
 		},
 
-		EntityColors: defaultEntityColors(),
+		EntityColors: nil,
 	}
 }
 
 // Monochrome returns a theme with no colors - only bold and dim.
-func Monochrome() *Theme {
+func Monochrome(background Background) *Theme {
 	bold := lipgloss.NewStyle().Bold(true)
 	dim := lipgloss.NewStyle().Faint(true)
 	boldDim := lipgloss.NewStyle().Bold(true).Faint(true)
 	plain := lipgloss.NewStyle()
 
 	return &Theme{
-		name:      themeNameMonochrome,
-		Bold:      new(bold),
-		Dim:       new(dim),
-		Red:       new(plain),
-		Green:     new(plain),
-		Yellow:    new(plain),
-		Blue:      new(plain),
-		Magenta:   new(plain),
-		Orange:    new(plain),
-		BoldGreen: new(bold),
+		name:       themeNameForBackground(themeNameMonochrome, background),
+		Background: background,
+		Bold:       new(bold),
+		Dim:        new(dim),
+		Red:        new(plain),
+		Green:      new(plain),
+		Yellow:     new(plain),
+		Blue:       new(plain),
+		Magenta:    new(plain),
+		Orange:     new(plain),
+		BoldGreen:  new(bold),
 
 		HelpSection:                new(bold),
 		HelpCommand:                new(bold),
@@ -224,13 +241,13 @@ func Monochrome() *Theme {
 			{MaxAge: 30 * human.HoursPerDay * time.Hour, Style: dim},
 		},
 
-		EntityColors: defaultEntityColors(),
+		EntityColors: nil,
 	}
 }
 
 // Monokai returns a theme inspired by the Monokai color scheme.
 func Monokai() *Theme {
-	return fromPalette(themeNameMonokai, palette{
+	return fromPalette(themeNameMonokai, BackgroundDark, palette{
 		heading:     lipgloss.Color("#ffd866"), // yellow
 		command:     lipgloss.Color("#a9dc76"), // green
 		subcommand:  lipgloss.Color("#78dce8"), // cyan
@@ -244,7 +261,7 @@ func Monokai() *Theme {
 
 // CatppuccinLatte returns a theme based on the Catppuccin Latte (light) palette.
 func CatppuccinLatte() *Theme {
-	return fromPalette(themeNameCatppuccinLatte, palette{
+	return fromPalette(themeNameCatppuccinLatte, BackgroundLight, palette{
 		heading:     lipgloss.Color("#df8e1d"), // yellow
 		command:     lipgloss.Color("#40a02b"), // green
 		subcommand:  lipgloss.Color("#179299"), // teal
@@ -258,7 +275,7 @@ func CatppuccinLatte() *Theme {
 
 // CatppuccinFrappe returns a theme based on the Catppuccin Frappé (dark) palette.
 func CatppuccinFrappe() *Theme {
-	return fromPalette(themeNameCatppuccinFrappe, palette{
+	return fromPalette(themeNameCatppuccinFrappe, BackgroundDark, palette{
 		heading:     lipgloss.Color("#e5c890"), // yellow
 		command:     lipgloss.Color("#a6d189"), // green
 		subcommand:  lipgloss.Color("#81c8be"), // teal
@@ -272,7 +289,7 @@ func CatppuccinFrappe() *Theme {
 
 // CatppuccinMacchiato returns a theme based on the Catppuccin Macchiato (dark) palette.
 func CatppuccinMacchiato() *Theme {
-	return fromPalette(themeNameCatppuccinMacchiato, palette{
+	return fromPalette(themeNameCatppuccinMacchiato, BackgroundDark, palette{
 		heading:     lipgloss.Color("#eed49f"), // yellow
 		command:     lipgloss.Color("#a6da95"), // green
 		subcommand:  lipgloss.Color("#8bd5ca"), // teal
@@ -286,7 +303,7 @@ func CatppuccinMacchiato() *Theme {
 
 // CatppuccinMocha returns a theme based on the Catppuccin Mocha (dark) palette.
 func CatppuccinMocha() *Theme {
-	return fromPalette(themeNameCatppuccinMocha, palette{
+	return fromPalette(themeNameCatppuccinMocha, BackgroundDark, palette{
 		heading:     lipgloss.Color("#f9e2af"), // yellow
 		command:     lipgloss.Color("#a6e3a1"), // green
 		subcommand:  lipgloss.Color("#94e2d5"), // teal
@@ -300,7 +317,7 @@ func CatppuccinMocha() *Theme {
 
 // Dracula returns a theme based on the Dracula color scheme.
 func Dracula() *Theme {
-	return fromPalette(themeNameDracula, palette{
+	return fromPalette(themeNameDracula, BackgroundDark, palette{
 		heading:     lipgloss.Color("#f1fa8c"), // yellow
 		command:     lipgloss.Color("#50fa7b"), // green
 		subcommand:  lipgloss.Color("#8be9fd"), // cyan
@@ -314,7 +331,7 @@ func Dracula() *Theme {
 
 // Nord returns a theme based on the Nord Arctic color scheme.
 func Nord() *Theme {
-	return fromPalette(themeNameNord, palette{
+	return fromPalette(themeNameNord, BackgroundDark, palette{
 		heading:     lipgloss.Color("#ebcb8b"), // nord13, yellow
 		command:     lipgloss.Color("#a3be8c"), // nord14, green
 		subcommand:  lipgloss.Color("#88c0d0"), // nord8, cyan
@@ -326,9 +343,9 @@ func Nord() *Theme {
 	})
 }
 
-// Solarized returns a theme based on the Solarized color scheme.
-func Solarized() *Theme {
-	return fromPalette(themeNameSolarized, palette{
+// SolarizedLight returns a theme based on the Solarized light color scheme.
+func SolarizedLight() *Theme {
+	return fromPalette(themeNameSolarizedLight, BackgroundLight, palette{
 		heading:     lipgloss.Color("#b58900"), // yellow
 		command:     lipgloss.Color("#859900"), // green
 		subcommand:  lipgloss.Color("#2aa198"), // cyan
@@ -340,9 +357,23 @@ func Solarized() *Theme {
 	})
 }
 
+// SolarizedDark returns a theme based on the Solarized dark color scheme.
+func SolarizedDark() *Theme {
+	return fromPalette(themeNameSolarizedDark, BackgroundDark, palette{
+		heading:     lipgloss.Color("#b58900"), // yellow
+		command:     lipgloss.Color("#859900"), // green
+		subcommand:  lipgloss.Color("#2aa198"), // cyan
+		backtick:    lipgloss.Color("#cb4b16"), // orange
+		flag:        lipgloss.Color("#dc322f"), // red
+		arg:         lipgloss.Color("#268bd2"), // blue
+		argOptional: lipgloss.Color("#6c71c4"), // violet
+		comment:     lipgloss.Color("#839496"), // base0
+	})
+}
+
 // GruvboxDark returns a theme based on the Gruvbox Dark color scheme.
 func GruvboxDark() *Theme {
-	return fromPalette(themeNameGruvboxDark, palette{
+	return fromPalette(themeNameGruvboxDark, BackgroundDark, palette{
 		heading:     lipgloss.Color("#fabd2f"), // yellow
 		command:     lipgloss.Color("#b8bb26"), // green
 		subcommand:  lipgloss.Color("#8ec07c"), // aqua
@@ -356,7 +387,7 @@ func GruvboxDark() *Theme {
 
 // GruvboxLight returns a theme based on the Gruvbox Light color scheme.
 func GruvboxLight() *Theme {
-	return fromPalette(themeNameGruvboxLight, palette{
+	return fromPalette(themeNameGruvboxLight, BackgroundLight, palette{
 		heading:     lipgloss.Color("#b57614"), // yellow
 		command:     lipgloss.Color("#79740e"), // green
 		subcommand:  lipgloss.Color("#427b58"), // aqua
@@ -370,7 +401,7 @@ func GruvboxLight() *Theme {
 
 // TokyoNight returns a theme based on the Tokyo Night color scheme.
 func TokyoNight() *Theme {
-	return fromPalette(themeNameTokyoNight, palette{
+	return fromPalette(themeNameTokyoNight, BackgroundDark, palette{
 		heading:     lipgloss.Color("#e0af68"), // yellow
 		command:     lipgloss.Color("#9ece6a"), // green
 		subcommand:  lipgloss.Color("#7dcfff"), // cyan
@@ -384,7 +415,7 @@ func TokyoNight() *Theme {
 
 // Synthwave returns a theme based on the Synthwave '84 color scheme.
 func Synthwave() *Theme {
-	return fromPalette(themeNameSynthwave, palette{
+	return fromPalette(themeNameSynthwave, BackgroundDark, palette{
 		heading:     lipgloss.Color("#fede5d"), // yellow
 		command:     lipgloss.Color("#72f1b8"), // green
 		subcommand:  lipgloss.Color("#36f9f6"), // cyan
@@ -398,7 +429,7 @@ func Synthwave() *Theme {
 
 // OneDark returns a theme based on the Atom One Dark color scheme.
 func OneDark() *Theme {
-	return fromPalette(themeNameOneDark, palette{
+	return fromPalette(themeNameOneDark, BackgroundDark, palette{
 		heading:     lipgloss.Color("#e5c07b"), // chalky/yellow
 		command:     lipgloss.Color("#98c379"), // sage/green
 		subcommand:  lipgloss.Color("#56b6c2"), // cyan

@@ -2,7 +2,6 @@ package theme
 
 import (
 	"image/color"
-	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -28,10 +27,13 @@ type TimeAgoThreshold struct {
 
 // Theme holds all style definitions for CLI output.
 // All lipgloss.Style fields are pointers so that nil means "not configured".
-// Use [Default] or [New] to construct a Theme, or [Init] to fill nil
+// Use a preset to construct a Theme, or [Init] to fill nil
 // fields on an existing theme.
 type Theme struct {
 	name string
+
+	// Background declares the terminal background this theme is designed for.
+	Background Background
 
 	// Base styles.
 	Bold *lipgloss.Style
@@ -85,29 +87,20 @@ type Theme struct {
 	EntityColors []color.Color
 }
 
-// Default returns the default theme.
-func Default() *Theme {
-	if name := strings.TrimSpace(getEnv(envTheme)); name != "" {
-		var th Theme
-		if err := th.UnmarshalText([]byte(name)); err == nil {
-			return &th
-		}
-	}
-	return defaultTheme()
-}
-
-func defaultTheme() *Theme {
+// Dark returns clib's default dark-background theme.
+func Dark() *Theme {
 	return &Theme{
-		name:      themeNameDefault,
-		Bold:      new(lipgloss.NewStyle().Bold(true)),
-		Dim:       new(lipgloss.NewStyle().Faint(true)),
-		Red:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
-		Green:     new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
-		Yellow:    new(lipgloss.NewStyle().Foreground(lipgloss.Color("3"))),
-		Blue:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
-		Magenta:   new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
-		Orange:    new(lipgloss.NewStyle().Foreground(lipgloss.Color("208"))),
-		BoldGreen: new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
+		name:       themeNameDark,
+		Background: BackgroundDark,
+		Bold:       new(lipgloss.NewStyle().Bold(true)),
+		Dim:        new(lipgloss.NewStyle().Faint(true)),
+		Red:        new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
+		Green:      new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
+		Yellow:     new(lipgloss.NewStyle().Foreground(lipgloss.Color("3"))),
+		Blue:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
+		Magenta:    new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
+		Orange:     new(lipgloss.NewStyle().Foreground(lipgloss.Color("208"))),
+		BoldGreen:  new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
 
 		HelpArg:         new(lipgloss.NewStyle().Foreground(lipgloss.Color("4"))),
 		HelpArgOptional: new(lipgloss.NewStyle().Foreground(lipgloss.Color("5"))),
@@ -176,29 +169,22 @@ func defaultTheme() *Theme {
 			},
 		},
 
-		EntityColors: []color.Color{
-			lipgloss.Color("208"),
-			lipgloss.Color("51"),
-			lipgloss.Color("226"),
-			lipgloss.Color("207"),
-			lipgloss.Color("82"),
-			lipgloss.Color("75"),
-			lipgloss.Color("214"),
-			lipgloss.Color("177"),
-			lipgloss.Color("48"),
-			lipgloss.Color("87"),
-			lipgloss.Color("220"),
-			lipgloss.Color("141"),
-			lipgloss.Color("118"),
-			lipgloss.Color("50"),
-			lipgloss.Color("213"),
-			lipgloss.Color("111"),
-			lipgloss.Color("156"),
-			lipgloss.Color("183"),
-			lipgloss.Color("229"),
-			lipgloss.Color("123"),
-		},
+		EntityColors: defaultEntityColors(BackgroundDark),
 	}
+}
+
+// Light returns clib's default light-background theme.
+func Light() *Theme {
+	return fromPalette(themeNameLight, BackgroundLight, palette{
+		heading:     lipgloss.Color("#8a6500"),
+		command:     lipgloss.Color("#256d1b"),
+		subcommand:  lipgloss.Color("#006d75"),
+		backtick:    lipgloss.Color("#9a4d00"),
+		flag:        lipgloss.Color("#a11d33"),
+		arg:         lipgloss.Color("#2459b3"),
+		argOptional: lipgloss.Color("#7047b5"),
+		comment:     lipgloss.Color("#5f6368"),
+	})
 }
 
 // With returns a copy of t with the given options applied.

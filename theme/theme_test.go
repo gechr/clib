@@ -19,9 +19,8 @@ func resetThemeEnvPrefix(t *testing.T) {
 
 func TestDefaultTheme_StyleValues(t *testing.T) {
 	resetThemeEnvPrefix(t)
-	t.Setenv("CLIB_THEME", "")
 
-	th := theme.Default()
+	th := theme.Dark()
 
 	// Verify base styles produce expected ANSI output.
 	require.Equal(t, lipgloss.NewStyle().Bold(true).Render("x"), th.Bold.Render("x"))
@@ -74,64 +73,149 @@ func TestDefaultTheme_StyleValues(t *testing.T) {
 
 func TestDefaultTheme_EnumStyleDefault(t *testing.T) {
 	resetThemeEnvPrefix(t)
-	t.Setenv("CLIB_THEME", "")
 
-	th := theme.Default()
+	th := theme.Dark()
 	require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
 }
 
-func TestDefaultTheme_UsesEnv(t *testing.T) {
+func TestAutoUsesFallbackWhenDetectionUnavailable(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME", "")
+
+	require.Equal(t, theme.Dark().String(), theme.Auto(nil).String())
+	require.Equal(
+		t,
+		theme.Light().String(),
+		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto(nil).String(),
+	)
+}
+
+func TestAutoThemeEnvTakesPrecedence(t *testing.T) {
 	resetThemeEnvPrefix(t)
 	t.Setenv("CLIB_THEME", "dracula")
 
-	th := theme.Default()
-	want := theme.Dracula()
-	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
-	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
+	require.Equal(t, theme.Dracula().String(), theme.Auto(nil).String())
+	require.Equal(
+		t,
+		theme.Dracula().String(),
+		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto(nil).String(),
+	)
 }
 
-func TestDefaultTheme_CustomEnvPrefixTakesPrecedence(t *testing.T) {
+func TestAutoThemeEnvOverridesExplicitPair(t *testing.T) {
 	resetThemeEnvPrefix(t)
-	theme.SetEnvPrefix("MYAPP")
-	t.Setenv("MYAPP_THEME", "monochrome")
-	t.Setenv("CLIB_THEME", "dracula")
-
-	th := theme.Default()
-	want := theme.Monochrome()
-	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
-	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
-}
-
-func TestDefaultTheme_CustomEnvPrefixFallsBackToClib(t *testing.T) {
-	resetThemeEnvPrefix(t)
-	theme.SetEnvPrefix("MYAPP")
-	t.Setenv("MYAPP_THEME", "")
 	t.Setenv("CLIB_THEME", "monokai")
 
-	th := theme.Default()
-	want := theme.Monokai()
-	require.Equal(t, want.HelpSection.Render("x"), th.HelpSection.Render("x"))
-	require.Equal(t, want.HelpFlag.Render("x"), th.HelpFlag.Render("x"))
+	pair := theme.MustPair(theme.CatppuccinLatte(), theme.Nord())
+	require.Equal(t, theme.Monokai().String(), pair.Auto(nil).String())
+}
+
+func TestAutoThemeEnvCustomPrefixTakesPrecedence(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	theme.SetEnvPrefix("MYAPP")
+	t.Setenv("MYAPP_THEME", "nord")
+	t.Setenv("CLIB_THEME", "dracula")
+
+	require.Equal(t, theme.Nord().String(), theme.Auto(nil).String())
+}
+
+func TestAutoThemeEnvInvalidIgnored(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME", "bogus")
+
+	require.Equal(t, theme.Dark().String(), theme.Auto(nil).String())
+}
+
+func TestDefaultPair_ForBackground(t *testing.T) {
+	resetThemeEnvPrefix(t)
+
+	pair := theme.DefaultPair()
+	require.Equal(
+		t,
+		theme.Light().String(),
+		pair.ForBackground(theme.BackgroundLight).String(),
+	)
+	require.Equal(
+		t,
+		theme.Dark().String(),
+		pair.ForBackground(theme.BackgroundDark).String(),
+	)
+}
+
+func TestPairFromEnv(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME_LIGHT", "catppuccin-latte")
+	t.Setenv("CLIB_THEME_DARK", "dracula")
+
+	pair, err := theme.PairFromEnv()
+	require.NoError(t, err)
+	require.Equal(t, theme.CatppuccinLatte().String(), pair.Light.String())
+	require.Equal(t, theme.Dracula().String(), pair.Dark.String())
+}
+
+func TestPairFromEnv_CustomEnvPrefixTakesPrecedence(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	theme.SetEnvPrefix("MYAPP")
+	t.Setenv("MYAPP_THEME_LIGHT", "gruvbox-light")
+	t.Setenv("MYAPP_THEME_DARK", "monokai")
+	t.Setenv("CLIB_THEME_LIGHT", "catppuccin-latte")
+	t.Setenv("CLIB_THEME_DARK", "dracula")
+
+	pair, err := theme.PairFromEnv()
+	require.NoError(t, err)
+	require.Equal(t, theme.GruvboxLight().String(), pair.Light.String())
+	require.Equal(t, theme.Monokai().String(), pair.Dark.String())
+}
+
+func TestPairFromEnv_CustomEnvPrefixFallsBackToClib(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	theme.SetEnvPrefix("MYAPP")
+	t.Setenv("MYAPP_THEME_LIGHT", "")
+	t.Setenv("MYAPP_THEME_DARK", "")
+	t.Setenv("CLIB_THEME_LIGHT", "light")
+	t.Setenv("CLIB_THEME_DARK", "dark")
+
+	pair, err := theme.PairFromEnv()
+	require.NoError(t, err)
+	require.Equal(t, theme.Light().String(), pair.Light.String())
+	require.Equal(t, theme.Dark().String(), pair.Dark.String())
+}
+
+func TestPairFromEnv_RequiresBothThemes(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME_LIGHT", "catppuccin-latte")
+
+	_, err := theme.PairFromEnv()
+	require.EqualError(t, err, "CLIB_THEME_DARK is required")
+}
+
+func TestPairFromEnv_RejectsWrongBackground(t *testing.T) {
+	resetThemeEnvPrefix(t)
+	t.Setenv("CLIB_THEME_LIGHT", "dracula")
+	t.Setenv("CLIB_THEME_DARK", "catppuccin-latte")
+
+	_, err := theme.PairFromEnv()
+	require.EqualError(t, err, `light theme must declare background "light", got "dark"`)
 }
 
 func TestWith_EnumStyle(t *testing.T) {
-	th := theme.Default().With(theme.WithEnumStyle(theme.EnumStyleHighlightPrefix))
+	th := theme.Dark().With(theme.WithEnumStyle(theme.EnumStyleHighlightPrefix))
 	require.Equal(t, theme.EnumStyleHighlightPrefix, th.EnumStyle)
 }
 
 func TestWith_AppliesOptions(t *testing.T) {
 	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
-	th := theme.Default().With(theme.WithRed(custom))
+	th := theme.Dark().With(theme.WithRed(custom))
 	require.Equal(t, custom.Render("x"), th.Red.Render("x"))
 
 	// Other fields retain defaults.
-	def := theme.Default()
+	def := theme.Dark()
 	require.Equal(t, def.Bold.Render("x"), th.Bold.Render("x"))
 }
 
 func TestWith_AllOptions(t *testing.T) {
 	custom := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
-	def := theme.Default()
+	def := theme.Dark()
 
 	tests := []struct {
 		name  string
@@ -393,7 +477,7 @@ func TestWith_AllOptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			th := theme.Default().With(tt.opt)
+			th := theme.Dark().With(tt.opt)
 			tt.check(t, th)
 			// Verify the default theme is unaffected (option was applied correctly).
 			_ = def
@@ -404,7 +488,7 @@ func TestWith_AllOptions(t *testing.T) {
 func TestWith_MultipleOptions(t *testing.T) {
 	custom1 := lipgloss.NewStyle().Foreground(lipgloss.Color("99"))
 	custom2 := lipgloss.NewStyle().Foreground(lipgloss.Color("88"))
-	th := theme.Default().With(
+	th := theme.Dark().With(
 		theme.WithBold(custom1),
 		theme.WithDim(custom2),
 	)
@@ -425,6 +509,6 @@ func TestWith_DoesNotMutateOriginal(t *testing.T) {
 
 func TestWith_HelpEnumDefault(t *testing.T) {
 	s := lipgloss.NewStyle().Italic(true)
-	th := theme.Default().With(theme.WithHelpEnumDefault(s))
+	th := theme.Dark().With(theme.WithHelpEnumDefault(s))
 	require.Equal(t, s.Render("x"), th.HelpEnumDefault.Render("x"))
 }
