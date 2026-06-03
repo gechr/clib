@@ -15,10 +15,10 @@ _clibapp() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-        '(-a --author)-a+[Author]:author:($(clibapp --@complete=author))' \
-        '(-a --author)--author=[Author]:author:($(clibapp --@complete=author))' \
+        '(-a --author)-a+[Author]:author:{ local -a items; items=(${(f)"$(clibapp --@complete=author)"}); compadd -a items }' \
+        '(-a --author)--author=[Author]:author:{ local -a items; items=(${(f)"$(clibapp --@complete=author)"}); compadd -a items }' \
         '--ci=[CI status]:ci:(success failure pending)' \
-        '--columns=[Table columns]:columns:{_sequence compadd - $(clibapp --@complete=columns)}' \
+        '--columns=[Table columns]:columns:{ local -a items; items=(${(f)"$(clibapp --@complete=columns)"}); _sequence compadd - "${(@)items}" }' \
         '(-L --limit)-L+[Max results]: :_default' \
         '(-L --limit)--limit=[Max results]: :_default' \
         '--merge[Auto-merge]' \

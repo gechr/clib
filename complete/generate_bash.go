@@ -19,6 +19,7 @@ func GenerateBash(g *Generator) (string, error) {
 	rootSpecs := SortVisibleSpecs(g.Specs)
 	inheritedSpecs := persistentSpecs(g.Specs)
 	fwdFn := bashForwardHelperName(g)
+	dynFn := bashDynamicHelperName(g)
 
 	needsPrev := bashNeedsPrev(g.Specs, g.Subs)
 
@@ -91,6 +92,10 @@ func GenerateBash(g *Generator) (string, error) {
 
 	fmt.Fprint(&sb, "    esac\n}\n")
 
+	if dynFn != "" {
+		bashWriteDynamicHelper(&sb, dynFn)
+	}
+
 	if fwdFn != "" {
 		bashWriteForwardedFlagsHelper(&sb, fwdFn, allForwardableSpecs(g))
 	}
@@ -115,50 +120,98 @@ func bashForwardHelperName(g *Generator) string {
 	return "_" + strings.ReplaceAll(g.AppName, "-", "_") + "_forwarded_flags"
 }
 
-// bashDynamicExpr returns the command substitution that produces dynamic flag
+// bashDynamicHelperName returns the helper used to append newline-delimited
+// dynamic completion values, or "" when no generated call needs it.
+func bashDynamicHelperName(g *Generator) string {
+	if !bashNeedsDynamicHelper(g) {
+		return ""
+	}
+	return "_" + strings.ReplaceAll(g.AppName, "-", "_") + "_dynamic_values"
+}
+
+func bashNeedsDynamicHelper(g *Generator) bool {
+	if len(g.DynamicArgs) > 0 {
+		return true
+	}
+
+	var walk func([]Spec, []SubSpec) bool
+	walk = func(specs []Spec, subs []SubSpec) bool {
+		for _, spec := range specs {
+			if spec.Dynamic != "" && !spec.CommaList {
+				return true
+			}
+		}
+		for _, sub := range subs {
+			if len(sub.DynamicArgs) > 0 || walk(sub.Specs, sub.Subs) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(g.Specs, g.Subs)
+}
+
+// bashDynamicCmd returns the command and arguments that produce dynamic flag
 // completions, forwarding collected context flags when forwarding is active.
-func bashDynamicExpr(g *Generator, predictor string) string {
+func bashDynamicCmd(g *Generator, predictor string) string {
 	if bashForwardHelperName(g) != "" {
 		return fmt.Sprintf(
-			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			`%s --%s=%s -- "${__fwd[@]}"`,
 			g.AppName,
 			FlagComplete,
 			predictor,
 		)
 	}
-	return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, predictor)
+	return fmt.Sprintf("%s --%s=%s", g.AppName, FlagComplete, predictor)
 }
 
-// bashDynamicArgsExpr builds the handler command substitution for a positional
+// bashDynamicArgsCmd builds the handler command for a positional
 // dynamic completion slot. first==true means no preceding positionals; when
 // forwarding is active, collected context flags precede the real positionals.
-func bashDynamicArgsExpr(g *Generator, da string, first bool) string {
+func bashDynamicArgsCmd(g *Generator, da string, first bool) string {
 	forward := bashForwardHelperName(g) != ""
 	switch {
 	case forward && first:
 		return fmt.Sprintf(
-			`$(%s --%s=%s -- "${__fwd[@]}" 2>/dev/null)`,
+			`%s --%s=%s -- "${__fwd[@]}"`,
 			g.AppName,
 			FlagComplete,
 			da,
 		)
 	case forward:
 		return fmt.Sprintf(
-			`$(%s --%s=%s -- "${__fwd[@]}" "${__dyn_pos[@]}" 2>/dev/null)`,
+			`%s --%s=%s -- "${__fwd[@]}" "${__dyn_pos[@]}"`,
 			g.AppName,
 			FlagComplete,
 			da,
 		)
 	case first:
-		return fmt.Sprintf("$(%s --%s=%s 2>/dev/null)", g.AppName, FlagComplete, da)
+		return fmt.Sprintf("%s --%s=%s", g.AppName, FlagComplete, da)
 	default:
 		return fmt.Sprintf(
-			`$(%s --%s=%s -- "${__dyn_pos[@]}" 2>/dev/null)`,
+			`%s --%s=%s -- "${__dyn_pos[@]}"`,
 			g.AppName,
 			FlagComplete,
 			da,
 		)
 	}
+}
+
+// bashWriteDynamicHelper emits a bash 3-compatible helper that reads dynamic
+// completion output as a newline-delimited list. The local IFS protects
+// multi-word values when bash splits compgen's command-substitution output.
+func bashWriteDynamicHelper(sb *strings.Builder, helperName string) {
+	fmt.Fprintf(sb, "\n%s() {\n", helperName)
+	fmt.Fprint(sb, "    local cur=\"$1\"\n")
+	fmt.Fprint(sb, "    shift\n")
+	fmt.Fprint(sb, "    local line\n")
+	fmt.Fprint(sb, "    local -a vals=()\n")
+	fmt.Fprint(sb, "    while IFS= read -r line || [[ -n \"${line}\" ]]; do\n")
+	fmt.Fprint(sb, "        vals+=(\"${line}\")\n")
+	fmt.Fprint(sb, "    done < <(\"$@\" 2>/dev/null)\n")
+	fmt.Fprint(sb, "    local IFS=$'\\n'\n")
+	fmt.Fprint(sb, "    COMPREPLY+=($(compgen -W \"${vals[*]}\" -- \"${cur}\"))\n")
+	fmt.Fprint(sb, "}\n")
 }
 
 // bashWriteForwardedFlagsHelper emits a function that scans the command line and
@@ -353,24 +406,27 @@ func bashWriteCmdCase(
 			if i == 0 {
 				fmt.Fprintf(
 					sb,
-					"                %d)\n                    COMPREPLY=($(compgen -W \"${opts} %s\" -- \"${cur}\"))\n                    ;;\n",
+					"                %d)\n                    COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n                    %s \"${cur}\" %s\n                    ;;\n",
 					i,
-					bashDynamicArgsExpr(g, da, true),
+					bashDynamicHelperName(g),
+					bashDynamicArgsCmd(g, da, true),
 				)
 				continue
 			}
 
 			fmt.Fprintf(
 				sb,
-				"                %d)\n                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n                    ;;\n",
+				"                %d)\n                    COMPREPLY=()\n                    %s \"${cur}\" %s\n                    ;;\n",
 				i,
-				bashDynamicArgsExpr(g, da, false),
+				bashDynamicHelperName(g),
+				bashDynamicArgsCmd(g, da, false),
 			)
 		}
 		fmt.Fprintf(
 			sb,
-			"                *)\n                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n                    ;;\n",
-			bashDynamicArgsExpr(g, dynamicArgs[len(dynamicArgs)-1], false),
+			"                *)\n                    COMPREPLY=()\n                    %s \"${cur}\" %s\n                    ;;\n",
+			bashDynamicHelperName(g),
+			bashDynamicArgsCmd(g, dynamicArgs[len(dynamicArgs)-1], false),
 		)
 		fmt.Fprint(sb, "            esac\n")
 	default:
@@ -455,20 +511,21 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 
 	switch {
 	case spec.CommaList && spec.Dynamic != "":
-		bashWriteCommaCompletion(sb, bashDynamicExpr(g, spec.Dynamic))
+		bashWriteCommaCompletion(sb, bashDynamicCmd(g, spec.Dynamic), true)
 	case spec.CommaList && len(spec.Values) > 0:
-		bashWriteCommaCompletion(sb, strings.Join(spec.Values, " "))
+		bashWriteCommaCompletion(sb, strings.Join(spec.Values, " "), false)
 	case spec.CommaList && len(spec.ValueDescs) > 0:
 		vals := make([]string, len(spec.ValueDescs))
 		for i, vd := range spec.ValueDescs {
 			vals[i] = vd.Value
 		}
-		bashWriteCommaCompletion(sb, strings.Join(vals, " "))
+		bashWriteCommaCompletion(sb, strings.Join(vals, " "), false)
 	case spec.Dynamic != "":
 		fmt.Fprintf(
 			sb,
-			"                    COMPREPLY=($(compgen -W \"%s\" -- \"${cur}\"))\n",
-			bashDynamicExpr(g, spec.Dynamic),
+			"                    COMPREPLY=()\n                    %s \"${cur}\" %s\n",
+			bashDynamicHelperName(g),
+			bashDynamicCmd(g, spec.Dynamic),
 		)
 	case len(spec.Values) > 0:
 		quoted := make([]string, len(spec.Values))
@@ -505,13 +562,24 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 	fmt.Fprint(sb, "                    return 0\n                    ;;\n")
 }
 
-func bashWriteCommaCompletion(sb *strings.Builder, valuesExpr string) {
-	fmt.Fprintf(sb, `                    local prefix=""
+func bashWriteCommaCompletion(sb *strings.Builder, valuesExpr string, dynamic bool) {
+	fmt.Fprint(sb, `                    local prefix=""
                     local cur_val="${cur}"
-                    local all_vals=(%[1]s)
+`)
+	if dynamic {
+		fmt.Fprintf(sb, `                    local line
+                    local -a all_vals=()
+                    while IFS= read -r line || [[ -n "${line}" ]]; do
+                        all_vals+=("${line}")
+                    done < <(%s 2>/dev/null)
+`, valuesExpr)
+	} else {
+		fmt.Fprintf(sb, "                    local all_vals=(%s)\n", valuesExpr)
+	}
+	fmt.Fprint(sb, `                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
-                        prefix="${cur%%,*},"
+                        prefix="${cur%,*},"
                         cur_val="${cur##*,}"
                         IFS=',' read -ra selected <<< "${prefix}"
                         for val in "${all_vals[@]}"; do
@@ -534,7 +602,7 @@ func bashWriteCommaCompletion(sb *strings.Builder, valuesExpr string) {
                         COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
                     fi
                     compopt -o nospace
-`, valuesExpr)
+`)
 }
 
 const bashFileCompletionBlock = `local oldifs

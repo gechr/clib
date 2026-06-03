@@ -35,8 +35,8 @@ _myapp() {
                 _arguments "${_arguments_options[@]}" : \
                     '(-p --profile)-p+[Active profile]: :_default' \
                     '(-p --profile)--profile=[Active profile]: :_default' \
-                    '--tags=[Tags to apply]:tags:{_sequence compadd - $(myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null)}' \
-                    '--target=[Target name]:target:($(myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null))' \
+                    '--tags=[Tags to apply]:tags:{ local -a items; items=(${(f)"$(myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null)"}); _sequence compadd - "${(@)items}" }' \
+                    '--target=[Target name]:target:{ local -a items; items=(${(f)"$(myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null)"}); compadd -a items }' \
                 && ret=0
             ;;
         esac

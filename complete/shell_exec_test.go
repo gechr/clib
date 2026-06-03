@@ -78,10 +78,20 @@ func lookShell(t *testing.T, name string) string {
 // completionEnv returns (dir, scriptPath, logPath).
 func completionEnv(t *testing.T, gen *complete.Generator, shell string) (string, string, string) {
 	t.Helper()
+	stub := "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$CLIB_COMPLETE_LOG\"\necho candidate\n"
+	return completionEnvWithStub(t, gen, shell, stub)
+}
+
+func completionEnvWithStub(
+	t *testing.T,
+	gen *complete.Generator,
+	shell string,
+	stub string,
+) (string, string, string) {
+	t.Helper()
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "handler.log")
 
-	stub := "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$CLIB_COMPLETE_LOG\"\necho candidate\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, gen.AppName), []byte(stub), 0o755))
 
 	var buf strings.Builder
@@ -140,6 +150,48 @@ func driveBash(t *testing.T, gen *complete.Generator, words []string, cword int)
 	cmd.Env = shellEnv(dir, logPath)
 	_ = cmd.Run() // completion may exit non-zero; the recorded log is what matters
 	return readHandlerLog(t, logPath)
+}
+
+func driveBashReplies(
+	t *testing.T,
+	gen *complete.Generator,
+	stub string,
+	words []string,
+	cword int,
+) []string {
+	t.Helper()
+	bash := lookShell(t, "bash")
+	dir, scriptPath, logPath := completionEnvWithStub(t, gen, "bash", stub)
+
+	quoted := make([]string, len(words))
+	for i, w := range words {
+		quoted[i] = shellQuote(w)
+	}
+	cur, prev := "", ""
+	if cword < len(words) {
+		cur = words[cword]
+	}
+	if cword > 0 && cword-1 < len(words) {
+		prev = words[cword-1]
+	}
+	compFunc := "_" + strings.ReplaceAll(gen.AppName, "-", "_")
+
+	driver := strings.Join([]string{
+		"source " + shellQuote(scriptPath),
+		"COMP_WORDS=(" + strings.Join(quoted, " ") + ")",
+		"COMP_CWORD=" + strconv.Itoa(cword),
+		compFunc + " " + gen.AppName + " " + shellQuote(cur) + " " + shellQuote(prev),
+		`printf '%s\0' "${COMPREPLY[@]}"`,
+	}, "\n")
+
+	cmd := exec.Command(bash, "--norc", "-c", driver)
+	cmd.Env = shellEnv(dir, logPath)
+	out, _ := cmd.Output()
+	got := strings.TrimSuffix(string(out), "\x00")
+	if got == "" {
+		return nil
+	}
+	return strings.Split(got, "\x00")
 }
 
 // driveFish sources the fish completion and asks fish to complete the given
@@ -306,4 +358,44 @@ func TestShellExec_ZshForwardedFlags(t *testing.T) {
 				"zsh forwarded-flags helper produced unexpected context")
 		})
 	}
+}
+
+func TestShellExec_BashDynamicValuesPreserveSpaces(t *testing.T) {
+	gen := &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{LongFlag: "status", Terse: "Status", HasArg: true, Dynamic: "status"},
+		},
+	}
+	stub := "#!/usr/bin/env bash\nprintf '%s\\n' 'To Do' 'In Progress' Done\n"
+
+	require.Equal(t,
+		[]string{"In Progress"},
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "In"}, 2),
+	)
+	require.Equal(t,
+		[]string{"To Do", "In Progress", "Done"},
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", ""}, 2),
+	)
+}
+
+func TestShellExec_BashCommaDynamicValuesPreserveSpaces(t *testing.T) {
+	gen := &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{
+				LongFlag:  "status",
+				Terse:     "Status",
+				HasArg:    true,
+				Dynamic:   "status",
+				CommaList: true,
+			},
+		},
+	}
+	stub := "#!/usr/bin/env bash\nprintf '%s\\n' 'To Do' 'In Progress' Done\n"
+
+	require.Equal(t,
+		[]string{"To Do,In Progress"},
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "To Do,In"}, 2),
+	)
 }

@@ -48,6 +48,7 @@ _myapp() {
                     local prefix=""
                     local cur_val="${cur}"
                     local all_vals=(name email)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"
@@ -79,6 +80,7 @@ _myapp() {
                     local prefix=""
                     local cur_val="${cur}"
                     local all_vals=(draft published)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"
@@ -124,6 +126,7 @@ _myapp() {
                     local prefix=""
                     local cur_val="${cur}"
                     local all_vals=(name email)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"
@@ -155,6 +158,7 @@ _myapp() {
                     local prefix=""
                     local cur_val="${cur}"
                     local all_vals=(active inactive)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"

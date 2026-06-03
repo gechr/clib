@@ -37,6 +37,7 @@ _myapp() {
                     local prefix=""
                     local cur_val="${cur}"
                     local all_vals=(bug feature docs)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"

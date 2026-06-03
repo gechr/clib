@@ -81,10 +81,12 @@ _acme_plugin() {
             fi
             case ${#__dyn_pos[@]} in
                 0)
-                    COMPREPLY=($(compgen -W "${opts} $(acme-plugin --@complete=complete-kind 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                    _acme_plugin_dynamic_values "${cur}" acme-plugin --@complete=complete-kind
                     ;;
                 *)
-                    COMPREPLY=($(compgen -W "$(acme-plugin --@complete=complete-kind -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=()
+                    _acme_plugin_dynamic_values "${cur}" acme-plugin --@complete=complete-kind -- "${__dyn_pos[@]}"
                     ;;
             esac
             return 0
@@ -130,10 +132,12 @@ _acme_plugin() {
             fi
             case ${#__dyn_pos[@]} in
                 0)
-                    COMPREPLY=($(compgen -W "${opts} $(acme-plugin --@complete=resolve-kind 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                    _acme_plugin_dynamic_values "${cur}" acme-plugin --@complete=resolve-kind
                     ;;
                 *)
-                    COMPREPLY=($(compgen -W "$(acme-plugin --@complete=resolve-kind -- "${__dyn_pos[@]}" 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=()
+                    _acme_plugin_dynamic_values "${cur}" acme-plugin --@complete=resolve-kind -- "${__dyn_pos[@]}"
                     ;;
             esac
             return 0
@@ -157,6 +161,18 @@ _acme_plugin() {
             return 0
             ;;
     esac
+}
+
+_acme_plugin_dynamic_values() {
+    local cur="$1"
+    shift
+    local line
+    local -a vals=()
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        vals+=("${line}")
+    done < <("$@" 2>/dev/null)
+    local IFS=$'\n'
+    COMPREPLY+=($(compgen -W "${vals[*]}" -- "${cur}"))
 }
 
 if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then

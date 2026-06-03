@@ -340,7 +340,7 @@ func zshWriteSpec(g *Generator, sb *strings.Builder, spec Spec, indent string) {
 func zshCompleter(g *Generator, spec Spec) string {
 	switch {
 	case spec.CommaList && spec.Dynamic != "":
-		return "{_sequence compadd - " + zshDynamicExpr(g, spec.Dynamic) + "}"
+		return zshDynamicSequenceAction(g, spec.Dynamic)
 	case spec.CommaList && len(spec.Values) > 0:
 		escaped := make([]string, len(spec.Values))
 		for i, v := range spec.Values {
@@ -348,7 +348,7 @@ func zshCompleter(g *Generator, spec Spec) string {
 		}
 		return "{_sequence compadd - " + strings.Join(escaped, " ") + "}"
 	case spec.Dynamic != "":
-		return "(" + zshDynamicExpr(g, spec.Dynamic) + ")"
+		return zshDynamicValuesAction(g, spec.Dynamic)
 	case len(spec.ValueDescs) > 0:
 		var parts []string
 		for _, vd := range spec.ValueDescs {
@@ -372,6 +372,18 @@ func zshCompleter(g *Generator, spec Spec) string {
 	default:
 		return zshDefaultCompleter
 	}
+}
+
+func zshDynamicValuesAction(g *Generator, predictor string) string {
+	return `{ local -a items; items=(${(f)"` +
+		zshDynamicExpr(g, predictor) +
+		`"}); compadd -a items }`
+}
+
+func zshDynamicSequenceAction(g *Generator, predictor string) string {
+	return `{ local -a items; items=(${(f)"` +
+		zshDynamicExpr(g, predictor) +
+		`"}); _sequence compadd - "${(@)items}" }`
 }
 
 // zshForwardHelperName returns the name of the shared forwarded-flags helper

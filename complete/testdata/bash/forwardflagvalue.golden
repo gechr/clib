@@ -59,7 +59,12 @@ _myapp() {
                 --tags)
                     local prefix=""
                     local cur_val="${cur}"
-                    local all_vals=($(myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null))
+                    local line
+                    local -a all_vals=()
+                    while IFS= read -r line || [[ -n "${line}" ]]; do
+                        all_vals+=("${line}")
+                    done < <(myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null)
+                    local IFS=$'\n'
                     local -a avail=()
                     if [[ "${cur}" == *,* ]]; then
                         prefix="${cur%,*},"
@@ -88,7 +93,8 @@ _myapp() {
                     return 0
                     ;;
                 --target)
-                    COMPREPLY=($(compgen -W "$(myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null)" -- "${cur}"))
+                    COMPREPLY=()
+                    _myapp_dynamic_values "${cur}" myapp --@complete=target -- "${__fwd[@]}"
                     return 0
                     ;;
                 *)
@@ -99,6 +105,18 @@ _myapp() {
             return 0
             ;;
     esac
+}
+
+_myapp_dynamic_values() {
+    local cur="$1"
+    shift
+    local line
+    local -a vals=()
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        vals+=("${line}")
+    done < <("$@" 2>/dev/null)
+    local IFS=$'\n'
+    COMPREPLY+=($(compgen -W "${vals[*]}" -- "${cur}"))
 }
 
 _myapp_forwarded_flags() {

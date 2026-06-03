@@ -435,101 +435,9 @@ func TestGenerator_Install_Bash(t *testing.T) {
 	completionFile := filepath.Join(tmpDir, "bash-completion", "completions", "clibapp")
 	content, err := os.ReadFile(completionFile)
 	require.NoError(t, err)
-	expected := `# clibapp bash completion
-_clibapp() {
-    local i cur prev opts cmd
-    COMPREPLY=()
-    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-        cur="$2"
-    else
-        cur="${COMP_WORDS[COMP_CWORD]}"
-    fi
-    prev="$3"
-    cmd=""
-    opts=""
-
-    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
-        case "${cmd},${i}" in
-            ",$1")
-                cmd="clibapp"
-                ;;
-            *)
-                ;;
-        esac
-    done
-
-    case "${cmd}" in
-        clibapp)
-            opts="--author -a --ci --columns --limit -L --merge --no-merge --state -s --verbose -v"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
-            case "${prev}" in
-                --author|-a)
-                    COMPREPLY=($(compgen -W "$(clibapp --@complete=author 2>/dev/null)" -- "${cur}"))
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W 'success failure pending' -- "${cur}"))
-                    return 0
-                    ;;
-                --columns)
-                    local prefix=""
-                    local cur_val="${cur}"
-                    local all_vals=($(clibapp --@complete=columns 2>/dev/null))
-                    local -a avail=()
-                    if [[ "${cur}" == *,* ]]; then
-                        prefix="${cur%,*},"
-                        cur_val="${cur##*,}"
-                        IFS=',' read -ra selected <<< "${prefix}"
-                        for val in "${all_vals[@]}"; do
-                            local found=0
-                            for sel in "${selected[@]}"; do
-                                if [[ "${val}" == "${sel}" ]]; then
-                                    found=1
-                                    break
-                                fi
-                            done
-                            if [[ "${found}" -eq 0 ]]; then
-                                avail+=("${val}")
-                            fi
-                        done
-                    else
-                        avail=("${all_vals[@]}")
-                    fi
-                    COMPREPLY=($(compgen -W "${avail[*]}" -- "${cur_val}"))
-                    if [[ -n "${prefix}" ]]; then
-                        COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
-                    fi
-                    compopt -o nospace
-                    return 0
-                    ;;
-                --limit|-L)
-                    COMPREPLY=()
-                    return 0
-                    ;;
-                --state|-s)
-                    COMPREPLY=($(compgen -W 'open closed merged all' -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-            return 0
-            ;;
-    esac
-}
-
-if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
-    complete -F _clibapp -o nosort -o bashdefault -o default clibapp
-else
-    complete -F _clibapp -o bashdefault -o default clibapp
-fi
-`
-	require.Equal(t, expected, string(content))
+	var buf strings.Builder
+	require.NoError(t, gen.Print(&buf, "bash"))
+	require.Equal(t, buf.String(), string(content))
 }
 
 func TestGenerator_Install_Zsh(t *testing.T) {
@@ -543,45 +451,9 @@ func TestGenerator_Install_Zsh(t *testing.T) {
 	completionFile := filepath.Join(tmpDir, "zsh", "site-functions", "_clibapp")
 	content, err := os.ReadFile(completionFile)
 	require.NoError(t, err)
-	expected := `#compdef clibapp
-
-autoload -U is-at-least
-
-_clibapp() {
-    typeset -A opt_args
-    typeset -a _arguments_options
-    local ret=1
-
-    if is-at-least 5.2; then
-        _arguments_options=(-s -S -C)
-    else
-        _arguments_options=(-s -C)
-    fi
-
-    local context curcontext="$curcontext" state line
-    _arguments "${_arguments_options[@]}" : \
-        '(-a --author)-a+[Author]:author:($(clibapp --@complete=author))' \
-        '(-a --author)--author=[Author]:author:($(clibapp --@complete=author))' \
-        '--ci=[CI status]:ci:(success failure pending)' \
-        '--columns=[Table columns]:columns:{_sequence compadd - $(clibapp --@complete=columns)}' \
-        '(-L --limit)-L+[Max results]: :_default' \
-        '(-L --limit)--limit=[Max results]: :_default' \
-        '--merge[Auto-merge]' \
-        '--no-merge[Disable auto-merge]' \
-        '(-s --state)-s+[State]:state:(open closed merged all)' \
-        '(-s --state)--state=[State]:state:(open closed merged all)' \
-        '(-v --verbose)-v[Verbose]' \
-        '(-v --verbose)--verbose[Verbose]' \
-    && ret=0
-}
-
-if [ "$funcstack[1]" = "_clibapp" ]; then
-    _clibapp "$@"
-else
-    compdef _clibapp clibapp
-fi
-`
-	require.Equal(t, expected, string(content))
+	var buf strings.Builder
+	require.NoError(t, gen.Print(&buf, "zsh"))
+	require.Equal(t, buf.String(), string(content))
 }
 
 func TestGenerator_Install_UnsupportedShell(t *testing.T) {
@@ -998,8 +870,8 @@ func TestForwardFlagValue_ForwardsContext(t *testing.T) {
 		},
 		"bash": {
 			helper:    "_myapp_forwarded_flags() {",
-			plainCall: `myapp --@complete=target -- "${__fwd[@]}" 2>/dev/null`,
-			commaCall: `myapp --@complete=tag -- "${__fwd[@]}" 2>/dev/null`,
+			plainCall: `myapp --@complete=target -- "${__fwd[@]}"`,
+			commaCall: `myapp --@complete=tag -- "${__fwd[@]}"`,
 		},
 		"zsh": {
 			helper:    "_myapp_forwarded_flags() {",
@@ -1119,4 +991,29 @@ func TestForwardFlagValue_NoForwardSpecs(t *testing.T) {
 			require.NotContains(t, got, "--@complete=target --")
 		})
 	}
+}
+
+func TestZshDynamicValuesSplitOnNewlines(t *testing.T) {
+	gen := &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{
+			{LongFlag: "labels", Terse: "Labels", HasArg: true, Dynamic: "labels", CommaList: true},
+			{LongFlag: "status", Terse: "Status", HasArg: true, Dynamic: "status"},
+		},
+	}
+
+	var buf strings.Builder
+	require.NoError(t, gen.Print(&buf, "zsh"))
+	got := buf.String()
+
+	require.Contains(
+		t,
+		got,
+		`'--labels=[Labels]:labels:{ local -a items; items=(${(f)"$(myapp --@complete=labels)"}); _sequence compadd - "${(@)items}" }'`,
+	)
+	require.Contains(
+		t,
+		got,
+		`'--status=[Status]:status:{ local -a items; items=(${(f)"$(myapp --@complete=status)"}); compadd -a items }'`,
+	)
 }
