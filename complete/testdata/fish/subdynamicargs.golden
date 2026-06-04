@@ -1,11 +1,24 @@
 complete -c myapp -f
 
+function __myapp_tokens
+    set -l major (string split . -- $version)[1]
+    set -l tokens
+    if test $major -ge 4
+        set tokens (commandline -xpc)
+    else
+        set tokens (commandline -opc)
+    end
+    if set -q tokens[1]
+        printf '%s\n' $tokens
+    end
+end
+
 function __myapp_global_optspecs
     string join \n -- 'v/verbose'
 end
 
 function __myapp_needs_command
-    set -l cmd (commandline -xpc)
+    set -l cmd (__myapp_tokens)
     set -e cmd[1]
     argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
     or return
@@ -43,7 +56,7 @@ complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
 complete -c myapp -n '__myapp_using_primary_subcommand resolve' -s f -l force -d "Force resolution"
 
 function __myapp_resolve_dynamic_args
-    set -l tokens (commandline -xpc)
+    set -l tokens (__myapp_tokens)
     set -e tokens[1]
     set -l positional
     set -l skip_next 0

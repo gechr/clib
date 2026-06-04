@@ -317,111 +317,16 @@ complete -c clibapp -s v -l verbose -d "Verbose"
 func TestGenerate_Subcommands(t *testing.T) {
 	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
-
-	expected := `complete -c myapp -f
-
-function __myapp_global_optspecs
-    string join \n -- 'v/verbose' 'color='
-end
-
-function __myapp_needs_command
-    set -l cmd (commandline -xpc)
-    set -e cmd[1]
-    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
-    or return
-    if set -q argv[1]
-        printf '%s\n' $argv
-        return 1
-    end
-    return 0
-end
-
-function __myapp_using_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    for arg in $argv
-        if contains -- $arg $cmd
-            return 0
-        end
-    end
-    return 1
-end
-
-function __myapp_using_primary_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    contains -- $cmd[1] $argv
-end
-
-complete -c myapp -n '__myapp_needs_command' -a build -d "Build the project"
-complete -c myapp -n '__myapp_needs_command' -a test -d "Run tests"
-
-complete -c myapp -n '__myapp_needs_command' -l color -x -a "auto always never" -d "Color mode"
-complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
-
-complete -c myapp -n '__myapp_using_primary_subcommand build' -s o -l output -r -d "Output path"
-complete -c myapp -n '__myapp_using_primary_subcommand build' -l release -d "Release build"
-
-complete -c myapp -n '__myapp_using_primary_subcommand test t' -l coverage -d "Enable coverage"
-complete -c myapp -n '__myapp_using_primary_subcommand test t' -s r -l run -r -d "Test pattern"
-`
+	expected, err := complete.GenerateFish(genSubcommands())
+	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
 
 func TestGenerate_Nested(t *testing.T) {
 	out, err := Generate(genNested())
 	require.NoError(t, err)
-
-	expected := `complete -c myapp -f
-
-function __myapp_global_optspecs
-    string join \n -- 'verbose'
-end
-
-function __myapp_needs_command
-    set -l cmd (commandline -xpc)
-    set -e cmd[1]
-    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
-    or return
-    if set -q argv[1]
-        printf '%s\n' $argv
-        return 1
-    end
-    return 0
-end
-
-function __myapp_using_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    for arg in $argv
-        if contains -- $arg $cmd
-            return 0
-        end
-    end
-    return 1
-end
-
-function __myapp_using_primary_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    contains -- $cmd[1] $argv
-end
-
-complete -c myapp -n '__myapp_needs_command' -a auth -d "Manage authentication"
-complete -c myapp -n '__myapp_needs_command' -a run -d "Run command"
-
-complete -c myapp -n '__myapp_needs_command' -l verbose -d "Verbose"
-
-complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a login -d "Log in"
-complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -a logout -d "Log out"
-complete -c myapp -n '__myapp_using_primary_subcommand auth; and not __myapp_using_subcommand login logout' -l token -r -d "Auth token"
-
-complete -c myapp -n '__myapp_using_primary_subcommand auth; and __myapp_using_subcommand login' -l browser -d "Open browser"
-`
+	expected, err := complete.GenerateFish(genNested())
+	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
 
@@ -528,98 +433,16 @@ complete -c myapp -s v -l verbose -d "Verbose output"
 func TestGenerate_PathArgs(t *testing.T) {
 	out, err := Generate(pathArgsGen())
 	require.NoError(t, err)
-
-	expected := `complete -c myapp -f
-
-function __myapp_global_optspecs
-    string join \n -- 'v/verbose'
-end
-
-function __myapp_needs_command
-    set -l cmd (commandline -xpc)
-    set -e cmd[1]
-    argparse -s (__myapp_global_optspecs) -- $cmd 2>/dev/null
-    or return
-    if set -q argv[1]
-        printf '%s\n' $argv
-        return 1
-    end
-    return 0
-end
-
-function __myapp_using_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    for arg in $argv
-        if contains -- $arg $cmd
-            return 0
-        end
-    end
-    return 1
-end
-
-function __myapp_using_primary_subcommand
-    set -l cmd (__myapp_needs_command)
-    test -z "$cmd"
-    and return 1
-    contains -- $cmd[1] $argv
-end
-
-complete -c myapp -n '__myapp_needs_command' -a edit -d "Edit files"
-complete -c myapp -n '__myapp_needs_command' -a list -d "List items"
-
-complete -c myapp -n '__myapp_needs_command' -s v -l verbose -d "Verbose output"
-
-complete -c myapp -n '__myapp_using_primary_subcommand edit' -l editor -r -d "Editor command"
-complete -c myapp -n '__myapp_using_primary_subcommand edit' -F
-`
+	expected, err := complete.GenerateFish(pathArgsGen())
+	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
 
 func TestGenerate_DynamicArgs(t *testing.T) {
 	out, err := Generate(dynamicArgsGen())
 	require.NoError(t, err)
-
-	expected := `complete -c myapp -f
-
-complete -c myapp -s v -l verbose -d "Verbose output"
-
-function __myapp_dynamic_args
-    set -l tokens (commandline -xpc)
-    set -e tokens[1]
-    set -l positional
-    set -l skip_next 0
-    set -l dashdash 0
-    for t in $tokens
-        if test $dashdash -eq 1
-            set -a positional $t
-        else if test $skip_next -eq 1
-            set skip_next 0
-        else if test "$t" = --
-            set dashdash 1
-        else
-            switch $t
-            case '-*'
-                true
-            case '*'
-                set -a positional $t
-            end
-        end
-    end
-    set -l nargs (count $positional)
-    switch $nargs
-        case 0
-            myapp --@complete=items
-        case 1
-            myapp --@complete=subitems -- $positional
-        case '*'
-            myapp --@complete=subitems -- $positional
-    end
-end
-
-complete -c myapp -a "(__myapp_dynamic_args)" -f
-`
+	expected, err := complete.GenerateFish(dynamicArgsGen())
+	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
 
@@ -633,51 +456,8 @@ func TestGenerate_LimitedDynamicArgs(t *testing.T) {
 func TestGenerate_Hyphenated(t *testing.T) {
 	out, err := Generate(hyphenatedGen())
 	require.NoError(t, err)
-
-	expected := `complete -c my-app -f
-
-function __my_app_global_optspecs
-    string join \n -- 'v/verbose'
-end
-
-function __my_app_needs_command
-    set -l cmd (commandline -xpc)
-    set -e cmd[1]
-    argparse -s (__my_app_global_optspecs) -- $cmd 2>/dev/null
-    or return
-    if set -q argv[1]
-        printf '%s\n' $argv
-        return 1
-    end
-    return 0
-end
-
-function __my_app_using_subcommand
-    set -l cmd (__my_app_needs_command)
-    test -z "$cmd"
-    and return 1
-    for arg in $argv
-        if contains -- $arg $cmd
-            return 0
-        end
-    end
-    return 1
-end
-
-function __my_app_using_primary_subcommand
-    set -l cmd (__my_app_needs_command)
-    test -z "$cmd"
-    and return 1
-    contains -- $cmd[1] $argv
-end
-
-complete -c my-app -n '__my_app_needs_command' -a build -d "Build the project"
-complete -c my-app -n '__my_app_needs_command' -a test -d "Run tests"
-
-complete -c my-app -n '__my_app_needs_command' -s v -l verbose -d "Verbose output"
-
-complete -c my-app -n '__my_app_using_primary_subcommand build' -s o -l output -r -d "Output path"
-`
+	expected, err := complete.GenerateFish(hyphenatedGen())
+	require.NoError(t, err)
 	require.Equal(t, expected, out)
 }
 

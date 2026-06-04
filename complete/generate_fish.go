@@ -24,8 +24,13 @@ func GenerateFish(g *Generator) (string, error) {
 	resolved, funcLookup := fishBuildFuncPlan(g.AppName, g.Specs, g.Subs)
 	fishWriteCommaFunctions(g, &sb, resolved)
 
+	tokenFn := fishTokensHelperName(g)
+	if tokenFn != "" {
+		fishWriteTokensHelper(&sb, tokenFn)
+	}
+
 	if fwdFn := fishForwardHelperName(g); fwdFn != "" {
-		fishWriteForwardedFlagsHelper(&sb, fwdFn, allForwardableSpecs(g))
+		fishWriteForwardedFlagsHelper(&sb, fwdFn, tokenFn, allForwardableSpecs(g))
 	}
 
 	hasSubs := len(g.Subs) > 0
@@ -34,7 +39,7 @@ func GenerateFish(g *Generator) (string, error) {
 		usingSub := fmt.Sprintf("__%s_using_subcommand", funcID)
 		usingPrimarySub := fmt.Sprintf("__%s_using_primary_subcommand", funcID)
 
-		fishWriteHelpers(g, &sb, funcID)
+		fishWriteHelpers(g, &sb, funcID, tokenFn)
 
 		fmt.Fprint(&sb, "\n")
 		fishWriteSubEntries(g, &sb, g.Subs, needsCmd)
@@ -58,6 +63,7 @@ func GenerateFish(g *Generator) (string, error) {
 			"",
 			"",
 			funcID,
+			tokenFn,
 			persistentSpecs(g.Specs),
 			1,
 			funcLookup,
@@ -70,10 +76,17 @@ func GenerateFish(g *Generator) (string, error) {
 		}
 		if len(g.DynamicArgs) > 0 {
 			helperName := fmt.Sprintf("__%s_dynamic_args", funcID)
-			fishWriteDynamicArgsHelper(g, &sb, helperName, g.Specs, g.DynamicArgs, 0)
+			fishWriteDynamicArgsHelper(g, &sb, helperName, tokenFn, g.Specs, g.DynamicArgs, 0)
 			if g.HasMaxPositionalArgs {
 				guardName := fmt.Sprintf("__%s_accepts_positional", funcID)
-				fishWritePositionalCountHelper(&sb, guardName, g.Specs, 0, g.MaxPositionalArgs)
+				fishWritePositionalCountHelper(
+					&sb,
+					guardName,
+					tokenFn,
+					g.Specs,
+					0,
+					g.MaxPositionalArgs,
+				)
 				fmt.Fprintf(
 					&sb,
 					`
@@ -138,6 +151,28 @@ func fishForwardHelperName(g *Generator) string {
 	return fmt.Sprintf("__%s_forwarded_flags", fishFuncName(g.AppName))
 }
 
+func fishTokensHelperName(g *Generator) string {
+	if len(g.Subs) == 0 && !forwardingActive(g) && len(g.DynamicArgs) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("__%s_tokens", fishFuncName(g.AppName))
+}
+
+func fishWriteTokensHelper(sb *strings.Builder, helperName string) {
+	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
+	fmt.Fprint(sb, "    set -l major (string split . -- $version)[1]\n")
+	fmt.Fprint(sb, "    set -l tokens\n")
+	fmt.Fprint(sb, "    if test $major -ge 4\n")
+	fmt.Fprint(sb, "        set tokens (commandline -xpc)\n")
+	fmt.Fprint(sb, "    else\n")
+	fmt.Fprint(sb, "        set tokens (commandline -opc)\n")
+	fmt.Fprint(sb, "    end\n")
+	fmt.Fprint(sb, "    if set -q tokens[1]\n")
+	fmt.Fprintf(sb, "        printf '%%s\\n' $tokens\n")
+	fmt.Fprint(sb, "    end\n")
+	fmt.Fprint(sb, "end\n")
+}
+
 // fishDynamicCall returns the command that produces dynamic completions for a
 // flag value, appending forwarded context flags when forwarding is in play.
 func fishDynamicCall(g *Generator, predictor string) string {
@@ -150,9 +185,14 @@ func fishDynamicCall(g *Generator, predictor string) string {
 
 // fishWriteForwardedFlagsHelper emits a helper that scans the command line and
 // prints each forwardable context flag as --name=value, one per line.
-func fishWriteForwardedFlagsHelper(sb *strings.Builder, helperName string, fwd []forwardSpec) {
+func fishWriteForwardedFlagsHelper(
+	sb *strings.Builder,
+	helperName string,
+	tokenHelper string,
+	fwd []forwardSpec,
+) {
 	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
-	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
+	fmt.Fprintf(sb, "    set -l tokens (%s)\n", tokenHelper)
 	fmt.Fprint(sb, "    set -e tokens[1]\n")
 	fmt.Fprint(sb, "    set -l forwarded\n")
 	fmt.Fprint(sb, "    set -l skip_next 0\n")
@@ -214,6 +254,7 @@ func fishWriteDynamicArgsHelper(
 	g *Generator,
 	sb *strings.Builder,
 	helperName string,
+	tokenHelper string,
 	specs []Spec,
 	dynamicArgs []string,
 	cmdSkip int,
@@ -224,7 +265,7 @@ func fishWriteDynamicArgsHelper(
 	exact, equals := argValuePatterns(specs)
 	fwdFn := fishForwardHelperName(g)
 	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
-	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
+	fmt.Fprintf(sb, "    set -l tokens (%s)\n", tokenHelper)
 	fmt.Fprint(sb, "    set -e tokens[1]\n")
 	fmt.Fprint(sb, "    set -l positional\n")
 	fmt.Fprint(sb, "    set -l skip_next 0\n")
@@ -282,13 +323,14 @@ func fishDynamicArgsCall(g *Generator, da, fwdFn string, first bool) string {
 func fishWritePositionalCountHelper(
 	sb *strings.Builder,
 	helperName string,
+	tokenHelper string,
 	specs []Spec,
 	cmdSkip int,
 	maxPositionalArgs int,
 ) {
 	exact, equals := argValuePatterns(specs)
 	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
-	fmt.Fprint(sb, "    set -l tokens (commandline -xpc)\n")
+	fmt.Fprintf(sb, "    set -l tokens (%s)\n", tokenHelper)
 	fmt.Fprint(sb, "    set -e tokens[1]\n")
 	fmt.Fprint(sb, "    set -l positional\n")
 	fmt.Fprint(sb, "    set -l skip_next 0\n")
@@ -469,7 +511,7 @@ func fishWriteCommaFunctions(
 	}
 }
 
-func fishWriteHelpers(g *Generator, sb *strings.Builder, funcID string) {
+func fishWriteHelpers(g *Generator, sb *strings.Builder, funcID string, tokenHelper string) {
 	optspecsFn := fmt.Sprintf("__%s_global_optspecs", funcID)
 	needsFn := fmt.Sprintf("__%s_needs_command", funcID)
 	usingFn := fmt.Sprintf("__%s_using_subcommand", funcID)
@@ -500,7 +542,7 @@ func fishWriteHelpers(g *Generator, sb *strings.Builder, funcID string) {
 
 	fmt.Fprintf(sb, `
 function %[1]s
-    set -l cmd (commandline -xpc)
+    set -l cmd (%[5]s)
     set -e cmd[1]
     argparse -s (%[2]s) -- $cmd 2>/dev/null
     or return
@@ -529,7 +571,7 @@ function %[4]s
     and return 1
     contains -- $cmd[1] $argv
 end
-`, needsFn, optspecsFn, usingFn, usingPrimaryFn)
+`, needsFn, optspecsFn, usingFn, usingPrimaryFn, tokenHelper)
 }
 
 func fishWriteSubEntries(
@@ -548,6 +590,7 @@ func fishWriteSubTree(
 	sb *strings.Builder,
 	subs []SubSpec,
 	usingSub, usingPrimarySub, parentCondition, pathPrefix, funcID string,
+	tokenHelper string,
 	inheritedSpecs []Spec,
 	depth int,
 	funcLookup map[string]string,
@@ -599,7 +642,14 @@ func fishWriteSubTree(
 		if sub.HasMaxPositionalArgs {
 			guardName := fmt.Sprintf("__%s_%s_accepts_positional", funcID, subPath)
 			allSpecs := appendSpecs(inheritedSpecs, sub.Specs)
-			fishWritePositionalCountHelper(sb, guardName, allSpecs, depth, sub.MaxPositionalArgs)
+			fishWritePositionalCountHelper(
+				sb,
+				guardName,
+				tokenHelper,
+				allSpecs,
+				depth,
+				sub.MaxPositionalArgs,
+			)
 			if positionalCondition != "" {
 				positionalCondition += "; and " + guardName
 			} else {
@@ -612,7 +662,15 @@ func fishWriteSubTree(
 		if hasDynArgs {
 			helperName := fmt.Sprintf("__%s_%s_dynamic_args", funcID, subPath)
 			allSpecs := appendSpecs(inheritedSpecs, sub.Specs)
-			fishWriteDynamicArgsHelper(g, sb, helperName, allSpecs, sub.DynamicArgs, depth)
+			fishWriteDynamicArgsHelper(
+				g,
+				sb,
+				helperName,
+				tokenHelper,
+				allSpecs,
+				sub.DynamicArgs,
+				depth,
+			)
 			fmt.Fprintf(
 				sb,
 				`
@@ -634,6 +692,7 @@ complete -c %s -n '%s' -a "(%s)" -f
 				seenCondition,
 				subPath,
 				funcID,
+				tokenHelper,
 				nextInherited,
 				depth+1,
 				funcLookup,
