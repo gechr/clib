@@ -174,17 +174,56 @@ func Dark() *Theme {
 }
 
 // Light returns clib's default light-background theme.
+//
+// The help styles come from the light palette, but the semantic color slots
+// (Red/Green/Yellow/Blue/Magenta/Orange/BoldGreen) and the time-ago gradient
+// are set explicitly so they faithfully mirror [Dark]'s meaning with
+// light-background contrast. Deriving them from the help palette would scramble
+// semantics (e.g. Green would render as the palette's blue "arg" color).
 func Light() *Theme {
-	return fromPalette(themeNameLight, BackgroundLight, palette{
+	t := fromPalette(themeNameLight, BackgroundLight, palette{
 		heading:     lipgloss.Color("#8a6500"),
 		command:     lipgloss.Color("#256d1b"),
 		subcommand:  lipgloss.Color("#006d75"),
-		backtick:    lipgloss.Color("#9a4d00"),
+		backtick:    lipgloss.Color("#0e7490"),
 		flag:        lipgloss.Color("#a11d33"),
 		arg:         lipgloss.Color("#2459b3"),
 		argOptional: lipgloss.Color("#7047b5"),
 		comment:     lipgloss.Color("#5f6368"),
 	})
+
+	// Faithful light-contrast semantic colors (mirroring Dark's meaning).
+	red := lipgloss.Color("#cf222e")
+	green := lipgloss.Color("#1a7f37")
+	yellow := lipgloss.Color("#9a6700")
+	blue := lipgloss.Color("#0969da")
+	magenta := lipgloss.Color("#8250df")
+	orange := lipgloss.Color("#bc4c00")
+
+	t.Red = new(lipgloss.NewStyle().Foreground(red))
+	t.Green = new(lipgloss.NewStyle().Foreground(green))
+	t.Yellow = new(lipgloss.NewStyle().Foreground(yellow))
+	t.Blue = new(lipgloss.NewStyle().Foreground(blue))
+	t.Magenta = new(lipgloss.NewStyle().Foreground(magenta))
+	t.Orange = new(lipgloss.NewStyle().Foreground(orange))
+	t.BoldGreen = new(lipgloss.NewStyle().Bold(true).Foreground(green))
+
+	// Time-ago gradient: recent = green, aging through yellow/orange, old = red.
+	t.TimeAgoThresholds = []TimeAgoThreshold{
+		{MaxAge: time.Minute, Style: lipgloss.NewStyle().Bold(true).Foreground(green)},
+		{MaxAge: time.Hour, Style: lipgloss.NewStyle().Bold(true).Foreground(green)},
+		{MaxAge: human.HoursPerDay * time.Hour, Style: lipgloss.NewStyle().Foreground(green)},
+		{
+			MaxAge: 14 * human.HoursPerDay * time.Hour,
+			Style:  lipgloss.NewStyle().Foreground(yellow),
+		},
+		{
+			MaxAge: 30 * human.HoursPerDay * time.Hour,
+			Style:  lipgloss.NewStyle().Foreground(orange),
+		},
+	}
+
+	return t
 }
 
 // With returns a copy of t with the given options applied.
