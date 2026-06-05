@@ -45,7 +45,7 @@ const (
 	themeKeyTokyoNight          = "tokyonight"
 )
 
-var validThemeNames = []string{
+var themeNames = []string{
 	themeNameDark,
 	themeNameLight,
 	themeNameCatppuccinFrappe,
@@ -66,6 +66,11 @@ var validThemeNames = []string{
 	themeNameSolarizedDark,
 	themeNameSolarizedLight,
 	themeNameTokyoNight,
+}
+
+// Names returns the built-in theme names accepted by [Theme.UnmarshalText].
+func Names() []string {
+	return append([]string(nil), themeNames...)
 }
 
 func normalizePresetName(name string) string {
@@ -146,7 +151,7 @@ func (t *Theme) UnmarshalText(text []byte) error {
 	case themeKeyTokyoNight:
 		*t = *TokyoNight()
 	default:
-		return fmt.Errorf("unknown theme %q (valid: %s)", text, strings.Join(validThemeNames, ", "))
+		return fmt.Errorf("unknown theme %q (valid: %s)", text, strings.Join(themeNames, ", "))
 	}
 	return nil
 }

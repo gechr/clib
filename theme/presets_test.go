@@ -171,6 +171,44 @@ func TestThemeMarshalTextCustom(t *testing.T) {
 	require.EqualError(t, err, "cannot marshal custom theme")
 }
 
+func TestNames(t *testing.T) {
+	want := []string{
+		"dark",
+		"light",
+		"catppuccin-frappe",
+		"catppuccin-latte",
+		"catppuccin-macchiato",
+		"catppuccin-mocha",
+		"dracula",
+		"gruvbox-dark",
+		"gruvbox-light",
+		"monokai",
+		"monochrome-dark",
+		"monochrome-light",
+		"nord",
+		"one-dark",
+		"plain-dark",
+		"plain-light",
+		"synthwave",
+		"solarized-dark",
+		"solarized-light",
+		"tokyo-night",
+	}
+
+	got := theme.Names()
+	require.Equal(t, want, got)
+
+	got[0] = "mutated"
+	require.Equal(t, want, theme.Names())
+
+	for _, name := range want {
+		t.Run(name, func(t *testing.T) {
+			var got theme.Theme
+			require.NoError(t, got.UnmarshalText([]byte(name)))
+		})
+	}
+}
+
 func TestThemeUnmarshalTextInvalid(t *testing.T) {
 	var got theme.Theme
 	err := got.UnmarshalText([]byte("bogus"))
@@ -195,27 +233,5 @@ func TestThemeUnmarshalTextInvalidNames(t *testing.T) {
 }
 
 func unknownThemeError(input string) string {
-	valid := []string{
-		"dark",
-		"light",
-		"catppuccin-frappe",
-		"catppuccin-latte",
-		"catppuccin-macchiato",
-		"catppuccin-mocha",
-		"dracula",
-		"gruvbox-dark",
-		"gruvbox-light",
-		"monokai",
-		"monochrome-dark",
-		"monochrome-light",
-		"nord",
-		"one-dark",
-		"plain-dark",
-		"plain-light",
-		"synthwave",
-		"solarized-dark",
-		"solarized-light",
-		"tokyo-night",
-	}
-	return fmt.Sprintf("unknown theme %q (valid: %s)", input, strings.Join(valid, ", "))
+	return fmt.Sprintf("unknown theme %q (valid: %s)", input, strings.Join(theme.Names(), ", "))
 }
