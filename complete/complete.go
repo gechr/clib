@@ -536,8 +536,7 @@ func argValuePatterns(specs []Spec) ([]string, []string) {
 
 // SortSubSpecs returns a copy of subs sorted by name.
 func SortSubSpecs(subs []SubSpec) []SubSpec {
-	sorted := make([]SubSpec, len(subs))
-	copy(sorted, subs)
+	sorted := slices.Clone(subs)
 	slices.SortStableFunc(sorted, func(a, b SubSpec) int {
 		return strings.Compare(a.Name, b.Name)
 	})

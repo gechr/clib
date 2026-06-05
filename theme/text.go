@@ -2,6 +2,7 @@ package theme
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -70,7 +71,7 @@ var themeNames = []string{
 
 // Names returns the built-in theme names accepted by [Theme.UnmarshalText].
 func Names() []string {
-	return append([]string(nil), themeNames...)
+	return slices.Clone(themeNames)
 }
 
 func normalizePresetName(name string) string {
