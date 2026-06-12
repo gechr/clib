@@ -5,18 +5,18 @@ go 1.26.2
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 require (
-	charm.land/lipgloss/v2 v2.0.3
+	charm.land/lipgloss/v2 v2.0.4
 	github.com/alecthomas/kong v1.15.0
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/term v0.2.2
-	github.com/gechr/x v0.0.10
+	github.com/gechr/x v0.0.12
 	github.com/muesli/termenv v0.16.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.9.0
+	github.com/urfave/cli/v3 v3.9.1
 )
 
 require (
@@ -217,8 +217,8 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
