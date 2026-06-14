@@ -1,0 +1,42 @@
+# myapp Nushell completion
+
+def "_myapp_forwarded_flags" [context: string] {
+    let toks = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    mut out = []
+    mut skipnext = false
+    mut name = ""
+    for t in $toks {
+        if $skipnext {
+            if $name != "" { $out = ($out | append $"--($name)=($t)"); $name = "" }
+            $skipnext = false
+            continue
+        }
+        if $t == "--" { break }
+        if $t == "--profile" or $t == "-p" { $skipnext = true; $name = 'profile'; continue }
+        if ($t | str starts-with "--profile=") { $out = ($out | append $t); continue }
+        if ($t | str starts-with "-p=") { $out = ($out | append $"--profile=($t | str substring 3..)"); continue }
+    }
+    $out
+}
+
+extern "myapp" [
+    --profile(-p): string  # Active profile
+    --verbose(-v)  # Verbose output
+]
+
+def "nu-complete myapp deploy tags" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    try { ^myapp "--@complete=tag" -- ...(_myapp_forwarded_flags $context) | lines } catch { [] } | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+def "nu-complete myapp deploy target" [context: string] {
+    try { ^myapp "--@complete=target" -- ...(_myapp_forwarded_flags $context) | lines } catch { [] }
+}
+
+extern "myapp deploy" [
+    --profile(-p): string  # Active profile
+    --tags: string@"nu-complete myapp deploy tags"  # Tags to apply
+    --target: string@"nu-complete myapp deploy target"  # Target name
+]

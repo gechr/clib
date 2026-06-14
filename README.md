@@ -9,7 +9,7 @@ A reusable Go library that plugs into existing CLI frameworks to add helpers, sh
 | `cli/cobra`  | [Cobra](https://github.com/spf13/cobra) framework adapters                     |
 | `cli/kong`   | [Kong](https://github.com/alecthomas/kong) framework adapters                  |
 | `cli/urfave` | [urfave/cli](https://github.com/urfave/cli) framework adapters                 |
-| `complete`   | Shell completion generation (bash, zsh, fish, pwsh, elvish)                    |
+| `complete`   | Shell completion generation (bash, zsh, fish, pwsh, elvish, nu)                |
 | `help`       | Structured help rendering with themed output                                   |
 | `theme`      | Configurable theme (via [lipgloss](https://github.com/charmbracelet/lipgloss)) |
 

@@ -1,0 +1,22 @@
+# myapp Nushell completion
+
+def "nu-complete myapp format" [] {
+    [
+        {value: 'json', description: 'JSON output'}
+        {value: 'yaml', description: 'YAML output'}
+        {value: 'text', description: 'Plain text'}
+    ]
+}
+
+def "nu-complete myapp tags" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    ['bug' 'feature' 'docs'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+extern "myapp" [
+    --format(-f): string@"nu-complete myapp format"  # Output format
+    --tags(-t): string@"nu-complete myapp tags"  # Filter tags
+    --verbose(-v)  # Verbose output
+]

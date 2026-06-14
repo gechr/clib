@@ -1,0 +1,10 @@
+# myapp Nushell completion
+
+def "nu-complete myapp method" [] {
+    ['ssh' 'https']
+}
+
+extern "myapp" [
+    --method: string@"nu-complete myapp method"  # Clone method
+    --verbose(-v)  # Verbose output
+]

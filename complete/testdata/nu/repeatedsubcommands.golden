@@ -1,0 +1,28 @@
+# tool Nushell completion
+
+extern "tool" [
+]
+
+extern "tool container" [
+]
+
+extern "tool container login" [
+    --registry: string  # Registry URL
+]
+
+extern "tool foo" [
+]
+
+extern "tool foo login" [
+]
+
+extern "tool foo login bar" [
+]
+
+extern "tool foo login bar login" [
+    --bar-token: string  # Bar token
+]
+
+extern "tool login" [
+    --user(-u): string  # User name
+]

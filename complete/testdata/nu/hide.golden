@@ -1,0 +1,7 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    -i: string  # Filter by regex
+    --include: string  # Include by name
+    --verbose  # Verbose output
+]

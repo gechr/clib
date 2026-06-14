@@ -1,0 +1,62 @@
+# pdc Nushell completion
+
+def "_pdc_positionals" [context: string, cmdskip: int, valueflags: list<string>] {
+    let trailing = ($context | str ends-with " ")
+    let toks0 = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })
+    mut pos = []
+    mut skipnext = false
+    mut dashdash = false
+    mut skip = $cmdskip
+    for t in $toks {
+        if $dashdash { $pos = ($pos | append $t); continue }
+        if $skipnext { $skipnext = false; continue }
+        if $t == "--" { $dashdash = true; continue }
+        if ($t in $valueflags) { $skipnext = true; continue }
+        if ($t | str starts-with "-") { continue }
+        if $skip > 0 { $skip = ($skip - 1); continue }
+        $pos = ($pos | append $t)
+    }
+    $pos
+}
+
+extern "pdc" [
+]
+
+extern "pdc incident" [
+]
+
+def "nu-complete pdc incident show args" [context: string] {
+    let positional = (_pdc_positionals $context 2 [])
+    let n = ($positional | length)
+    let kind = (if $n == 0 { 'incident' } else { 'incident' })
+    let first = ($n == 0)
+    if $first {
+        try { ^pdc $"--@complete=($kind)" | lines } catch { [] }
+    } else {
+        try { ^pdc $"--@complete=($kind)" -- ...$positional | lines } catch { [] }
+    }
+}
+
+extern "pdc incident show" [
+    ...rest: string@"nu-complete pdc incident show args"
+]
+
+extern "pdc user" [
+]
+
+def "nu-complete pdc user show args" [context: string] {
+    let positional = (_pdc_positionals $context 2 [])
+    let n = ($positional | length)
+    let kind = (if $n == 0 { 'user' } else { 'user' })
+    let first = ($n == 0)
+    if $first {
+        try { ^pdc $"--@complete=($kind)" | lines } catch { [] }
+    } else {
+        try { ^pdc $"--@complete=($kind)" -- ...$positional | lines } catch { [] }
+    }
+}
+
+extern "pdc user show" [
+    ...rest: string@"nu-complete pdc user show args"
+]

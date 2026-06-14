@@ -1,0 +1,63 @@
+# myapp Nushell completion
+
+def "_myapp_forwarded_flags" [context: string] {
+    let toks = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    mut out = []
+    mut skipnext = false
+    mut name = ""
+    for t in $toks {
+        if $skipnext {
+            if $name != "" { $out = ($out | append $"--($name)=($t)"); $name = "" }
+            $skipnext = false
+            continue
+        }
+        if $t == "--" { break }
+        if $t == "--category" or $t == "-c" { $skipnext = true; $name = 'category'; continue }
+        if ($t | str starts-with "--category=") { $out = ($out | append $t); continue }
+        if ($t | str starts-with "-c=") { $out = ($out | append $"--category=($t | str substring 3..)"); continue }
+        if $t == "--filter" { $skipnext = true; $name = 'filter'; continue }
+        if ($t | str starts-with "--filter=") { $out = ($out | append $t); continue }
+    }
+    $out
+}
+
+def "_myapp_positionals" [context: string, cmdskip: int, valueflags: list<string>] {
+    let trailing = ($context | str ends-with " ")
+    let toks0 = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })
+    mut pos = []
+    mut skipnext = false
+    mut dashdash = false
+    mut skip = $cmdskip
+    for t in $toks {
+        if $dashdash { $pos = ($pos | append $t); continue }
+        if $skipnext { $skipnext = false; continue }
+        if $t == "--" { $dashdash = true; continue }
+        if ($t in $valueflags) { $skipnext = true; continue }
+        if ($t | str starts-with "-") { continue }
+        if $skip > 0 { $skip = ($skip - 1); continue }
+        $pos = ($pos | append $t)
+    }
+    $pos
+}
+
+def "nu-complete myapp category" [] {
+    ['alpha' 'beta' 'gamma']
+}
+
+def "nu-complete myapp args" [context: string] {
+    let positional = (_myapp_positionals $context 0 ['--category' '-c' '--filter'])
+    let n = ($positional | length)
+    let kind = (if $n == 0 { 'items' } else if $n == 1 { 'values' } else { 'values' })
+    let first = ($n == 0)
+    let fwd = (_myapp_forwarded_flags $context)
+    let extra = (if $first { [] } else { $positional })
+    try { ^myapp $"--@complete=($kind)" -- ...$fwd ...$extra | lines } catch { [] }
+}
+
+extern "myapp" [
+    --category(-c): string@"nu-complete myapp category"  # Target category
+    --filter: string  # Result filter
+    --verbose(-v)  # Verbose output
+    ...rest: string@"nu-complete myapp args"
+]

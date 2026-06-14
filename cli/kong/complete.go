@@ -10,6 +10,7 @@ import (
 	_ "github.com/gechr/clib/complete/bash"   // register shell generators
 	_ "github.com/gechr/clib/complete/elvish" // register shell generators
 	_ "github.com/gechr/clib/complete/fish"   // register shell generators
+	_ "github.com/gechr/clib/complete/nu"     // register shell generators
 	_ "github.com/gechr/clib/complete/pwsh"   // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"    // register shell generators
 )

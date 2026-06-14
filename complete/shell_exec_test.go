@@ -212,6 +212,29 @@ func driveFish(t *testing.T, gen *complete.Generator, line string) string {
 	return readHandlerLog(t, logPath)
 }
 
+// driveNu drives the Nushell completion via `nu --ide-complete`: it writes the
+// generated externs followed by the command line being completed, then asks
+// Nushell for the candidates at the end-of-file cursor. The trailing space in
+// line requests completion of the next token. Unlike the other shells, Nushell
+// selects the matching `extern` by the leading run of bare words, so global
+// flags must follow the subcommand (the idiomatic Nushell ordering).
+func driveNu(t *testing.T, gen *complete.Generator, line string) string {
+	t.Helper()
+	nu := lookShell(t, "nu")
+	dir, scriptPath, logPath := completionEnv(t, gen, "nu")
+
+	script, err := os.ReadFile(scriptPath)
+	require.NoError(t, err)
+	probe := string(script) + "\n" + line
+	probePath := filepath.Join(dir, "probe.nu")
+	require.NoError(t, os.WriteFile(probePath, []byte(probe), 0o644))
+
+	cmd := exec.Command(nu, "--ide-complete", strconv.Itoa(len(probe)), probePath)
+	cmd.Env = shellEnv(dir, logPath)
+	_ = cmd.Run()
+	return readHandlerLog(t, logPath)
+}
+
 // driveZshForwarded sources the zsh completion and runs its forwarded-flags
 // helper over the given words, returning the collected __fwd entries. Driving
 // zsh's full _arguments flow headlessly is unreliable, so this exercises the
@@ -398,4 +421,69 @@ func TestShellExec_BashCommaDynamicValuesPreserveSpaces(t *testing.T) {
 		[]string{"To Do,In Progress"},
 		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "To Do,In"}, 2),
 	)
+}
+
+func TestShellExec_Nu(t *testing.T) {
+	fv := genForwardFlagValue()
+	da := genForwardDynamicArgs()
+	col := genForwardShortCollision()
+
+	// Nushell command lines place global flags after the subcommand, matching how
+	// Nushell resolves the `extern` by the leading bare words. The expected
+	// handler invocations are identical to the other shells.
+	cases := []struct {
+		name string
+		gen  *complete.Generator
+		line string
+		want string
+	}{
+		{
+			name: "flag_value_forwards_context",
+			gen:  fv,
+			line: "myapp deploy -p prod --target ",
+			want: "--@complete=target -- --profile=prod",
+		},
+		{
+			name: "positional_slot0_no_context",
+			gen:  da,
+			line: "myapp ",
+			want: "--@complete=items --",
+		},
+		{
+			name: "positional_slot0_forwarded_equals",
+			gen:  da,
+			line: "myapp --category=alpha ",
+			want: "--@complete=items -- --category=alpha",
+		},
+		{
+			name: "positional_real_arg_advances_slot",
+			gen:  da,
+			line: "myapp --category=alpha widget ",
+			want: "--@complete=values -- --category=alpha widget",
+		},
+		{
+			name: "terminator_stops_forwarding",
+			gen:  da,
+			line: "myapp -- --category alpha ",
+			want: "--@complete=values -- --category alpha",
+		},
+		{
+			name: "collision_short_not_forwarded",
+			gen:  col,
+			line: "myapp two -p acme --target ",
+			want: "--@complete=target --",
+		},
+		{
+			name: "collision_long_forwarded",
+			gen:  col,
+			line: "myapp two --project acme --target ",
+			want: "--@complete=target -- --project=acme",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, driveNu(t, tc.gen, tc.line))
+		})
+	}
 }

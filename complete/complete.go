@@ -327,6 +327,8 @@ func builtInShellFunc(name string) (ShellFunc, bool) {
 		return GeneratePwsh, true
 	case shell.Elvish:
 		return GenerateElvish, true
+	case shell.Nu:
+		return GenerateNu, true
 	default:
 		return nil, false
 	}
@@ -340,7 +342,7 @@ func resolveShellFunc(name string) (ShellFunc, bool) {
 }
 
 func supportedShells() string {
-	names := []string{shell.Bash, shell.Zsh, shell.Fish, shell.Pwsh, shell.Elvish}
+	names := []string{shell.Bash, shell.Zsh, shell.Fish, shell.Pwsh, shell.Elvish, shell.Nu}
 	var custom []string
 	for name := range shellRegistry {
 		if !slices.Contains(names, name) {

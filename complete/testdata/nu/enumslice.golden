@@ -1,0 +1,24 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --verbose(-v)  # Verbose output
+]
+
+extern "myapp get" [
+]
+
+def "nu-complete myapp list include" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    [
+        {value: 'name', description: 'Display name'}
+        {value: 'email', description: 'Email address'}
+        {value: 'avatar', description: 'Profile picture'}
+    ] | where {|r| $r.value not-in $selected } | each {|r| {value: $"($prefix)($r.value)", description: $r.description} }
+}
+
+extern "myapp list" [
+    --include: string@"nu-complete myapp list include"  # Fields to include
+    --limit: string  # Max results
+]

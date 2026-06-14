@@ -527,7 +527,7 @@ func TestGolden(t *testing.T) {
 		"valuedesc":               genValueDesc(),
 	}
 
-	shells := []string{"bash", "zsh", "fish", "pwsh", "elvish"}
+	shells := []string{"bash", "zsh", "fish", "pwsh", "elvish", "nu"}
 
 	for name, gen := range scenarios {
 		for _, sh := range shells {

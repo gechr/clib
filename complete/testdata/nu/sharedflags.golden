@@ -1,0 +1,43 @@
+# myapp Nushell completion
+
+extern "myapp" [
+]
+
+def "nu-complete myapp get include" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    ['name' 'email'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+def "nu-complete myapp get status" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    ['draft' 'published'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+extern "myapp get" [
+    --include: string@"nu-complete myapp get include"  # Fields to include
+    --status: string@"nu-complete myapp get status"  # Filter by status
+]
+
+def "nu-complete myapp list include" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    ['name' 'email'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+def "nu-complete myapp list status" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    ['active' 'inactive'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+extern "myapp list" [
+    --include: string@"nu-complete myapp list include"  # Fields to include
+    --status: string@"nu-complete myapp list status"  # Filter by status
+    --verbose(-v)  # Verbose output
+]

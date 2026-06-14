@@ -1,0 +1,18 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --root-local  # Root local
+    --root-persistent  # Root persistent
+]
+
+extern "myapp parent" [
+    --parent-local  # Parent local
+    --parent-persistent  # Parent persistent
+    --root-persistent  # Root persistent
+]
+
+extern "myapp parent child" [
+    --child-local  # Child local
+    --parent-persistent  # Parent persistent
+    --root-persistent  # Root persistent
+]

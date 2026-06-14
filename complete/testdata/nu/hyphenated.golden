@@ -1,0 +1,12 @@
+# my-app Nushell completion
+
+extern "my-app" [
+    --verbose(-v)  # Verbose output
+]
+
+extern "my-app build" [
+    --output(-o): string  # Output path
+]
+
+extern "my-app test" [
+]

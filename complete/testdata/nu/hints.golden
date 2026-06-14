@@ -1,0 +1,11 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --config(-c): path  # Config file
+    --dir(-d): directory  # Directory
+    --host: string  # Host name
+    --output(-o): path  # Output path
+    --shell: string  # Shell command
+    --user: string  # User name
+    --verbose(-v)  # Verbose output
+]

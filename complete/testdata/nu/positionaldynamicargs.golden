@@ -1,0 +1,63 @@
+# acme-plugin Nushell completion
+
+def "_acme_plugin_positionals" [context: string, cmdskip: int, valueflags: list<string>] {
+    let trailing = ($context | str ends-with " ")
+    let toks0 = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })
+    mut pos = []
+    mut skipnext = false
+    mut dashdash = false
+    mut skip = $cmdskip
+    for t in $toks {
+        if $dashdash { $pos = ($pos | append $t); continue }
+        if $skipnext { $skipnext = false; continue }
+        if $t == "--" { $dashdash = true; continue }
+        if ($t in $valueflags) { $skipnext = true; continue }
+        if ($t | str starts-with "-") { continue }
+        if $skip > 0 { $skip = ($skip - 1); continue }
+        $pos = ($pos | append $t)
+    }
+    $pos
+}
+
+extern "acme-plugin" [
+    --verbose(-v)  # Verbose output
+]
+
+def "nu-complete acme-plugin complete args" [context: string] {
+    let positional = (_acme_plugin_positionals $context 1 [])
+    let n = ($positional | length)
+    if $n >= 1 { return [] }
+    let kind = (if $n == 0 { 'complete-kind' } else { 'complete-kind' })
+    let first = ($n == 0)
+    if $first {
+        try { ^acme-plugin $"--@complete=($kind)" | lines } catch { [] }
+    } else {
+        try { ^acme-plugin $"--@complete=($kind)" -- ...$positional | lines } catch { [] }
+    }
+}
+
+extern "acme-plugin complete" [
+    ...rest: string@"nu-complete acme-plugin complete args"
+]
+
+def "nu-complete acme-plugin resolve args" [context: string] {
+    let positional = (_acme_plugin_positionals $context 1 [])
+    let n = ($positional | length)
+    if $n >= 2 { return [] }
+    let kind = (if $n == 0 { 'resolve-kind' } else { 'resolve-kind' })
+    let first = ($n == 0)
+    if $first {
+        try { ^acme-plugin $"--@complete=($kind)" | lines } catch { [] }
+    } else {
+        try { ^acme-plugin $"--@complete=($kind)" -- ...$positional | lines } catch { [] }
+    }
+}
+
+extern "acme-plugin resolve" [
+    ...rest: string@"nu-complete acme-plugin resolve args"
+]
+
+extern "acme-plugin send" [
+    --to: string  # Recipient
+]

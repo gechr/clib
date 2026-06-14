@@ -1,0 +1,31 @@
+# clibapp Nushell completion
+
+def "nu-complete clibapp author" [] {
+    try { ^clibapp "--@complete=author" | lines } catch { [] }
+}
+
+def "nu-complete clibapp ci" [] {
+    ['success' 'failure' 'pending']
+}
+
+def "nu-complete clibapp columns" [context: string] {
+    let tok = (if ($context | str ends-with " ") { "" } else { $context | split row " " | last })
+    let prefix = ($tok | str replace -r '[^,]*$' '')
+    let selected = ($prefix | split row "," | where {|x| $x != "" })
+    try { ^clibapp "--@complete=columns" | lines } catch { [] } | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
+}
+
+def "nu-complete clibapp state" [] {
+    ['open' 'closed' 'merged' 'all']
+}
+
+extern "clibapp" [
+    --author(-a): string@"nu-complete clibapp author"  # Author
+    --ci: string@"nu-complete clibapp ci"  # CI status
+    --columns: string@"nu-complete clibapp columns"  # Table columns
+    --limit(-L): string  # Max results
+    --merge  # Auto-merge
+    --no-merge  # Disable auto-merge
+    --state(-s): string@"nu-complete clibapp state"  # State
+    --verbose(-v)  # Verbose
+]

@@ -1,0 +1,19 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --verbose  # Verbose
+]
+
+extern "myapp auth" [
+    --token: string  # Auth token
+]
+
+extern "myapp auth login" [
+    --browser  # Open browser
+]
+
+extern "myapp auth logout" [
+]
+
+extern "myapp run" [
+]

@@ -1,0 +1,13 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --verbose(-v)  # Verbose output
+]
+
+extern "myapp edit" [
+    --editor: string  # Editor command
+    ...rest: path
+]
+
+extern "myapp list" [
+]

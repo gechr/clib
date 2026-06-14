@@ -11,6 +11,7 @@ import (
 	_ "github.com/gechr/clib/complete/bash"   // register shell generators
 	_ "github.com/gechr/clib/complete/elvish" // register shell generators
 	_ "github.com/gechr/clib/complete/fish"   // register shell generators
+	_ "github.com/gechr/clib/complete/nu"     // register shell generators
 	_ "github.com/gechr/clib/complete/pwsh"   // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"    // register shell generators
 	"github.com/gechr/clib/internal/tag"
@@ -318,6 +319,7 @@ func CompletionCommand(
 		shellCmd(shell.Bash),
 		shellCmd(shell.Elvish),
 		shellCmd(shell.Fish),
+		shellCmd(shell.Nu),
 		shellCmd(shell.Pwsh),
 		shellCmd(shell.Zsh),
 	)

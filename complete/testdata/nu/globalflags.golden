@@ -1,0 +1,27 @@
+# myapp Nushell completion
+
+def "nu-complete myapp color" [] {
+    ['auto' 'always' 'never']
+}
+
+extern "myapp" [
+    --color: string@"nu-complete myapp color"  # Color mode
+    --config: string  # Config file
+    -h  # Show help
+    --help  # Show help
+    --no-config  # Disable config
+    --no-proxy  # Ignore proxies
+    --verbose(-v)  # Verbose output
+]
+
+def "nu-complete myapp run output" [] {
+    ['text' 'json']
+}
+
+extern "myapp run" [
+    --dry-run(-n)  # Dry run
+    --output(-o): string@"nu-complete myapp run output"  # Output format
+]
+
+extern "myapp version" [
+]

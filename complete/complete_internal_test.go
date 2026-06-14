@@ -188,6 +188,7 @@ func TestBuiltInShellFunc(t *testing.T) {
 		{"zsh", "zsh", true},
 		{"pwsh", "pwsh", true},
 		{"elvish", "elvish", true},
+		{"nu", "nu", true},
 		{"empty", "", false},
 		{"powershell", "powershell", false},
 	}

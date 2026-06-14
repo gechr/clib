@@ -1,0 +1,6 @@
+# myapp Nushell completion
+
+extern "myapp" [
+    --config(-c): path  # Config file
+    --verbose(-v)  # Verbose output
+]
