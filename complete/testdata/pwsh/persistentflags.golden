@@ -1,0 +1,53 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'myapp;parent' { 'myapp;parent'; break }
+            'myapp;parent;child' { 'myapp;parent;child'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            [CompletionResult]::new('--root-local', '--root-local', [CompletionResultType]::ParameterName, 'Root local')
+            [CompletionResult]::new('--root-persistent', '--root-persistent', [CompletionResultType]::ParameterName, 'Root persistent')
+            [CompletionResult]::new('parent', 'parent', [CompletionResultType]::ParameterValue, 'Parent command')
+            break
+        }
+        'myapp;parent' {
+            [CompletionResult]::new('--parent-local', '--parent-local', [CompletionResultType]::ParameterName, 'Parent local')
+            [CompletionResult]::new('--parent-persistent', '--parent-persistent', [CompletionResultType]::ParameterName, 'Parent persistent')
+            [CompletionResult]::new('--root-persistent', '--root-persistent', [CompletionResultType]::ParameterName, 'Root persistent')
+            [CompletionResult]::new('child', 'child', [CompletionResultType]::ParameterValue, 'Child command')
+            break
+        }
+        'myapp;parent;child' {
+            [CompletionResult]::new('--child-local', '--child-local', [CompletionResultType]::ParameterName, 'Child local')
+            [CompletionResult]::new('--parent-persistent', '--parent-persistent', [CompletionResultType]::ParameterName, 'Parent persistent')
+            [CompletionResult]::new('--root-persistent', '--root-persistent', [CompletionResultType]::ParameterName, 'Root persistent')
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

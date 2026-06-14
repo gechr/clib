@@ -1,0 +1,124 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+function __myapp_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+
+function __myapp_ForwardedFlags {
+    param([string[]]$Tokens)
+    $forwarded = @()
+    $skipNext = $false
+    $name = ''
+    foreach ($t in $Tokens) {
+        if ($skipNext) {
+            if ($name -ne '') { $forwarded += "--$name=$t"; $name = '' }
+            $skipNext = $false
+            continue
+        }
+        if ($t -eq '--') { break }
+        switch -regex ($t) {
+            '^(--category|-c)$' { $skipNext = $true; $name = 'category'; break }
+            '^--category=' { $forwarded += $t; break }
+            '^-c=' { $forwarded += ('--category=' + $t.Substring(3)); break }
+            '^(--filter)$' { $skipNext = $true; $name = 'filter'; break }
+            '^--filter=' { $forwarded += $t; break }
+            default { }
+        }
+    }
+    , $forwarded
+}
+
+function __myapp_Positionals {
+    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)
+    $positional = @()
+    $skipNext = $false
+    $afterDoubleDash = $false
+    $skip = $CmdSkip
+    foreach ($t in $Tokens) {
+        if ($afterDoubleDash) { $positional += $t; continue }
+        if ($skipNext) { $skipNext = $false; continue }
+        if ($t -eq '--') { $afterDoubleDash = $true; continue }
+        if ($ValueFlags -contains $t) { $skipNext = $true; continue }
+        if ($t -match '^-.+=') { continue }
+        if ($t -like '-*') { continue }
+        if ($skip -gt 0) { $skip--; continue }
+        $positional += $t
+    }
+    , $positional
+}
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            switch ($prev) {
+                { $_ -in '--category', '-c' } {
+                    [CompletionResult]::new('alpha', 'alpha', [CompletionResultType]::ParameterValue, 'alpha')
+                    [CompletionResult]::new('beta', 'beta', [CompletionResultType]::ParameterValue, 'beta')
+                    [CompletionResult]::new('gamma', 'gamma', [CompletionResultType]::ParameterValue, 'gamma')
+                    break
+                }
+                { $_ -in '--filter' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--category', '--category', [CompletionResultType]::ParameterName, 'Target category')
+                    [CompletionResult]::new('-c', '-c', [CompletionResultType]::ParameterName, 'Target category')
+                    [CompletionResult]::new('--filter', '--filter', [CompletionResultType]::ParameterName, 'Result filter')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+                    $tokens = @(__myapp_Tokens $commandAst $wordToComplete)
+                    $positional = @(__myapp_Positionals $tokens 0 @('--category', '-c', '--filter'))
+                    $n = $positional.Count
+                    $kind = ''
+                    $first = $false
+                    switch ($n) {
+                        0 { $kind = 'items'; $first = $true }
+                        1 { $kind = 'values'; $first = $false }
+                        default { $kind = 'values' }
+                    }
+                    $fwd = @(__myapp_ForwardedFlags $tokens)
+                    $callArgs = @("--@complete=$kind")
+                    $callArgs += '--'
+                    $callArgs += $fwd
+                    if (-not $first) { $callArgs += $positional }
+                    & 'myapp' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                        [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+                    }
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

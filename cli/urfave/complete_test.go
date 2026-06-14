@@ -156,7 +156,7 @@ func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
 }
 
 func TestHandle_InstallCompletion(t *testing.T) {

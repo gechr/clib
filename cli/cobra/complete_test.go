@@ -133,7 +133,7 @@ func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
 }
 
 func TestHandle_InstallCompletion(t *testing.T) {
@@ -147,7 +147,7 @@ func TestHandle_InstallCompletion(t *testing.T) {
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish)`, err.Error())
+	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`, err.Error())
 }
 
 func TestHandle_UninstallCompletion(t *testing.T) {
@@ -173,7 +173,7 @@ func TestHandle_PrintCompletion(t *testing.T) {
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish)`, err.Error())
+	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`, err.Error())
 }
 
 func TestHandle_WithQuiet(t *testing.T) {

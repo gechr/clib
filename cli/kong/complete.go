@@ -9,6 +9,7 @@ import (
 	"github.com/gechr/clib/complete"
 	_ "github.com/gechr/clib/complete/bash" // register shell generators
 	_ "github.com/gechr/clib/complete/fish" // register shell generators
+	_ "github.com/gechr/clib/complete/pwsh" // register shell generators
 	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
 )
 

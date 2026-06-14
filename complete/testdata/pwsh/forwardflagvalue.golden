@@ -1,0 +1,128 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+function __myapp_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+
+function __myapp_ForwardedFlags {
+    param([string[]]$Tokens)
+    $forwarded = @()
+    $skipNext = $false
+    $name = ''
+    foreach ($t in $Tokens) {
+        if ($skipNext) {
+            if ($name -ne '') { $forwarded += "--$name=$t"; $name = '' }
+            $skipNext = $false
+            continue
+        }
+        if ($t -eq '--') { break }
+        switch -regex ($t) {
+            '^(--profile|-p)$' { $skipNext = $true; $name = 'profile'; break }
+            '^--profile=' { $forwarded += $t; break }
+            '^-p=' { $forwarded += ('--profile=' + $t.Substring(3)); break }
+            default { }
+        }
+    }
+    , $forwarded
+}
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'myapp;deploy' { 'myapp;deploy'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            switch ($prev) {
+                { $_ -in '--profile', '-p' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Active profile')
+                    [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Active profile')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('deploy', 'deploy', [CompletionResultType]::ParameterValue, 'Deploy a target')
+                }
+            }
+            break
+        }
+        'myapp;deploy' {
+            switch ($prev) {
+                { $_ -in '--profile', '-p' } {
+                    break
+                }
+                { $_ -in '--tags' } {
+                    $prefix = ''
+                    if ($wordToComplete -match '^(.*,)([^,]*)$') { $prefix = $Matches[1] }
+                    $selected = @($prefix -split ',' | Where-Object { $_ })
+                    $fwd = @(__myapp_ForwardedFlags @(__myapp_Tokens $commandAst $wordToComplete))
+                    & 'myapp' --@complete=tag -- $fwd 2>$null | Where-Object { $_ } | ForEach-Object {
+                        if ($selected -notcontains $_) {
+                            [CompletionResult]::new("$prefix$_", "$prefix$_", [CompletionResultType]::ParameterValue, $_)
+                        }
+                    }
+                    break
+                }
+                { $_ -in '--target' } {
+                    $fwd = @(__myapp_ForwardedFlags @(__myapp_Tokens $commandAst $wordToComplete))
+                    & 'myapp' --@complete=target -- $fwd 2>$null | Where-Object { $_ } | ForEach-Object {
+                        [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+                    }
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Active profile')
+                    [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Active profile')
+                    [CompletionResult]::new('--tags', '--tags', [CompletionResultType]::ParameterName, 'Tags to apply')
+                    [CompletionResult]::new('--target', '--target', [CompletionResultType]::ParameterName, 'Target name')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

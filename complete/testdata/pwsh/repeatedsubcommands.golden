@@ -1,0 +1,106 @@
+# tool PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'tool' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'tool'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'tool;container' { 'tool;container'; break }
+            'tool;container;login' { 'tool;container;login'; break }
+            'tool;foo' { 'tool;foo'; break }
+            'tool;foo;login' { 'tool;foo;login'; break }
+            'tool;foo;login;bar' { 'tool;foo;login;bar'; break }
+            'tool;foo;login;bar;login' { 'tool;foo;login;bar;login'; break }
+            'tool;login' { 'tool;login'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'tool' {
+            [CompletionResult]::new('container', 'container', [CompletionResultType]::ParameterValue, 'Manage containers')
+            [CompletionResult]::new('foo', 'foo', [CompletionResultType]::ParameterValue, 'Manage foo')
+            [CompletionResult]::new('login', 'login', [CompletionResultType]::ParameterValue, 'Log in')
+            break
+        }
+        'tool;container' {
+            [CompletionResult]::new('login', 'login', [CompletionResultType]::ParameterValue, 'Log in to a container registry')
+            break
+        }
+        'tool;container;login' {
+            switch ($prev) {
+                { $_ -in '--registry' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--registry', '--registry', [CompletionResultType]::ParameterName, 'Registry URL')
+                }
+            }
+            break
+        }
+        'tool;foo' {
+            [CompletionResult]::new('login', 'login', [CompletionResultType]::ParameterValue, 'Log in to foo')
+            break
+        }
+        'tool;foo;login' {
+            [CompletionResult]::new('bar', 'bar', [CompletionResultType]::ParameterValue, 'Manage bars')
+            break
+        }
+        'tool;foo;login;bar' {
+            [CompletionResult]::new('login', 'login', [CompletionResultType]::ParameterValue, 'Log in to a bar')
+            break
+        }
+        'tool;foo;login;bar;login' {
+            switch ($prev) {
+                { $_ -in '--bar-token' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--bar-token', '--bar-token', [CompletionResultType]::ParameterName, 'Bar token')
+                }
+            }
+            break
+        }
+        'tool;login' {
+            switch ($prev) {
+                { $_ -in '--user', '-u' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--user', '--user', [CompletionResultType]::ParameterName, 'User name')
+                    [CompletionResult]::new('-u', '-u', [CompletionResultType]::ParameterName, 'User name')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

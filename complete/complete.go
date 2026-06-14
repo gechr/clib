@@ -323,6 +323,8 @@ func builtInShellFunc(name string) (ShellFunc, bool) {
 		return GenerateFish, true
 	case shell.Zsh:
 		return GenerateZsh, true
+	case shell.Pwsh:
+		return GeneratePwsh, true
 	default:
 		return nil, false
 	}
@@ -336,7 +338,7 @@ func resolveShellFunc(name string) (ShellFunc, bool) {
 }
 
 func supportedShells() string {
-	names := []string{shell.Bash, shell.Zsh, shell.Fish}
+	names := []string{shell.Bash, shell.Zsh, shell.Fish, shell.Pwsh}
 	var custom []string
 	for name := range shellRegistry {
 		if !slices.Contains(names, name) {
@@ -621,5 +623,15 @@ func (g *Generator) Uninstall(sh string, quiet bool) error {
 }
 
 func (g *Generator) completionFile(sh string) (string, error) {
+	// PowerShell has no drop-in completions directory the way bash/zsh/fish do,
+	// so x/shell doesn't map a path for it. Place the script under the
+	// PowerShell config directory; the user dot-sources it from their profile.
+	if sh == shell.Pwsh {
+		dir, err := shell.ConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(dir, "powershell", "completions", g.AppName+".ps1"), nil
+	}
 	return shell.CompletionFile(g.AppName, sh)
 }

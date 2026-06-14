@@ -1,0 +1,62 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            switch ($prev) {
+                { $_ -in '--format', '-f' } {
+                    [CompletionResult]::new('json', 'json', [CompletionResultType]::ParameterValue, 'JSON output')
+                    [CompletionResult]::new('yaml', 'yaml', [CompletionResultType]::ParameterValue, 'YAML output')
+                    [CompletionResult]::new('text', 'text', [CompletionResultType]::ParameterValue, 'Plain text')
+                    break
+                }
+                { $_ -in '--tags', '-t' } {
+                    $prefix = ''
+                    if ($wordToComplete -match '^(.*,)([^,]*)$') { $prefix = $Matches[1] }
+                    $selected = @($prefix -split ',' | Where-Object { $_ })
+                    foreach ($pair in @(
+                        @('bug', 'bug')
+                        @('feature', 'feature')
+                        @('docs', 'docs')
+                    )) {
+                        if ($selected -notcontains $pair[0]) {
+                            [CompletionResult]::new("$prefix$($pair[0])", "$prefix$($pair[0])", [CompletionResultType]::ParameterValue, $pair[1])
+                        }
+                    }
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format')
+                    [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format')
+                    [CompletionResult]::new('--tags', '--tags', [CompletionResultType]::ParameterName, 'Filter tags')
+                    [CompletionResult]::new('-t', '-t', [CompletionResultType]::ParameterName, 'Filter tags')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

@@ -1,0 +1,76 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $fileCompletions = $null
+    $completions = @(switch ($command) {
+        'myapp' {
+            switch ($prev) {
+                { $_ -in '--config', '-c' } {
+                    $fileCompletions = [CompletionCompleters]::CompleteFilename($wordToComplete) | Where-Object {
+                        $_.ResultType -eq [CompletionResultType]::ProviderContainer -or $_.ListItemText -match '\.(yaml|yml)$'
+                    }
+                    break
+                }
+                { $_ -in '--dir', '-d' } {
+                    $fileCompletions = [CompletionCompleters]::CompleteFilename($wordToComplete) | Where-Object {
+                        $_.ResultType -eq [CompletionResultType]::ProviderContainer
+                    }
+                    break
+                }
+                { $_ -in '--host' } {
+                    break
+                }
+                { $_ -in '--output', '-o' } {
+                    $fileCompletions = [CompletionCompleters]::CompleteFilename($wordToComplete)
+                    break
+                }
+                { $_ -in '--shell' } {
+                    $fileCompletions = [CompletionCompleters]::CompleteCommand($wordToComplete)
+                    break
+                }
+                { $_ -in '--user' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'Config file')
+                    [CompletionResult]::new('-c', '-c', [CompletionResultType]::ParameterName, 'Config file')
+                    [CompletionResult]::new('--dir', '--dir', [CompletionResultType]::ParameterName, 'Directory')
+                    [CompletionResult]::new('-d', '-d', [CompletionResultType]::ParameterName, 'Directory')
+                    [CompletionResult]::new('--host', '--host', [CompletionResultType]::ParameterName, 'Host name')
+                    [CompletionResult]::new('--output', '--output', [CompletionResultType]::ParameterName, 'Output path')
+                    [CompletionResult]::new('-o', '-o', [CompletionResultType]::ParameterName, 'Output path')
+                    [CompletionResult]::new('--shell', '--shell', [CompletionResultType]::ParameterName, 'Shell command')
+                    [CompletionResult]::new('--user', '--user', [CompletionResultType]::ParameterName, 'User name')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+                }
+            }
+            break
+        }
+    })
+
+    if ($null -ne $fileCompletions) {
+        $fileCompletions
+    }
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

@@ -186,6 +186,7 @@ func TestBuiltInShellFunc(t *testing.T) {
 		{"bash", "bash", true},
 		{"fish", "fish", true},
 		{"zsh", "zsh", true},
+		{"pwsh", "pwsh", true},
 		{"empty", "", false},
 		{"powershell", "powershell", false},
 	}

@@ -1,0 +1,80 @@
+# clibapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'clibapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'clibapp'
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'clibapp' {
+            switch ($prev) {
+                { $_ -in '--author', '-a' } {
+                    & 'clibapp' --@complete=author 2>$null | Where-Object { $_ } | ForEach-Object {
+                        [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+                    }
+                    break
+                }
+                { $_ -in '--ci' } {
+                    [CompletionResult]::new('success', 'success', [CompletionResultType]::ParameterValue, 'success')
+                    [CompletionResult]::new('failure', 'failure', [CompletionResultType]::ParameterValue, 'failure')
+                    [CompletionResult]::new('pending', 'pending', [CompletionResultType]::ParameterValue, 'pending')
+                    break
+                }
+                { $_ -in '--columns' } {
+                    $prefix = ''
+                    if ($wordToComplete -match '^(.*,)([^,]*)$') { $prefix = $Matches[1] }
+                    $selected = @($prefix -split ',' | Where-Object { $_ })
+                    & 'clibapp' --@complete=columns 2>$null | Where-Object { $_ } | ForEach-Object {
+                        if ($selected -notcontains $_) {
+                            [CompletionResult]::new("$prefix$_", "$prefix$_", [CompletionResultType]::ParameterValue, $_)
+                        }
+                    }
+                    break
+                }
+                { $_ -in '--limit', '-L' } {
+                    break
+                }
+                { $_ -in '--state', '-s' } {
+                    [CompletionResult]::new('open', 'open', [CompletionResultType]::ParameterValue, 'open')
+                    [CompletionResult]::new('closed', 'closed', [CompletionResultType]::ParameterValue, 'closed')
+                    [CompletionResult]::new('merged', 'merged', [CompletionResultType]::ParameterValue, 'merged')
+                    [CompletionResult]::new('all', 'all', [CompletionResultType]::ParameterValue, 'all')
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--author', '--author', [CompletionResultType]::ParameterName, 'Author')
+                    [CompletionResult]::new('-a', '-a', [CompletionResultType]::ParameterName, 'Author')
+                    [CompletionResult]::new('--ci', '--ci', [CompletionResultType]::ParameterName, 'CI status')
+                    [CompletionResult]::new('--columns', '--columns', [CompletionResultType]::ParameterName, 'Table columns')
+                    [CompletionResult]::new('--limit', '--limit', [CompletionResultType]::ParameterName, 'Max results')
+                    [CompletionResult]::new('-L', '-L', [CompletionResultType]::ParameterName, 'Max results')
+                    [CompletionResult]::new('--merge', '--merge', [CompletionResultType]::ParameterName, 'Auto-merge')
+                    [CompletionResult]::new('--no-merge', '--no-merge', [CompletionResultType]::ParameterName, 'Disable auto-merge')
+                    [CompletionResult]::new('--state', '--state', [CompletionResultType]::ParameterName, 'State')
+                    [CompletionResult]::new('-s', '-s', [CompletionResultType]::ParameterName, 'State')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

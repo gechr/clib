@@ -1,0 +1,142 @@
+# acme-plugin PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+function __acme_plugin_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+
+function __acme_plugin_Positionals {
+    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)
+    $positional = @()
+    $skipNext = $false
+    $afterDoubleDash = $false
+    $skip = $CmdSkip
+    foreach ($t in $Tokens) {
+        if ($afterDoubleDash) { $positional += $t; continue }
+        if ($skipNext) { $skipNext = $false; continue }
+        if ($t -eq '--') { $afterDoubleDash = $true; continue }
+        if ($ValueFlags -contains $t) { $skipNext = $true; continue }
+        if ($t -match '^-.+=') { continue }
+        if ($t -like '-*') { continue }
+        if ($skip -gt 0) { $skip--; continue }
+        $positional += $t
+    }
+    , $positional
+}
+
+Register-ArgumentCompleter -Native -CommandName 'acme-plugin' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'acme-plugin'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'acme-plugin;complete' { 'acme-plugin;complete'; break }
+            'acme-plugin;resolve' { 'acme-plugin;resolve'; break }
+            'acme-plugin;send' { 'acme-plugin;send'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'acme-plugin' {
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('complete', 'complete', [CompletionResultType]::ParameterValue, 'Tab completions')
+            [CompletionResult]::new('resolve', 'resolve', [CompletionResultType]::ParameterValue, 'Resolve values')
+            [CompletionResult]::new('send', 'send', [CompletionResultType]::ParameterValue, 'Send notifications')
+            break
+        }
+        'acme-plugin;complete' {
+            $tokens = @(__acme_plugin_Tokens $commandAst $wordToComplete)
+            $positional = @(__acme_plugin_Positionals $tokens 1 @())
+            $n = $positional.Count
+            if ($n -lt 1) {
+                $kind = ''
+                $first = $false
+                switch ($n) {
+                    0 { $kind = 'complete-kind'; $first = $true }
+                    default { $kind = 'complete-kind' }
+                }
+                $callArgs = @("--@complete=$kind")
+                if (-not $first) {
+                    $callArgs += '--'
+                    $callArgs += $positional
+                }
+                & 'acme-plugin' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                    [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+                }
+            }
+            break
+        }
+        'acme-plugin;resolve' {
+            $tokens = @(__acme_plugin_Tokens $commandAst $wordToComplete)
+            $positional = @(__acme_plugin_Positionals $tokens 1 @())
+            $n = $positional.Count
+            if ($n -lt 2) {
+                $kind = ''
+                $first = $false
+                switch ($n) {
+                    0 { $kind = 'resolve-kind'; $first = $true }
+                    default { $kind = 'resolve-kind' }
+                }
+                $callArgs = @("--@complete=$kind")
+                if (-not $first) {
+                    $callArgs += '--'
+                    $callArgs += $positional
+                }
+                & 'acme-plugin' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                    [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+                }
+            }
+            break
+        }
+        'acme-plugin;send' {
+            switch ($prev) {
+                { $_ -in '--to' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--to', '--to', [CompletionResultType]::ParameterName, 'Recipient')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

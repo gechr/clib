@@ -1,0 +1,87 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'myapp;run' { 'myapp;run'; break }
+            'myapp;version' { 'myapp;version'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            switch ($prev) {
+                { $_ -in '--color' } {
+                    [CompletionResult]::new('auto', 'auto', [CompletionResultType]::ParameterValue, 'auto')
+                    [CompletionResult]::new('always', 'always', [CompletionResultType]::ParameterValue, 'always')
+                    [CompletionResult]::new('never', 'never', [CompletionResultType]::ParameterValue, 'never')
+                    break
+                }
+                { $_ -in '--config' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--color', '--color', [CompletionResultType]::ParameterName, 'Color mode')
+                    [CompletionResult]::new('--config', '--config', [CompletionResultType]::ParameterName, 'Config file')
+                    [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Show help')
+                    [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Show help')
+                    [CompletionResult]::new('--no-config', '--no-config', [CompletionResultType]::ParameterName, 'Disable config')
+                    [CompletionResult]::new('--no-proxy', '--no-proxy', [CompletionResultType]::ParameterName, 'Ignore proxies')
+                    [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+                    [CompletionResult]::new('run', 'run', [CompletionResultType]::ParameterValue, 'Run command')
+                    [CompletionResult]::new('version', 'version', [CompletionResultType]::ParameterValue, 'Show version')
+                }
+            }
+            break
+        }
+        'myapp;run' {
+            switch ($prev) {
+                { $_ -in '--output', '-o' } {
+                    [CompletionResult]::new('text', 'text', [CompletionResultType]::ParameterValue, 'text')
+                    [CompletionResult]::new('json', 'json', [CompletionResultType]::ParameterValue, 'json')
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--dry-run', '--dry-run', [CompletionResultType]::ParameterName, 'Dry run')
+                    [CompletionResult]::new('-n', '-n', [CompletionResultType]::ParameterName, 'Dry run')
+                    [CompletionResult]::new('--output', '--output', [CompletionResultType]::ParameterName, 'Output format')
+                    [CompletionResult]::new('-o', '-o', [CompletionResultType]::ParameterName, 'Output format')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

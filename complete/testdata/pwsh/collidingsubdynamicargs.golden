@@ -1,0 +1,122 @@
+# pdc PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+function __pdc_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+
+function __pdc_Positionals {
+    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)
+    $positional = @()
+    $skipNext = $false
+    $afterDoubleDash = $false
+    $skip = $CmdSkip
+    foreach ($t in $Tokens) {
+        if ($afterDoubleDash) { $positional += $t; continue }
+        if ($skipNext) { $skipNext = $false; continue }
+        if ($t -eq '--') { $afterDoubleDash = $true; continue }
+        if ($ValueFlags -contains $t) { $skipNext = $true; continue }
+        if ($t -match '^-.+=') { continue }
+        if ($t -like '-*') { continue }
+        if ($skip -gt 0) { $skip--; continue }
+        $positional += $t
+    }
+    , $positional
+}
+
+Register-ArgumentCompleter -Native -CommandName 'pdc' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'pdc'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'pdc;incident' { 'pdc;incident'; break }
+            'pdc;incident;show' { 'pdc;incident;show'; break }
+            'pdc;user' { 'pdc;user'; break }
+            'pdc;user;show' { 'pdc;user;show'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+
+    $completions = @(switch ($command) {
+        'pdc' {
+            [CompletionResult]::new('incident', 'incident', [CompletionResultType]::ParameterValue, 'Manage incidents')
+            [CompletionResult]::new('user', 'user', [CompletionResultType]::ParameterValue, 'Manage users')
+            break
+        }
+        'pdc;incident' {
+            [CompletionResult]::new('show', 'show', [CompletionResultType]::ParameterValue, 'Show an incident')
+            break
+        }
+        'pdc;incident;show' {
+            $tokens = @(__pdc_Tokens $commandAst $wordToComplete)
+            $positional = @(__pdc_Positionals $tokens 2 @())
+            $n = $positional.Count
+            $kind = ''
+            $first = $false
+            switch ($n) {
+                0 { $kind = 'incident'; $first = $true }
+                default { $kind = 'incident' }
+            }
+            $callArgs = @("--@complete=$kind")
+            if (-not $first) {
+                $callArgs += '--'
+                $callArgs += $positional
+            }
+            & 'pdc' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+            }
+            break
+        }
+        'pdc;user' {
+            [CompletionResult]::new('show', 'show', [CompletionResultType]::ParameterValue, 'Show a user')
+            break
+        }
+        'pdc;user;show' {
+            $tokens = @(__pdc_Tokens $commandAst $wordToComplete)
+            $positional = @(__pdc_Positionals $tokens 2 @())
+            $n = $positional.Count
+            $kind = ''
+            $first = $false
+            switch ($n) {
+                0 { $kind = 'user'; $first = $true }
+                default { $kind = 'user' }
+            }
+            $callArgs = @("--@complete=$kind")
+            if (-not $first) {
+                $callArgs += '--'
+                $callArgs += $positional
+            }
+            & 'pdc' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

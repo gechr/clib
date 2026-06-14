@@ -281,7 +281,7 @@ func TestGenerator_Print_UnsupportedShell(t *testing.T) {
 	gen := genFlat()
 	var buf strings.Builder
 	err := gen.Print(&buf, "elvish")
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
 }
 
 func TestGenerator_Print_FishOrderKeep(t *testing.T) {
@@ -459,7 +459,7 @@ func TestGenerator_Install_Zsh(t *testing.T) {
 func TestGenerator_Install_UnsupportedShell(t *testing.T) {
 	gen := genFlat()
 	err := gen.Install("elvish", true)
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish)`)
+	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
 }
 
 func TestGenerator_Install_NotQuiet(t *testing.T) {

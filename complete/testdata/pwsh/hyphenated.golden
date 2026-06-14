@@ -1,0 +1,64 @@
+# my-app PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+Register-ArgumentCompleter -Native -CommandName 'my-app' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'my-app'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'my-app;build' { 'my-app;build'; break }
+            'my-app;test' { 'my-app;test'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+    $prev = ''
+    if ($commandElements.Count -ge 1) {
+        $lastText = $commandElements[-1].Extent.Text
+        if ($wordToComplete -ne '' -and $lastText -eq $wordToComplete) {
+            if ($commandElements.Count -ge 2) {
+                $prev = $commandElements[-2].Extent.Text
+            }
+        } else {
+            $prev = $lastText
+        }
+    }
+
+    $completions = @(switch ($command) {
+        'my-app' {
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('build', 'build', [CompletionResultType]::ParameterValue, 'Build the project')
+            [CompletionResult]::new('test', 'test', [CompletionResultType]::ParameterValue, 'Run tests')
+            break
+        }
+        'my-app;build' {
+            switch ($prev) {
+                { $_ -in '--output', '-o' } {
+                    break
+                }
+                default {
+                    [CompletionResult]::new('--output', '--output', [CompletionResultType]::ParameterName, 'Output path')
+                    [CompletionResult]::new('-o', '-o', [CompletionResultType]::ParameterName, 'Output path')
+                }
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}

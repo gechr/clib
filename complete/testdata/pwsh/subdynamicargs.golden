@@ -1,0 +1,97 @@
+# myapp PowerShell completion
+
+using namespace System.Management.Automation
+using namespace System.Management.Automation.Language
+
+function __myapp_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+
+function __myapp_Positionals {
+    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)
+    $positional = @()
+    $skipNext = $false
+    $afterDoubleDash = $false
+    $skip = $CmdSkip
+    foreach ($t in $Tokens) {
+        if ($afterDoubleDash) { $positional += $t; continue }
+        if ($skipNext) { $skipNext = $false; continue }
+        if ($t -eq '--') { $afterDoubleDash = $true; continue }
+        if ($ValueFlags -contains $t) { $skipNext = $true; continue }
+        if ($t -match '^-.+=') { continue }
+        if ($t -like '-*') { continue }
+        if ($skip -gt 0) { $skip--; continue }
+        $positional += $t
+    }
+    , $positional
+}
+
+Register-ArgumentCompleter -Native -CommandName 'myapp' -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $commandElements = $commandAst.CommandElements
+    $command = 'myapp'
+    for ($i = 1; $i -lt $commandElements.Count; $i++) {
+        $element = $commandElements[$i]
+        if ($element -isnot [StringConstantExpressionAst] -or
+            $element.StringConstantType -ne [StringConstantType]::BareWord) {
+            break
+        }
+        $value = $element.Value
+        if ($value -eq $wordToComplete) { break }
+        if ($value.StartsWith('-')) { continue }
+        $next = switch ("$command;$value") {
+            'myapp;list' { 'myapp;list'; break }
+            'myapp;resolve' { 'myapp;resolve'; break }
+            default { '' }
+        }
+        if ($next -eq '') { break }
+        $command = $next
+    }
+
+    $completions = @(switch ($command) {
+        'myapp' {
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'Verbose output')
+            [CompletionResult]::new('list', 'list', [CompletionResultType]::ParameterValue, 'List items')
+            [CompletionResult]::new('resolve', 'resolve', [CompletionResultType]::ParameterValue, 'Resolve alerts')
+            break
+        }
+        'myapp;resolve' {
+            [CompletionResult]::new('--force', '--force', [CompletionResultType]::ParameterName, 'Force resolution')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Force resolution')
+            $tokens = @(__myapp_Tokens $commandAst $wordToComplete)
+            $positional = @(__myapp_Positionals $tokens 1 @())
+            $n = $positional.Count
+            $kind = ''
+            $first = $false
+            switch ($n) {
+                0 { $kind = 'incident'; $first = $true }
+                1 { $kind = 'alert'; $first = $false }
+                default { $kind = 'alert' }
+            }
+            $callArgs = @("--@complete=$kind")
+            if (-not $first) {
+                $callArgs += '--'
+                $callArgs += $positional
+            }
+            & 'myapp' @callArgs 2>$null | Where-Object { $_ } | ForEach-Object {
+                [CompletionResult]::new($_, $_, [CompletionResultType]::ParameterValue, $_)
+            }
+            break
+        }
+    })
+
+    $completions | Where-Object { $_.CompletionText -like "$wordToComplete*" } |
+        Sort-Object -Property ListItemText
+}
