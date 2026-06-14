@@ -1,0 +1,52 @@
+# clibapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['clibapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'clibapp'
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'clibapp') {
+        if (or (eq $prev '--author') (eq $prev '-a')) {
+            try { (external 'clibapp') '--@complete=author' 2>/dev/null | from-lines } catch _ { }
+        } elif (eq $prev '--ci') {
+            put 'success'
+            put 'failure'
+            put 'pending'
+        } elif (eq $prev '--columns') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            try {
+                (external 'clibapp') '--@complete=columns' 2>/dev/null | from-lines | each {|v|
+                    if (not (has-value $selected $v)) { put $prefix$v }
+                }
+            } catch _ { }
+        } elif (or (eq $prev '--limit') (eq $prev '-L')) {
+            nop
+        } elif (or (eq $prev '--state') (eq $prev '-s')) {
+            put 'open'
+            put 'closed'
+            put 'merged'
+            put 'all'
+        } else {
+            edit:complex-candidate '--author' &display='--author  Author'
+            edit:complex-candidate '-a' &display='-a  Author'
+            edit:complex-candidate '--ci' &display='--ci  CI status'
+            edit:complex-candidate '--columns' &display='--columns  Table columns'
+            edit:complex-candidate '--limit' &display='--limit  Max results'
+            edit:complex-candidate '-L' &display='-L  Max results'
+            edit:complex-candidate '--merge' &display='--merge  Auto-merge'
+            edit:complex-candidate '--no-merge' &display='--no-merge  Disable auto-merge'
+            edit:complex-candidate '--state' &display='--state  State'
+            edit:complex-candidate '-s' &display='-s  State'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose'
+            edit:complex-candidate '-v' &display='-v  Verbose'
+        }
+    }
+}

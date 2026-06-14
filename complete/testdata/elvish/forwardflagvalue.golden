@@ -1,0 +1,68 @@
+# myapp Elvish completion
+
+use str
+use re
+
+fn _myapp_forwarded_flags {|@tokens|
+    var skipnext = $false
+    var name = ''
+    for t $tokens {
+        if $skipnext {
+            if (not-eq $name '') { put '--'$name'='$t; set name = '' }
+            set skipnext = $false
+            continue
+        }
+        if (eq $t '--') { break }
+        if (or (eq $t '--profile') (eq $t '-p')) { set skipnext = $true; set name = 'profile'; continue }
+        if (str:has-prefix $t '--profile=') { put $t; continue }
+        if (str:has-prefix $t '-p=') { put '--profile='(str:trim-prefix $t '-p='); continue }
+    }
+}
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'myapp') (eq $w 'deploy')) { set next = 'myapp;deploy' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        if (or (eq $prev '--profile') (eq $prev '-p')) {
+            nop
+        } else {
+            edit:complex-candidate '--profile' &display='--profile  Active profile'
+            edit:complex-candidate '-p' &display='-p  Active profile'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+            edit:complex-candidate 'deploy' &display='deploy  Deploy a target'
+        }
+    } elif (eq $command 'myapp;deploy') {
+        if (or (eq $prev '--profile') (eq $prev '-p')) {
+            nop
+        } elif (eq $prev '--tags') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            try {
+                (external 'myapp') '--@complete=tag' -- (_myapp_forwarded_flags $@prior) 2>/dev/null | from-lines | each {|v|
+                    if (not (has-value $selected $v)) { put $prefix$v }
+                }
+            } catch _ { }
+        } elif (eq $prev '--target') {
+            try { (external 'myapp') '--@complete=target' -- (_myapp_forwarded_flags $@prior) 2>/dev/null | from-lines } catch _ { }
+        } else {
+            edit:complex-candidate '--profile' &display='--profile  Active profile'
+            edit:complex-candidate '-p' &display='-p  Active profile'
+            edit:complex-candidate '--tags' &display='--tags  Tags to apply'
+            edit:complex-candidate '--target' &display='--target  Target name'
+        }
+    }
+}

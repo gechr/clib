@@ -1,0 +1,59 @@
+# tool Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['tool'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'tool'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'tool') (eq $w 'container')) { set next = 'tool;container' }
+        if (and (eq $command 'tool;container') (eq $w 'login')) { set next = 'tool;container;login' }
+        if (and (eq $command 'tool') (eq $w 'foo')) { set next = 'tool;foo' }
+        if (and (eq $command 'tool;foo') (eq $w 'login')) { set next = 'tool;foo;login' }
+        if (and (eq $command 'tool;foo;login') (eq $w 'bar')) { set next = 'tool;foo;login;bar' }
+        if (and (eq $command 'tool;foo;login;bar') (eq $w 'login')) { set next = 'tool;foo;login;bar;login' }
+        if (and (eq $command 'tool') (eq $w 'login')) { set next = 'tool;login' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'tool') {
+        edit:complex-candidate 'container' &display='container  Manage containers'
+        edit:complex-candidate 'foo' &display='foo  Manage foo'
+        edit:complex-candidate 'login' &display='login  Log in'
+    } elif (eq $command 'tool;container') {
+        edit:complex-candidate 'login' &display='login  Log in to a container registry'
+    } elif (eq $command 'tool;container;login') {
+        if (eq $prev '--registry') {
+            nop
+        } else {
+            edit:complex-candidate '--registry' &display='--registry  Registry URL'
+        }
+    } elif (eq $command 'tool;foo') {
+        edit:complex-candidate 'login' &display='login  Log in to foo'
+    } elif (eq $command 'tool;foo;login') {
+        edit:complex-candidate 'bar' &display='bar  Manage bars'
+    } elif (eq $command 'tool;foo;login;bar') {
+        edit:complex-candidate 'login' &display='login  Log in to a bar'
+    } elif (eq $command 'tool;foo;login;bar;login') {
+        if (eq $prev '--bar-token') {
+            nop
+        } else {
+            edit:complex-candidate '--bar-token' &display='--bar-token  Bar token'
+        }
+    } elif (eq $command 'tool;login') {
+        if (or (eq $prev '--user') (eq $prev '-u')) {
+            nop
+        } else {
+            edit:complex-candidate '--user' &display='--user  User name'
+            edit:complex-candidate '-u' &display='-u  User name'
+        }
+    }
+}

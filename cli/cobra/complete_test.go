@@ -127,13 +127,13 @@ func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
 	os.Args = []string{
 		"app",
 		"--" + complete.FlagInstallCompletion,
-		"--" + complete.FlagShell + "=elvish",
+		"--" + complete.FlagShell + "=nu",
 	}
 
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
+	require.EqualError(t, err, `unsupported shell "nu" (supported: bash, zsh, fish, pwsh, elvish)`)
 }
 
 func TestHandle_InstallCompletion(t *testing.T) {
@@ -142,12 +142,16 @@ func TestHandle_InstallCompletion(t *testing.T) {
 
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagInstallCompletion, "true"))
 	// Use unsupported shell to avoid filesystem writes.
-	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "nu"))
 
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`, err.Error())
+	require.Equal(
+		t,
+		`unsupported shell "nu" (supported: bash, zsh, fish, pwsh, elvish)`,
+		err.Error(),
+	)
 }
 
 func TestHandle_UninstallCompletion(t *testing.T) {
@@ -155,12 +159,12 @@ func TestHandle_UninstallCompletion(t *testing.T) {
 	c := cobracli.NewCompletion(cmd)
 
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagUninstallCompletion, "true"))
-	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "nu"))
 
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.Equal(t, `unsupported shell "elvish"`, err.Error())
+	require.Equal(t, `unsupported shell "nu"`, err.Error())
 }
 
 func TestHandle_PrintCompletion(t *testing.T) {
@@ -168,12 +172,16 @@ func TestHandle_PrintCompletion(t *testing.T) {
 	c := cobracli.NewCompletion(cmd)
 
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagPrintCompletion, "true"))
-	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "nu"))
 
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.Equal(t, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`, err.Error())
+	require.Equal(
+		t,
+		`unsupported shell "nu" (supported: bash, zsh, fish, pwsh, elvish)`,
+		err.Error(),
+	)
 }
 
 func TestHandle_WithQuiet(t *testing.T) {
@@ -181,13 +189,13 @@ func TestHandle_WithQuiet(t *testing.T) {
 	c := cobracli.NewCompletion(cmd)
 
 	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagInstallCompletion, "true"))
-	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "elvish"))
+	require.NoError(t, cmd.PersistentFlags().Set(complete.FlagShell, "nu"))
 
 	gen := complete.NewGenerator("app")
 	// WithQuiet exercises the options.go path.
 	handled, err := c.Handle(gen, nil, cobracli.WithQuiet(true))
 	require.True(t, handled)
-	require.Error(t, err) // elvish unsupported, but WithQuiet was applied.
+	require.Error(t, err) // nu unsupported, but WithQuiet was applied.
 }
 
 // --- Subcommands tests ---

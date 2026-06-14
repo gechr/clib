@@ -1,0 +1,54 @@
+# myapp Elvish completion
+
+use str
+use re
+
+fn _myapp_positionals {|cmdskip valueflags @tokens|
+    var positional = []
+    var skipnext = $false
+    var dashdash = $false
+    var skip = $cmdskip
+    for t $tokens {
+        if $dashdash { set positional = [$@positional $t]; continue }
+        if $skipnext { set skipnext = $false; continue }
+        if (eq $t '--') { set dashdash = $true; continue }
+        if (has-value $valueflags $t) { set skipnext = $true; continue }
+        if (str:has-prefix $t '-') { continue }
+        if (> $skip 0) { set skip = (- $skip 1); continue }
+        set positional = [$@positional $t]
+    }
+    put $@positional
+}
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'myapp') (eq $w 'list')) { set next = 'myapp;list' }
+        if (and (eq $command 'myapp') (eq $w 'resolve')) { set next = 'myapp;resolve' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+
+    if (eq $command 'myapp') {
+        edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+        edit:complex-candidate '-v' &display='-v  Verbose output'
+        edit:complex-candidate 'list' &display='list  List items'
+        edit:complex-candidate 'resolve' &display='resolve  Resolve alerts'
+    } elif (eq $command 'myapp;resolve') {
+        edit:complex-candidate '--force' &display='--force  Force resolution'
+        edit:complex-candidate '-f' &display='-f  Force resolution'
+        var positional = [(_myapp_positionals 1 [] $@prior)]
+        var ncount = (count $positional)
+        var kind = ''
+        var first = $false
+        if (eq $ncount 0) { set kind = 'incident'; set first = $true } elif (eq $ncount 1) { set kind = 'alert' } else { set kind = 'alert' }
+        var callargs = ['--@complete='$kind]
+        if (not $first) { set callargs = [$@callargs '--' $@positional] }
+        try { (external 'myapp') $@callargs 2>/dev/null | from-lines } catch _ { }
+    }
+}

@@ -7,10 +7,11 @@ import (
 	"reflect"
 
 	"github.com/gechr/clib/complete"
-	_ "github.com/gechr/clib/complete/bash" // register shell generators
-	_ "github.com/gechr/clib/complete/fish" // register shell generators
-	_ "github.com/gechr/clib/complete/pwsh" // register shell generators
-	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
+	_ "github.com/gechr/clib/complete/bash"   // register shell generators
+	_ "github.com/gechr/clib/complete/elvish" // register shell generators
+	_ "github.com/gechr/clib/complete/fish"   // register shell generators
+	_ "github.com/gechr/clib/complete/pwsh"   // register shell generators
+	_ "github.com/gechr/clib/complete/zsh"    // register shell generators
 	"github.com/gechr/x/shell"
 	clilib "github.com/urfave/cli/v3"
 )
@@ -180,6 +181,7 @@ func CompletionCommand(genFunc func() *complete.Generator) *clilib.Command {
 		Hidden: true,
 		Commands: []*clilib.Command{
 			shellCmd(shell.Bash),
+			shellCmd(shell.Elvish),
 			shellCmd(shell.Fish),
 			shellCmd(shell.Pwsh),
 			shellCmd(shell.Zsh),

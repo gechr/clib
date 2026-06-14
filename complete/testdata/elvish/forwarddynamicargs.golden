@@ -1,0 +1,73 @@
+# myapp Elvish completion
+
+use str
+use re
+
+fn _myapp_forwarded_flags {|@tokens|
+    var skipnext = $false
+    var name = ''
+    for t $tokens {
+        if $skipnext {
+            if (not-eq $name '') { put '--'$name'='$t; set name = '' }
+            set skipnext = $false
+            continue
+        }
+        if (eq $t '--') { break }
+        if (or (eq $t '--category') (eq $t '-c')) { set skipnext = $true; set name = 'category'; continue }
+        if (str:has-prefix $t '--category=') { put $t; continue }
+        if (str:has-prefix $t '-c=') { put '--category='(str:trim-prefix $t '-c='); continue }
+        if (eq $t '--filter') { set skipnext = $true; set name = 'filter'; continue }
+        if (str:has-prefix $t '--filter=') { put $t; continue }
+    }
+}
+
+fn _myapp_positionals {|cmdskip valueflags @tokens|
+    var positional = []
+    var skipnext = $false
+    var dashdash = $false
+    var skip = $cmdskip
+    for t $tokens {
+        if $dashdash { set positional = [$@positional $t]; continue }
+        if $skipnext { set skipnext = $false; continue }
+        if (eq $t '--') { set dashdash = $true; continue }
+        if (has-value $valueflags $t) { set skipnext = $true; continue }
+        if (str:has-prefix $t '-') { continue }
+        if (> $skip 0) { set skip = (- $skip 1); continue }
+        set positional = [$@positional $t]
+    }
+    put $@positional
+}
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        if (or (eq $prev '--category') (eq $prev '-c')) {
+            put 'alpha'
+            put 'beta'
+            put 'gamma'
+        } elif (eq $prev '--filter') {
+            nop
+        } else {
+            edit:complex-candidate '--category' &display='--category  Target category'
+            edit:complex-candidate '-c' &display='-c  Target category'
+            edit:complex-candidate '--filter' &display='--filter  Result filter'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+            var positional = [(_myapp_positionals 0 ['--category' '-c' '--filter'] $@prior)]
+            var ncount = (count $positional)
+            var kind = ''
+            var first = $false
+            if (eq $ncount 0) { set kind = 'items'; set first = $true } elif (eq $ncount 1) { set kind = 'values' } else { set kind = 'values' }
+            var callargs = ['--@complete='$kind]
+            set callargs = [$@callargs '--' (_myapp_forwarded_flags $@prior)]
+            if (not $first) { set callargs = [$@callargs $@positional] }
+            try { (external 'myapp') $@callargs 2>/dev/null | from-lines } catch _ { }
+        }
+    }
+}

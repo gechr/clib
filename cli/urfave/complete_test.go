@@ -150,13 +150,13 @@ func TestHandle_InstallCompletion_FromOSArgs(t *testing.T) {
 	os.Args = []string{
 		"app",
 		"--" + complete.FlagInstallCompletion,
-		"--" + complete.FlagShell + "=elvish",
+		"--" + complete.FlagShell + "=nu",
 	}
 
 	gen := complete.NewGenerator("app")
 	handled, err := c.Handle(gen, nil)
 	require.True(t, handled)
-	require.EqualError(t, err, `unsupported shell "elvish" (supported: bash, zsh, fish, pwsh)`)
+	require.EqualError(t, err, `unsupported shell "nu" (supported: bash, zsh, fish, pwsh, elvish)`)
 }
 
 func TestHandle_InstallCompletion(t *testing.T) {

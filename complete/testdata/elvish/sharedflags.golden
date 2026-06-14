@@ -1,0 +1,66 @@
+# myapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'myapp') (eq $w 'get')) { set next = 'myapp;get' }
+        if (and (eq $command 'myapp') (eq $w 'list')) { set next = 'myapp;list' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        edit:complex-candidate 'get' &display='get  Get item'
+        edit:complex-candidate 'list' &display='list  List items'
+    } elif (eq $command 'myapp;get') {
+        if (eq $prev '--include') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            for v ['name' 'email'] {
+                if (not (has-value $selected $v)) { put $prefix$v }
+            }
+        } elif (eq $prev '--status') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            for v ['draft' 'published'] {
+                if (not (has-value $selected $v)) { put $prefix$v }
+            }
+        } else {
+            edit:complex-candidate '--include' &display='--include  Fields to include'
+            edit:complex-candidate '--status' &display='--status  Filter by status'
+        }
+    } elif (eq $command 'myapp;list') {
+        if (eq $prev '--include') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            for v ['name' 'email'] {
+                if (not (has-value $selected $v)) { put $prefix$v }
+            }
+        } elif (eq $prev '--status') {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            for v ['active' 'inactive'] {
+                if (not (has-value $selected $v)) { put $prefix$v }
+            }
+        } else {
+            edit:complex-candidate '--include' &display='--include  Fields to include'
+            edit:complex-candidate '--status' &display='--status  Filter by status'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+        }
+    }
+}

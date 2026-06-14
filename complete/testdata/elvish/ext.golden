@@ -1,0 +1,28 @@
+# myapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        if (or (eq $prev '--config') (eq $prev '-c')) {
+            edit:complete-filename $cur | each {|c|
+                var s = $c
+                if (not-eq (kind-of $c) string) { set s = $c[stem] }
+                if (or (str:has-suffix $s '/') (str:has-suffix $s '.yaml')) { put $c }
+            }
+        } else {
+            edit:complex-candidate '--config' &display='--config  Config file'
+            edit:complex-candidate '-c' &display='-c  Config file'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+        }
+    }
+}

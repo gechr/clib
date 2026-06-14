@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/gechr/clib/complete"
-	_ "github.com/gechr/clib/complete/bash" // register shell generators
-	_ "github.com/gechr/clib/complete/fish" // register shell generators
-	_ "github.com/gechr/clib/complete/pwsh" // register shell generators
-	_ "github.com/gechr/clib/complete/zsh"  // register shell generators
+	_ "github.com/gechr/clib/complete/bash"   // register shell generators
+	_ "github.com/gechr/clib/complete/elvish" // register shell generators
+	_ "github.com/gechr/clib/complete/fish"   // register shell generators
+	_ "github.com/gechr/clib/complete/pwsh"   // register shell generators
+	_ "github.com/gechr/clib/complete/zsh"    // register shell generators
 	"github.com/gechr/clib/internal/tag"
 	"github.com/gechr/x/shell"
 	cobralib "github.com/spf13/cobra"
@@ -315,6 +316,7 @@ func CompletionCommand(
 	}
 	cmd.AddCommand(
 		shellCmd(shell.Bash),
+		shellCmd(shell.Elvish),
 		shellCmd(shell.Fish),
 		shellCmd(shell.Pwsh),
 		shellCmd(shell.Zsh),

@@ -1,0 +1,35 @@
+# my-app Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['my-app'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'my-app'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'my-app') (eq $w 'build')) { set next = 'my-app;build' }
+        if (and (eq $command 'my-app') (eq $w 'test')) { set next = 'my-app;test' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'my-app') {
+        edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+        edit:complex-candidate '-v' &display='-v  Verbose output'
+        edit:complex-candidate 'build' &display='build  Build the project'
+        edit:complex-candidate 'test' &display='test  Run tests'
+    } elif (eq $command 'my-app;build') {
+        if (or (eq $prev '--output') (eq $prev '-o')) {
+            nop
+        } else {
+            edit:complex-candidate '--output' &display='--output  Output path'
+            edit:complex-candidate '-o' &display='-o  Output path'
+        }
+    }
+}

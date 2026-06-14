@@ -1,0 +1,75 @@
+# acme-plugin Elvish completion
+
+use str
+use re
+
+fn _acme_plugin_positionals {|cmdskip valueflags @tokens|
+    var positional = []
+    var skipnext = $false
+    var dashdash = $false
+    var skip = $cmdskip
+    for t $tokens {
+        if $dashdash { set positional = [$@positional $t]; continue }
+        if $skipnext { set skipnext = $false; continue }
+        if (eq $t '--') { set dashdash = $true; continue }
+        if (has-value $valueflags $t) { set skipnext = $true; continue }
+        if (str:has-prefix $t '-') { continue }
+        if (> $skip 0) { set skip = (- $skip 1); continue }
+        set positional = [$@positional $t]
+    }
+    put $@positional
+}
+
+set edit:completion:arg-completer['acme-plugin'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'acme-plugin'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'acme-plugin') (eq $w 'complete')) { set next = 'acme-plugin;complete' }
+        if (and (eq $command 'acme-plugin') (eq $w 'resolve')) { set next = 'acme-plugin;resolve' }
+        if (and (eq $command 'acme-plugin') (eq $w 'send')) { set next = 'acme-plugin;send' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'acme-plugin') {
+        edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+        edit:complex-candidate '-v' &display='-v  Verbose output'
+        edit:complex-candidate 'complete' &display='complete  Tab completions'
+        edit:complex-candidate 'resolve' &display='resolve  Resolve values'
+        edit:complex-candidate 'send' &display='send  Send notifications'
+    } elif (eq $command 'acme-plugin;complete') {
+        var positional = [(_acme_plugin_positionals 1 [] $@prior)]
+        var ncount = (count $positional)
+        if (< $ncount 1) {
+            var kind = ''
+            var first = $false
+            if (eq $ncount 0) { set kind = 'complete-kind'; set first = $true } else { set kind = 'complete-kind' }
+            var callargs = ['--@complete='$kind]
+            if (not $first) { set callargs = [$@callargs '--' $@positional] }
+            try { (external 'acme-plugin') $@callargs 2>/dev/null | from-lines } catch _ { }
+        }
+    } elif (eq $command 'acme-plugin;resolve') {
+        var positional = [(_acme_plugin_positionals 1 [] $@prior)]
+        var ncount = (count $positional)
+        if (< $ncount 2) {
+            var kind = ''
+            var first = $false
+            if (eq $ncount 0) { set kind = 'resolve-kind'; set first = $true } else { set kind = 'resolve-kind' }
+            var callargs = ['--@complete='$kind]
+            if (not $first) { set callargs = [$@callargs '--' $@positional] }
+            try { (external 'acme-plugin') $@callargs 2>/dev/null | from-lines } catch _ { }
+        }
+    } elif (eq $command 'acme-plugin;send') {
+        if (eq $prev '--to') {
+            nop
+        } else {
+            edit:complex-candidate '--to' &display='--to  Recipient'
+        }
+    }
+}

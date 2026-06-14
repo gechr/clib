@@ -1,0 +1,51 @@
+# myapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'myapp') (eq $w 'build')) { set next = 'myapp;build' }
+        if (and (eq $command 'myapp') (or (eq $w 'test') (eq $w 't'))) { set next = 'myapp;test' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        if (eq $prev '--color') {
+            put 'auto'
+            put 'always'
+            put 'never'
+        } else {
+            edit:complex-candidate '--color' &display='--color  Color mode'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+            edit:complex-candidate 'build' &display='build  Build the project'
+            edit:complex-candidate 'test' &display='test  Run tests'
+        }
+    } elif (eq $command 'myapp;build') {
+        if (or (eq $prev '--output') (eq $prev '-o')) {
+            nop
+        } else {
+            edit:complex-candidate '--output' &display='--output  Output path'
+            edit:complex-candidate '-o' &display='-o  Output path'
+            edit:complex-candidate '--release' &display='--release  Release build'
+        }
+    } elif (eq $command 'myapp;test') {
+        if (or (eq $prev '--run') (eq $prev '-r')) {
+            nop
+        } else {
+            edit:complex-candidate '--coverage' &display='--coverage  Enable coverage'
+            edit:complex-candidate '--run' &display='--run  Test pattern'
+            edit:complex-candidate '-r' &display='-r  Test pattern'
+        }
+    }
+}

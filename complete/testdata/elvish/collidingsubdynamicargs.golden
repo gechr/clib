@@ -1,0 +1,65 @@
+# pdc Elvish completion
+
+use str
+use re
+
+fn _pdc_positionals {|cmdskip valueflags @tokens|
+    var positional = []
+    var skipnext = $false
+    var dashdash = $false
+    var skip = $cmdskip
+    for t $tokens {
+        if $dashdash { set positional = [$@positional $t]; continue }
+        if $skipnext { set skipnext = $false; continue }
+        if (eq $t '--') { set dashdash = $true; continue }
+        if (has-value $valueflags $t) { set skipnext = $true; continue }
+        if (str:has-prefix $t '-') { continue }
+        if (> $skip 0) { set skip = (- $skip 1); continue }
+        set positional = [$@positional $t]
+    }
+    put $@positional
+}
+
+set edit:completion:arg-completer['pdc'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'pdc'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'pdc') (eq $w 'incident')) { set next = 'pdc;incident' }
+        if (and (eq $command 'pdc;incident') (eq $w 'show')) { set next = 'pdc;incident;show' }
+        if (and (eq $command 'pdc') (eq $w 'user')) { set next = 'pdc;user' }
+        if (and (eq $command 'pdc;user') (eq $w 'show')) { set next = 'pdc;user;show' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+
+    if (eq $command 'pdc') {
+        edit:complex-candidate 'incident' &display='incident  Manage incidents'
+        edit:complex-candidate 'user' &display='user  Manage users'
+    } elif (eq $command 'pdc;incident') {
+        edit:complex-candidate 'show' &display='show  Show an incident'
+    } elif (eq $command 'pdc;incident;show') {
+        var positional = [(_pdc_positionals 2 [] $@prior)]
+        var ncount = (count $positional)
+        var kind = ''
+        var first = $false
+        if (eq $ncount 0) { set kind = 'incident'; set first = $true } else { set kind = 'incident' }
+        var callargs = ['--@complete='$kind]
+        if (not $first) { set callargs = [$@callargs '--' $@positional] }
+        try { (external 'pdc') $@callargs 2>/dev/null | from-lines } catch _ { }
+    } elif (eq $command 'pdc;user') {
+        edit:complex-candidate 'show' &display='show  Show a user'
+    } elif (eq $command 'pdc;user;show') {
+        var positional = [(_pdc_positionals 2 [] $@prior)]
+        var ncount = (count $positional)
+        var kind = ''
+        var first = $false
+        if (eq $ncount 0) { set kind = 'user'; set first = $true } else { set kind = 'user' }
+        var callargs = ['--@complete='$kind]
+        if (not $first) { set callargs = [$@callargs '--' $@positional] }
+        try { (external 'pdc') $@callargs 2>/dev/null | from-lines } catch _ { }
+    }
+}

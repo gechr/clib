@@ -1,0 +1,35 @@
+# myapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    var prev = ''
+    if (> (count $prior) 0) { set prev = $prior[-1] }
+
+    if (eq $command 'myapp') {
+        if (or (eq $prev '--format') (eq $prev '-f')) {
+            edit:complex-candidate 'json' &display='json  JSON output'
+            edit:complex-candidate 'yaml' &display='yaml  YAML output'
+            edit:complex-candidate 'text' &display='text  Plain text'
+        } elif (or (eq $prev '--tags') (eq $prev '-t')) {
+            var prefix = ''
+            if (re:match ',' $cur) { set prefix = (re:replace '[^,]*$' '' $cur) }
+            var selected = [(str:split ',' $prefix)]
+            for v ['bug' 'feature' 'docs'] {
+                if (not (has-value $selected $v)) { put $prefix$v }
+            }
+        } else {
+            edit:complex-candidate '--format' &display='--format  Output format'
+            edit:complex-candidate '-f' &display='-f  Output format'
+            edit:complex-candidate '--tags' &display='--tags  Filter tags'
+            edit:complex-candidate '-t' &display='-t  Filter tags'
+            edit:complex-candidate '--verbose' &display='--verbose  Verbose output'
+            edit:complex-candidate '-v' &display='-v  Verbose output'
+        }
+    }
+}

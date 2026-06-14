@@ -1,0 +1,34 @@
+# myapp Elvish completion
+
+use str
+use re
+
+set edit:completion:arg-completer['myapp'] = {|@words|
+    var n = (count $words)
+    var cur = $words[-1]
+    var prior = $words[1..(- $n 1)]
+    var command = 'myapp'
+    for w $prior {
+        if (str:has-prefix $w '-') { continue }
+        var next = ''
+        if (and (eq $command 'myapp') (eq $w 'parent')) { set next = 'myapp;parent' }
+        if (and (eq $command 'myapp;parent') (eq $w 'child')) { set next = 'myapp;parent;child' }
+        if (eq $next '') { break }
+        set command = $next
+    }
+
+    if (eq $command 'myapp') {
+        edit:complex-candidate '--root-local' &display='--root-local  Root local'
+        edit:complex-candidate '--root-persistent' &display='--root-persistent  Root persistent'
+        edit:complex-candidate 'parent' &display='parent  Parent command'
+    } elif (eq $command 'myapp;parent') {
+        edit:complex-candidate '--parent-local' &display='--parent-local  Parent local'
+        edit:complex-candidate '--parent-persistent' &display='--parent-persistent  Parent persistent'
+        edit:complex-candidate '--root-persistent' &display='--root-persistent  Root persistent'
+        edit:complex-candidate 'child' &display='child  Child command'
+    } elif (eq $command 'myapp;parent;child') {
+        edit:complex-candidate '--child-local' &display='--child-local  Child local'
+        edit:complex-candidate '--parent-persistent' &display='--parent-persistent  Parent persistent'
+        edit:complex-candidate '--root-persistent' &display='--root-persistent  Root persistent'
+    }
+}

@@ -325,6 +325,8 @@ func builtInShellFunc(name string) (ShellFunc, bool) {
 		return GenerateZsh, true
 	case shell.Pwsh:
 		return GeneratePwsh, true
+	case shell.Elvish:
+		return GenerateElvish, true
 	default:
 		return nil, false
 	}
@@ -338,7 +340,7 @@ func resolveShellFunc(name string) (ShellFunc, bool) {
 }
 
 func supportedShells() string {
-	names := []string{shell.Bash, shell.Zsh, shell.Fish, shell.Pwsh}
+	names := []string{shell.Bash, shell.Zsh, shell.Fish, shell.Pwsh, shell.Elvish}
 	var custom []string
 	for name := range shellRegistry {
 		if !slices.Contains(names, name) {
@@ -632,6 +634,15 @@ func (g *Generator) completionFile(sh string) (string, error) {
 			return "", err
 		}
 		return filepath.Join(dir, "powershell", "completions", g.AppName+".ps1"), nil
+	}
+	// Elvish loads library modules from its config dir; place the script under
+	// lib/completions so the user activates it with `use completions/<app>`.
+	if sh == shell.Elvish {
+		dir, err := shell.ConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(dir, "elvish", "lib", "completions", g.AppName+".elv"), nil
 	}
 	return shell.CompletionFile(g.AppName, sh)
 }
