@@ -3,6 +3,7 @@ package help_test
 import (
 	"bytes"
 	"errors"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -182,6 +183,65 @@ func TestRender_Usage_Description_NoWrap(t *testing.T) {
 		"Usage\n\n  mycli widget\n\n    Without an id, prints a summary of available widgets. With an id, prints that widget's details.\n",
 		ansi.Strip(buf.String()),
 	)
+}
+
+func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
+	// Word-wrapping must never break a flag mid-token ("--\nexample").
+	// charmbracelet's ansi.Wordwrap treats "-" as a break point; the renderer
+	// uses gechr/x/ansi.WrapSoft, which breaks only at spaces, so flags stay
+	// whole. This must hold for backticked flags in a Description and for raw
+	// flags in an Arg description (which never run through backtick styling),
+	// regardless of the writer's colour profile.
+	tests := []struct {
+		name     string
+		profile  colorprofile.Profile
+		sections []help.Section
+		flag     string
+	}{
+		{
+			name:    "description backtick styled",
+			profile: colorprofile.TrueColor,
+			flag:    "--example",
+			sections: []help.Section{{Title: "Usage", Content: []help.Content{
+				help.Usage{Command: "mycli format"},
+				help.Description("An unknown key fails the run unless `--example` removes it from the directive."),
+			}}},
+		},
+		{
+			name:    "description backtick plain",
+			profile: colorprofile.NoTTY,
+			flag:    "--example",
+			sections: []help.Section{{Title: "Usage", Content: []help.Content{
+				help.Usage{Command: "mycli format"},
+				help.Description("An unknown key fails the run unless `--example` removes it from the directive."),
+			}}},
+		},
+		{
+			name:    "arg raw flag",
+			profile: colorprofile.NoTTY,
+			flag:    "--dry-run",
+			sections: []help.Section{{Title: "Arguments", Content: []help.Content{
+				help.Args{{Name: "path", Required: true, Desc: "Directory to scan; pass --dry-run to preview without writing changes."}},
+			}}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// A narrow width forces the flag toward a line edge.
+			r := help.NewRenderer(testTheme(), help.WithMaxWidth(40), help.WithDescriptionWidth(40))
+			var buf bytes.Buffer
+			cw := &colorprofile.Writer{Forward: &buf, Profile: tc.profile}
+			require.NoError(t, r.Render(cw, tc.sections))
+
+			out := ansi.Strip(buf.String())
+			// The flag must appear whole on a single line...
+			require.Regexp(t, `(?m)^.*`+regexp.QuoteMeta(tc.flag)+`.*$`, out)
+			// ...and no line may end on a dangling hyphen.
+			for _, line := range strings.Split(out, "\n") {
+				require.NotRegexp(t, `-$`, line, "line ends on a dangling hyphen: %q", line)
+			}
+		})
+	}
 }
 
 func TestRender_Usage_Raw(t *testing.T) {

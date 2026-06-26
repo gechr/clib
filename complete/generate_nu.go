@@ -9,9 +9,9 @@ import (
 //
 // Nushell completions are declarative: every command is described by an `extern`
 // signature whose flags and positionals carry optional `@"nu-complete …"`
-// custom-completer attributes. Unlike the bash/zsh/fish/pwsh/elvish generators —
+// custom-completer attributes. Unlike the bash/zsh/fish/pwsh/elvish generators -
 // each of which emits a single dispatcher that resolves the command path at
-// runtime — this generator leans on Nushell's own parser to select the matching
+// runtime - this generator leans on Nushell's own parser to select the matching
 // `extern`, and only emits helper closures for the cases Nushell cannot express
 // declaratively: dynamic predictors (which shell out to `<app> --@complete=…`),
 // comma-separated value lists, positional dynamic args, and forwarded context

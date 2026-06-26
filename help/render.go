@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/theme"
+	gansi "github.com/gechr/x/ansi"
 	"github.com/gechr/x/terminal"
 )
 
@@ -367,7 +368,7 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		styled := r.renderBackticks(paragraph, nil)
 		lines := []string{styled}
 		if wrap {
-			lines = strings.Split(ansi.Wordwrap(styled, avail, " "), "\n")
+			lines = strings.Split(gansi.WrapSoft(styled, avail), "\n")
 		}
 		for _, line := range lines {
 			if _, err := fmt.Fprintf(w, "%s%s\n", pad, line); err != nil {
@@ -1029,7 +1030,7 @@ func (r *Renderer) wrapDesc(desc string, descCol int) string {
 		}
 	}
 
-	wrapped := ansi.Wordwrap(desc, avail, " ")
+	wrapped := gansi.WrapSoft(desc, avail)
 	lines := strings.Split(wrapped, "\n")
 	if len(lines) <= 1 {
 		return desc
@@ -1043,7 +1044,7 @@ func (r *Renderer) wrapDesc(desc string, descCol int) string {
 			if candidate < r.maxWidth {
 				contAvail := r.maxWidth - candidate
 				contText := strings.Join(lines[1:], " ")
-				rewrapped := ansi.Wordwrap(contText, contAvail, " ")
+				rewrapped := gansi.WrapSoft(contText, contAvail)
 				lines = append(lines[:1], strings.Split(rewrapped, "\n")...)
 				padCol = candidate
 			}
@@ -1076,7 +1077,7 @@ func (r *Renderer) wrapBracketBelow(desc string, descCol, avail int) (string, bo
 	// Wrap prefix at descCol if needed.
 	var lines []string
 	if visibleWidth(prefix) > avail {
-		wrapped := ansi.Wordwrap(prefix, avail, " ")
+		wrapped := gansi.WrapSoft(prefix, avail)
 		lines = strings.Split(wrapped, "\n")
 	} else {
 		lines = []string{prefix}
@@ -1088,13 +1089,13 @@ func (r *Renderer) wrapBracketBelow(desc string, descCol, avail int) (string, bo
 
 	// Wrap bracket content. First line starts at descCol (full avail width);
 	// continuation lines start at descCol+1 (one narrower, after '[').
-	bracketWrapped := ansi.Wordwrap(bracket, avail, " ")
+	bracketWrapped := gansi.WrapSoft(bracket, avail)
 	bracketLines := strings.Split(bracketWrapped, "\n")
 	if len(bracketLines) > 1 {
 		contAvail := avail - 1
 		if contAvail > 0 {
 			contText := strings.Join(bracketLines[1:], " ")
-			rewrapped := ansi.Wordwrap(contText, contAvail, " ")
+			rewrapped := gansi.WrapSoft(contText, contAvail)
 			bracketLines = append(bracketLines[:1], strings.Split(rewrapped, "\n")...)
 		}
 	}

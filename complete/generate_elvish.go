@@ -190,7 +190,7 @@ func elvWriteResolution(sb *strings.Builder, g *Generator) {
 
 // elvWriteTransitions emits the subcommand canonicalization rules as independent
 // if statements. Each rule matches a unique (command, word) pair, so at most one
-// fires per loop iteration — no elif chaining is needed (and a newline-separated
+// fires per loop iteration - no elif chaining is needed (and a newline-separated
 // elif would be misparsed as a command in Elvish).
 func elvWriteTransitions(sb *strings.Builder, parentPath string, subs []SubSpec, indent string) {
 	for _, sub := range SortSubSpecs(subs) {
