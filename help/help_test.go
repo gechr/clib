@@ -237,7 +237,7 @@ func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
 			// The flag must appear whole on a single line...
 			require.Regexp(t, `(?m)^.*`+regexp.QuoteMeta(tc.flag)+`.*$`, out)
 			// ...and no line may end on a dangling hyphen.
-			for _, line := range strings.Split(out, "\n") {
+			for line := range strings.SplitSeq(out, "\n") {
 				require.NotRegexp(t, `-$`, line, "line ends on a dangling hyphen: %q", line)
 			}
 		})

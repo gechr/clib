@@ -17,6 +17,7 @@ golden:
 
 .PHONY: lint
 lint:
+	@zizmor --persona=pedantic --min-severity=medium .github/
 	@$(GO) tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint run
 
 .PHONY: test
