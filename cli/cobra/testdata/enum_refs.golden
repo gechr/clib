@@ -1,0 +1,12 @@
+[1;33mUsage[m
+
+  [1;32mlogin[m [31m[options][m [34m<provider>[m
+
+    Authenticate with a provider.
+
+    The [34mgithub[m provider uses an OAuth device flow.
+
+[1;33mOptions[m
+
+  [31m--log-level[m[2;31m [m[2;31m<log-level>[m  Logging verbosity [2m[[m[2mdebug[m[2m, [m[2minfo[m[2m, [m[2mwarn[m[2m][m
+  [31m--verbose[m                Shorthand for [31mdebug[m logging

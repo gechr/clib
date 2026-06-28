@@ -277,9 +277,19 @@ func nodeArgs(node *konglib.Node) help.Args {
 	}
 	var args help.Args
 	for _, pos := range node.Positional {
+		var enum []string
+		if pos.Enum != "" {
+			enum = pos.EnumSlice()
+		}
+		var def string
+		if pos.HasDefault {
+			def = pos.Default
+		}
 		args = append(args, help.Arg{
 			Name:       pos.Name,
+			Default:    def,
 			Desc:       pos.Help,
+			Enum:       enum,
 			Required:   pos.Required,
 			Repeatable: pos.IsCumulative(),
 		})
@@ -521,11 +531,18 @@ func Args(cli any) ([]help.Arg, error) {
 			if name == "" {
 				name = strings.ToLower(f.Origin)
 			}
+			def := f.EnumDefault
+			if def == "" {
+				def = f.Default
+			}
 			args = append(args, help.Arg{
-				Name:       name,
-				Desc:       f.Desc(),
-				Required:   !f.Optional,
-				Repeatable: f.IsSlice,
+				Name:        name,
+				Default:     def,
+				Desc:        f.Desc(),
+				Enum:        f.Enum,
+				HideDefault: f.HideDefault,
+				Required:    !f.Optional,
+				Repeatable:  f.IsSlice,
 			})
 		}
 	}

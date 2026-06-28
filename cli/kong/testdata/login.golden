@@ -1,0 +1,17 @@
+[1;33mUsage[m
+
+  [1;32mclover login[m [31m[options][m [34m[<provider>][m
+
+    Authenticate with a provider.
+
+    The [34mgithub[m provider uses an OAuth device flow; pass [31m--host[m for self-hosted instances.
+
+[1;33mArguments[m
+
+  [34m[<provider>][m  Provider to authenticate with [2m(default: github)[m
+
+[1;33mOptions[m
+
+      [31m--host[m[2;31m [m[2;31mhost[m  Forge host override
+
+  [31m-h[m, [31m--help[m       Print help

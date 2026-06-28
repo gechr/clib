@@ -41,9 +41,11 @@ type Renderer struct {
 // (`name`). Built by collectDescRefs at Render time so backtick styling can
 // pick the same style the renderer would use elsewhere for the same name.
 type descRefs struct {
-	args     map[string]Arg
-	binary   string // first token of the rendered Usage.Command (e.g. "mycli")
-	commands map[string]struct{}
+	args      map[string]Arg
+	binary    string // first token of the rendered Usage.Command (e.g. "mycli")
+	commands  map[string]struct{}
+	argEnums  map[string]Arg      // enum value (e.g. "github") -> the arg that owns it, so the value styles like its arg
+	flagEnums map[string]struct{} // enum value owned by a flag -> styled with the flag color (HelpFlag)
 }
 
 // NewRenderer creates a Renderer.
@@ -549,7 +551,8 @@ func (r *Renderer) formatArg(a Arg, all Args, descCol, ind int) string {
 	argPart := r.argStyle(a, all).Render(BracketArg(a))
 	sb.WriteString(argPart)
 
-	if a.Desc != "" {
+	descPart := r.buildArgDescPart(a)
+	if descPart != "" {
 		argWidth := ind + visibleWidth(argPart)
 		actualDescCol := descCol
 		if argWidth < descCol {
@@ -558,10 +561,24 @@ func (r *Renderer) formatArg(a Arg, all Args, descCol, ind int) string {
 			sb.WriteString("  ")
 			actualDescCol = argWidth + overflowPad
 		}
-		sb.WriteString(r.wrapDesc(a.Desc, actualDescCol))
+		sb.WriteString(r.wrapDesc(descPart, actualDescCol))
 	}
 
 	return sb.String()
+}
+
+// buildArgDescPart renders a positional arg's description (with backtick/enum
+// styling) and appends an auto-derived " (default: X)" annotation when the arg
+// has a default, so callers can drop the hand-written suffix from help text.
+func (r *Renderer) buildArgDescPart(a Arg) string {
+	var parts []string
+	if a.Desc != "" {
+		parts = append(parts, r.renderDesc(a.Desc))
+	}
+	if a.Default != "" && !a.HideDefault && !r.hideDefaults {
+		parts = append(parts, strings.TrimSpace(r.Theme.DimDefault(a.Default)))
+	}
+	return strings.Join(parts, " ")
 }
 
 // renderDesc renders a description, styling backtick-enclosed text and
@@ -736,15 +753,43 @@ func (r *Renderer) getBacktickStyle(text string) (lipgloss.Style, bool) {
 // so backtick styling in Description can resolve them by name.
 func collectDescRefs(sections []Section) descRefs {
 	refs := descRefs{
-		args:     map[string]Arg{},
-		commands: map[string]struct{}{},
+		args:      map[string]Arg{},
+		commands:  map[string]struct{}{},
+		argEnums:  map[string]Arg{},
+		flagEnums: map[string]struct{}{},
+	}
+	indexArg := func(a Arg) {
+		refs.args[a.Name] = a
+		// Index each known value so a backtick token like `github` resolves
+		// to its owning arg and inherits that arg's color. First writer wins
+		// if the same value is shared across args (rare); arg name lookup
+		// still takes precedence in lookup().
+		for _, v := range a.Enum {
+			if v == "" {
+				continue
+			}
+			if _, ok := refs.argEnums[v]; !ok {
+				refs.argEnums[v] = a
+			}
+		}
+	}
+	indexFlag := func(f Flag) {
+		// Flag enum values style with the flag color, so a token like `debug`
+		// (a value of --log-level) matches its owning flag. Arg-owned enums
+		// take precedence in lookup(), so values shared by an arg keep the arg
+		// color.
+		for _, v := range f.Enum {
+			if v != "" {
+				refs.flagEnums[v] = struct{}{}
+			}
+		}
 	}
 	for _, sec := range sections {
 		for _, c := range sec.Content {
 			switch v := c.(type) {
 			case Usage:
 				for _, a := range v.Args {
-					refs.args[a.Name] = a
+					indexArg(a)
 				}
 				// Capture the binary name (first token of the Usage command)
 				// so multi-segment command references like "mycli sub cmd" in
@@ -757,7 +802,11 @@ func collectDescRefs(sections []Section) descRefs {
 				}
 			case Args:
 				for _, a := range v {
-					refs.args[a.Name] = a
+					indexArg(a)
+				}
+			case FlagGroup:
+				for _, f := range v {
+					indexFlag(f)
 				}
 			case CommandGroup:
 				for _, cmd := range v {
@@ -781,12 +830,29 @@ func (d descRefs) lookup(text string, th *theme.Theme) (lipgloss.Style, bool) {
 			return *style, true
 		}
 	}
+	// A known enum value (e.g. `github`) styles like the arg that declares it,
+	// so cross-references such as "...for `github` only" match the <provider>
+	// arg's color rather than the generic backtick fallback. Checked after the
+	// arg-name lookup so a name collision prefers the arg itself.
+	if a, ok := d.argEnums[text]; ok {
+		if style := argStyleForRef(a, d.args, th); style != nil {
+			return *style, true
+		}
+	}
 	if _, ok := d.commands[text]; ok {
 		if th.HelpSubcommand != nil {
 			return *th.HelpSubcommand, true
 		}
 		if th.HelpCommand != nil {
 			return *th.HelpCommand, true
+		}
+	}
+	// A flag's enum value (e.g. `debug` for --log-level) styles with the flag
+	// color, mirroring how the arg case styles with the arg color. Checked
+	// after args/commands so a value those own keeps its more specific style.
+	if _, ok := d.flagEnums[text]; ok {
+		if th.HelpFlag != nil {
+			return *th.HelpFlag, true
 		}
 	}
 	// Multi-segment command path: token is the binary itself or starts with

@@ -665,6 +665,31 @@ func TestNodeSections_PositionalArgs(t *testing.T) {
 	require.True(t, u.Args[0].Required)
 }
 
+// TestNodeSections_PositionalArg_EnumAndDefault verifies that a positional
+// arg's `enum` and `default` tags flow into the help.Arg in the Arguments
+// section, so the renderer can color enum-value references and auto-render the
+// "(default: X)" annotation without the help text spelling it out.
+func TestNodeSections_PositionalArg_EnumAndDefault(t *testing.T) {
+	type CLI struct {
+		Login struct {
+			Provider string `help:"Provider to authenticate with" arg:"" optional:"" default:"github" enum:"github,gitlab,gitea"`
+		} `help:"Authenticate" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"login", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	argsSec := findSection(sections, "Arguments")
+	require.NotNil(t, argsSec)
+	ag, ok := argsSec.Content[0].(help.Args)
+	require.True(t, ok)
+	require.Len(t, ag, 1)
+	require.Equal(t, "provider", ag[0].Name)
+	require.Equal(t, []string{"github", "gitlab", "gitea"}, ag[0].Enum)
+	require.Equal(t, "github", ag[0].Default)
+}
+
 func TestNodeSections_HiddenChildrenSkipped(t *testing.T) {
 	type CLI struct {
 		Run        struct{} `help:"Run the app"       cmd:""`

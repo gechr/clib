@@ -105,6 +105,21 @@ func sectionsLongDescription() []help.Section {
 	return urfavecli.Sections(cmd)
 }
 
+// sectionsFlagEnumRefs exercises flag-enum coloring: a backtick token in the
+// command description that matches a flag's enum value (`debug` for
+// --log-level) renders in the flag color. This is urfave's cross-provider path
+// for enum coloring, since urfave positional args carry no enum metadata.
+func sectionsFlagEnumRefs() []help.Section {
+	logLevel := &clilib.StringFlag{Name: "log-level", Usage: "Logging verbosity"}
+	cmd := &clilib.Command{
+		Name:        "run",
+		Description: "Run the app.\n\nUse `debug` logging to troubleshoot.",
+		Flags:       []clilib.Flag{logLevel},
+	}
+	urfavecli.Extend(logLevel, urfavecli.FlagExtra{Enum: []string{"debug", "info", "warn"}})
+	return urfavecli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
@@ -113,6 +128,7 @@ func TestGolden(t *testing.T) {
 		"grouped":               sectionsGrouped(),
 		"preserve_placeholders": sectionsPreservePlaceholders(),
 		"long_description":      sectionsLongDescription(),
+		"flag_enum_refs":        sectionsFlagEnumRefs(),
 	}
 
 	for name, sections := range scenarios {

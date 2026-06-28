@@ -204,7 +204,9 @@ func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
 			flag:    "--example",
 			sections: []help.Section{{Title: "Usage", Content: []help.Content{
 				help.Usage{Command: "mycli format"},
-				help.Description("An unknown key fails the run unless `--example` removes it from the directive."),
+				help.Description(
+					"An unknown key fails the run unless `--example` removes it from the directive.",
+				),
 			}}},
 		},
 		{
@@ -213,7 +215,9 @@ func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
 			flag:    "--example",
 			sections: []help.Section{{Title: "Usage", Content: []help.Content{
 				help.Usage{Command: "mycli format"},
-				help.Description("An unknown key fails the run unless `--example` removes it from the directive."),
+				help.Description(
+					"An unknown key fails the run unless `--example` removes it from the directive.",
+				),
 			}}},
 		},
 		{
@@ -221,7 +225,13 @@ func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
 			profile: colorprofile.NoTTY,
 			flag:    "--dry-run",
 			sections: []help.Section{{Title: "Arguments", Content: []help.Content{
-				help.Args{{Name: "path", Required: true, Desc: "Directory to scan; pass --dry-run to preview without writing changes."}},
+				help.Args{
+					{
+						Name:     "path",
+						Required: true,
+						Desc:     "Directory to scan; pass --dry-run to preview without writing changes.",
+					},
+				},
 			}}},
 		},
 	}
@@ -2797,4 +2807,177 @@ func TestRender_CommandGroup_LongName(t *testing.T) {
 		"Commands\n\n  very-long-command-name  A command with a long name\n  ls                      List things\n",
 		ansi.Strip(buf.String()),
 	)
+}
+
+// TestRender_Args_AutoDefaultAnnotation locks in that a positional arg with a
+// Default renders an auto " (default: X)" suffix, so callers can drop the
+// hand-written annotation from the description text.
+func TestRender_Args_AutoDefaultAnnotation(t *testing.T) {
+	r := help.NewRenderer(testTheme())
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{
+				Name:    "provider",
+				Desc:    "Provider to authenticate with",
+				Enum:    []string{"github", "gitlab", "gitea"},
+				Default: "github",
+			}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		"Arguments\n\n  [<provider>]  Provider to authenticate with (default: github)\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
+// TestRender_Args_HideDefaultSuppressesAnnotation verifies HideDefault drops
+// the auto annotation even when Default is set.
+func TestRender_Args_HideDefaultSuppressesAnnotation(t *testing.T) {
+	r := help.NewRenderer(testTheme())
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{
+				Name:        "provider",
+				Desc:        "Provider to authenticate with",
+				Default:     "github",
+				HideDefault: true,
+			}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		"Arguments\n\n  [<provider>]  Provider to authenticate with\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
+// TestRender_Args_DescBackticksStyled guards against the regression where a
+// positional arg's own description rendered literal backticks (its Desc was
+// not routed through the backtick renderer). `provider` names the arg itself,
+// so it resolves to the arg style rather than the generic backtick fallback.
+func TestRender_Args_DescBackticksStyled(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{Name: "provider", Desc: "`provider` to authenticate with"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	// Backticks are consumed (not rendered literally) and the token carries the
+	// arg style.
+	require.NotContains(t, buf.String(), "`provider`")
+	require.Contains(t, buf.String(), th.HelpArg.Render("provider"))
+}
+
+// TestRender_Description_BacktickEnumValueUsesArgStyle locks in the headline
+// behavior: a backtick token that matches a known enum value (e.g. `github`,
+// declared on the <provider> arg) is styled like its owning arg, not with the
+// generic HelpDescBacktick fallback - even when referenced from a different
+// flag's description.
+func TestRender_Description_BacktickEnumValueUsesArgStyle(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{
+				Name: "provider",
+				Desc: "Provider to authenticate with",
+				Enum: []string{"github", "gitlab", "gitea"},
+			}},
+		}},
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "host", Placeholder: "host", Desc: "Forge host for `github` only"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	out := buf.String()
+	// The enum value inherits the arg color (HelpArg), matching how <provider>
+	// renders - not the purple HelpDescBacktick fallback.
+	require.Contains(t, out, th.HelpArg.Render("github"))
+	require.NotContains(t, out, th.HelpDescBacktick.Render("github"))
+	require.NotContains(t, out, "`github`")
+}
+
+// TestRender_Description_BacktickFlagEnumValueUsesFlagStyle verifies that a
+// backtick token matching a flag's enum value (e.g. `debug` for --log-level)
+// is styled with the flag color, the cross-provider counterpart to the
+// positional-arg enum rule.
+func TestRender_Description_BacktickFlagEnumValueUsesFlagStyle(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "log-level", Placeholder: "level", Enum: []string{"debug", "info", "warn"}},
+				{Long: "verbose", Desc: "Shorthand for `debug` logging"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	out := buf.String()
+	require.Contains(t, out, th.HelpFlag.Render("debug"))
+	require.NotContains(t, out, th.HelpDescBacktick.Render("debug"))
+}
+
+// TestRender_Description_ArgEnumBeatsFlagEnum verifies that when a value is an
+// enum of both an arg and a flag, the positional-arg color wins (arg-owned
+// enums take precedence over flag-owned ones).
+func TestRender_Description_ArgEnumBeatsFlagEnum(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{Name: "provider", Desc: "Provider", Enum: []string{"github"}}},
+		}},
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "source", Placeholder: "src", Enum: []string{"github"}},
+				{Long: "host", Placeholder: "host", Desc: "Forge host for `github` only"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	out := buf.String()
+	require.Contains(t, out, th.HelpArg.Render("github"))
+	require.NotContains(t, out, th.HelpFlag.Render("github"))
+}
+
+// TestRender_Description_BacktickUnknownEnumValueFallsBack ensures a backtick
+// token that is NOT a known arg/enum/command still uses the generic fallback,
+// so the smart styling does not over-reach.
+func TestRender_Description_BacktickUnknownEnumValueFallsBack(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Arguments", Content: []help.Content{
+			help.Args{{Name: "provider", Desc: "Provider", Enum: []string{"github"}}},
+		}},
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "host", Placeholder: "host", Desc: "Forge host for `bitbucket` only"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Contains(t, buf.String(), th.HelpDescBacktick.Render("bitbucket"))
 }

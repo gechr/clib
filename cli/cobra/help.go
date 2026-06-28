@@ -95,7 +95,7 @@ func usageSection(cmd *cobralib.Command, hasFlags bool, cfg sectionsConfig) help
 		u = help.Usage{
 			Command:     cmd.CommandPath(),
 			ShowOptions: hasFlags,
-			Args:        parseUseArgs(cmd.Use),
+			Args:        withValidArgsEnum(parseUseArgs(cmd.Use), cmd.ValidArgs),
 		}
 		if len(availableCommands(cmd)) > 0 {
 			u.Args = append(
@@ -352,6 +352,31 @@ func splitPflagUsagePlaceholder(usage string) (string, string, bool) {
 		break
 	}
 	return "", usage, false
+}
+
+// withValidArgsEnum attaches cobra's ValidArgs to each parsed positional arg
+// as its Enum set, so backtick references to those values pick up the arg
+// color in help output. cobra validates every positional against the same
+// ValidArgs list, so the set is shared across args. Entries may carry a
+// "value\tdescription" completion annotation; only the value is kept.
+func withValidArgsEnum(args []help.Arg, validArgs []string) []help.Arg {
+	if len(args) == 0 || len(validArgs) == 0 {
+		return args
+	}
+	enum := make([]string, 0, len(validArgs))
+	for _, v := range validArgs {
+		value, _, _ := strings.Cut(v, "\t")
+		if value != "" {
+			enum = append(enum, value)
+		}
+	}
+	if len(enum) == 0 {
+		return args
+	}
+	for i := range args {
+		args[i].Enum = enum
+	}
+	return args
 }
 
 func parseUseArgs(use string) []help.Arg {

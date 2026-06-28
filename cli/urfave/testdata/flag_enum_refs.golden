@@ -1,0 +1,11 @@
+[1;33mUsage[m
+
+  [1;32mrun[m [31m[options][m
+
+    Run the app.
+
+    Use [31mdebug[m logging to troubleshoot.
+
+[1;33mOptions[m
+
+  [31m--log-level[m[2;31m [m[2;31m<log-level>[m  Logging verbosity [2m[[m[2mdebug[m[2m, [m[2minfo[m[2m, [m[2mwarn[m[2m][m

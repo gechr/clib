@@ -32,10 +32,13 @@ type Flag struct {
 // Arg describes a positional argument.
 type Arg struct {
 	Name         string // "query"
+	Default      string // default value, rendered as " (default: X)" suffix (auto-derived from tags)
 	Desc         string
-	Required     bool // true -> <query>, false -> [query]
-	Repeatable   bool // true -> appends "…" suffix
-	IsSubcommand bool // true -> this arg represents a subcommand placeholder
+	Enum         []string // known values this arg accepts (e.g. provider names); used to style matching backtick tokens in descriptions
+	HideDefault  bool     // true -> suppress the (default: X) annotation even when Default is set
+	Required     bool     // true -> <query>, false -> [query]
+	Repeatable   bool     // true -> appends "…" suffix
+	IsSubcommand bool     // true -> this arg represents a subcommand placeholder
 }
 
 // FlagGroup is a group of flag entries (blank line separates adjacent groups).

@@ -81,6 +81,39 @@ func sectionsDescription() []help.Section {
 	return sections
 }
 
+// loginCmd exercises a positional arg with an enum + default (provider) and a
+// description that references one of those enum values by backtick, so the
+// golden output captures both the auto "(default: github)" annotation and the
+// enum value `github` styled in the positional-arg color. The reference lives
+// in Help() rather than a struct tag because a tag cannot embed a backtick.
+type loginCmd struct {
+	Provider string `help:"Provider to authenticate with" arg:""             optional:"" default:"github" enum:"github,gitlab,gitea"`
+	Host     string `help:"Forge host override"           placeholder:"host"`
+}
+
+func (loginCmd) Help() string {
+	return `Authenticate with a provider.
+
+The ` + "`github`" + ` provider uses an OAuth device flow; pass ` + "`--host`" + ` for self-hosted instances.`
+}
+
+func sectionsLogin() []help.Section {
+	type CLI struct {
+		Login loginCmd `help:"Authenticate with a provider" cmd:""`
+	}
+
+	ctx := parseGoldenForHelp(
+		&CLI{},
+		[]string{"login", "--help"},
+		konglib.Name("clover"),
+	)
+	sections, err := kong.NodeSections(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return sections
+}
+
 func parseGoldenForHelp(cli any, args []string, opts ...konglib.Option) *konglib.Context {
 	var captured *konglib.Context
 	printer := func(_ konglib.HelpOptions, ctx *konglib.Context) error {
@@ -113,6 +146,7 @@ func TestGolden(t *testing.T) {
 		"basic":       sectionsBasic(),
 		"grouped":     sectionsGrouped(),
 		"description": sectionsDescription(),
+		"login":       sectionsLogin(),
 	}
 
 	for name, sections := range scenarios {

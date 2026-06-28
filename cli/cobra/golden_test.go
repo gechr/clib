@@ -65,6 +65,27 @@ func sectionsLongDescription() []help.Section {
 	return cobracli.Sections(cmd)
 }
 
+// sectionsEnumRefs exercises cross-referenced enum values: ValidArgs become
+// the <provider> positional's enum set, so `github` in the command's long
+// description renders in the positional-arg color; a flag enum value (`debug`)
+// renders in the flag color. The reference lives in cmd.Long rather than a
+// value flag's usage string because pflag would otherwise consume the first
+// backticked word as the flag's value placeholder.
+func sectionsEnumRefs() []help.Section {
+	cmd := &cobralib.Command{
+		Use:       "login <provider>",
+		Short:     "Authenticate with a provider",
+		Long:      "Authenticate with a provider.\n\nThe `github` provider uses an OAuth device flow.",
+		ValidArgs: []string{"github", "gitlab", "gitea"},
+	}
+	cmd.Flags().String("log-level", "", "Logging verbosity")
+	cobracli.Extend(cmd.Flags().Lookup("log-level"), cobracli.FlagExtra{
+		Enum: []string{"debug", "info", "warn"},
+	})
+	cmd.Flags().Bool("verbose", false, "Shorthand for `debug` logging")
+	return cobracli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
@@ -73,6 +94,7 @@ func TestGolden(t *testing.T) {
 		"preserve_placeholders":  sectionsPreservePlaceholders(),
 		"flag_refs_in_backticks": sectionsFlagRefsInBackticks(),
 		"long_description":       sectionsLongDescription(),
+		"enum_refs":              sectionsEnumRefs(),
 	}
 
 	for name, sections := range scenarios {
