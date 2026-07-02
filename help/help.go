@@ -77,7 +77,8 @@ type Usage struct {
 
 func (Usage) helpContent() {}
 
-// Text is freeform pre-styled text.
+// Text is freeform text. Inline backticked tokens are highlighted like
+// description backticks.
 type Text string
 
 func (Text) helpContent() {}

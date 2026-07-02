@@ -546,6 +546,51 @@ func TestRender_Text(t *testing.T) {
 	require.Equal(t, "Config\n\n  Some freeform text here\n", ansi.Strip(buf.String()))
 }
 
+func TestRender_Text_Backticks(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "app"},
+		}},
+		{Title: "Learn More", Content: []help.Content{
+			help.Text(
+				"Use `app <command> --help` for more information about a command.\n" +
+					"Documentation: `man app` or https://example.com/app\n" +
+					"Report issues: via chat or tickets",
+			),
+		}},
+	}
+
+	tests := []struct {
+		name    string
+		profile colorprofile.Profile
+		want    string
+	}{
+		{
+			name:    "plain preserves backticks",
+			profile: colorprofile.NoTTY,
+			want: "  Use `app <command> --help` for more information about a command.\n" +
+				"  Documentation: `man app` or https://example.com/app\n" +
+				"  Report issues: via chat or tickets",
+		},
+		{
+			name:    "styled strips backticks",
+			profile: colorprofile.TrueColor,
+			want: "  Use app <command> --help for more information about a command.\n" +
+				"  Documentation: man app or https://example.com/app\n" +
+				"  Report issues: via chat or tickets",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := help.NewRenderer(testTheme())
+			var buf bytes.Buffer
+			cw := &colorprofile.Writer{Forward: &buf, Profile: tc.profile}
+			require.NoError(t, r.Render(cw, sections))
+			require.Contains(t, ansi.Strip(buf.String()), tc.want)
+		})
+	}
+}
+
 func TestRender_Examples(t *testing.T) {
 	r := help.NewRenderer(testTheme())
 	var buf bytes.Buffer

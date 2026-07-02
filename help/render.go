@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/theme"
 	gansi "github.com/gechr/x/ansi"
+	xstrings "github.com/gechr/x/strings"
 	"github.com/gechr/x/terminal"
 )
 
@@ -170,7 +171,8 @@ func (r *Renderer) renderContent(
 	case Usage:
 		return r.renderUsage(w, c, ind)
 	case Text:
-		_, err := fmt.Fprintf(w, "%s%s\n", strings.Repeat(" ", ind), string(c))
+		text := r.renderBackticks(string(c), nil)
+		_, err := fmt.Fprintf(w, "%s\n", xstrings.Indent(text, strings.Repeat(" ", ind)))
 		return err
 	case Description:
 		return r.renderDescription(w, c, ind+r.descriptionIndent)
