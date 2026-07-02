@@ -372,7 +372,7 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		styled := r.renderBackticks(paragraph, nil)
 		lines := []string{styled}
 		if wrap {
-			lines = strings.Split(gansi.WrapSoft(styled, avail), "\n")
+			lines = wrapDescriptionParagraph(styled, avail)
 		}
 		for _, line := range lines {
 			if _, err := fmt.Fprintf(w, "%s%s\n", pad, line); err != nil {
@@ -381,6 +381,50 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		}
 	}
 	return nil
+}
+
+// wrapDescriptionParagraph wraps a single paragraph to avail columns. When the
+// paragraph starts with literal leading whitespace (e.g. a manually authored
+// "  - item" list line), that hanging indent is preserved on wrapped
+// continuation lines instead of collapsing to the paragraph's base indent.
+func wrapDescriptionParagraph(text string, avail int) []string {
+	lines := strings.Split(gansi.WrapSoft(text, avail), "\n")
+	if len(lines) <= 1 {
+		return lines
+	}
+
+	hang := leadingIndentWidth(lines[0])
+	if hang <= 0 || hang >= avail {
+		return lines
+	}
+
+	contAvail := avail - hang
+	contText := strings.Join(lines[1:], " ")
+	rewrapped := strings.Split(gansi.WrapSoft(contText, contAvail), "\n")
+	hangPad := strings.Repeat(" ", hang)
+	for i, line := range rewrapped {
+		rewrapped[i] = hangPad + line
+	}
+	return append(lines[:1], rewrapped...)
+}
+
+// listMarkers are the bullet characters recognised when computing the
+// hanging indent for a wrapped list item; each must be followed by a space.
+const listMarkers = "-*•"
+
+// leadingIndentWidth returns the visible width of the leading run of spaces
+// in line, ignoring ANSI escape sequences. When the leading spaces are
+// followed by a recognised list marker (e.g. "- "), the marker is included
+// so wrapped continuation lines align with the item's text rather than its
+// marker.
+func leadingIndentWidth(line string) int {
+	stripped := ansi.Strip(line)
+	trimmed := strings.TrimLeft(stripped, " ")
+	hang := len(stripped) - len(trimmed)
+	if len(trimmed) >= 2 && strings.ContainsRune(listMarkers, rune(trimmed[0])) && trimmed[1] == ' ' {
+		hang += 2
+	}
+	return hang
 }
 
 func (r *Renderer) renderExamples(w io.Writer, examples Examples, ind int) error {
