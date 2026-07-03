@@ -592,22 +592,54 @@ func TestRender_Text_Backticks(t *testing.T) {
 }
 
 func TestRender_Examples(t *testing.T) {
-	r := help.NewRenderer(testTheme())
-	var buf bytes.Buffer
-	sections := []help.Section{
-		{Title: "Examples", Content: []help.Content{
-			help.Examples{
+	tests := []struct {
+		name     string
+		examples help.Examples
+		want     string
+	}{
+		{
+			name: "comments",
+			examples: help.Examples{
 				{Comment: "List PRs", Command: "mycli"},
 				{Comment: "Search", Command: "mycli foo"},
 			},
-		}},
+			want: "Examples\n\n  # List PRs\n  $ mycli\n\n  # Search\n  $ mycli foo\n",
+		},
+		{
+			name: "empty comment",
+			examples: help.Examples{
+				{Command: "mycli add --name=foo"},
+			},
+			want: "Examples\n\n  $ mycli add --name=foo\n",
+		},
+		{
+			name: "whitespace comment",
+			examples: help.Examples{
+				{Comment: " \t ", Command: "mycli add --name=foo"},
+			},
+			want: "Examples\n\n  $ mycli add --name=foo\n",
+		},
+		{
+			name: "mixed comments",
+			examples: help.Examples{
+				{Comment: "List PRs", Command: "mycli"},
+				{Command: "mycli add --name=foo"},
+				{Comment: "Search", Command: "mycli foo"},
+			},
+			want: "Examples\n\n  # List PRs\n  $ mycli\n\n  $ mycli add --name=foo\n\n  # Search\n  $ mycli foo\n",
+		},
 	}
-	require.NoError(t, r.Render(&buf, sections))
-
-	require.Equal(t,
-		"Examples\n\n  # List PRs\n  $ mycli\n\n  # Search\n  $ mycli foo\n",
-		ansi.Strip(buf.String()),
-	)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := help.NewRenderer(testTheme())
+			var buf bytes.Buffer
+			sections := []help.Section{
+				{Title: "Examples", Content: []help.Content{tc.examples}},
+			}
+			require.NoError(t, r.Render(&buf, sections))
+			require.Equal(t, tc.want, ansi.Strip(buf.String()))
+		})
+	}
 }
 
 func TestRender_NestedSection(t *testing.T) {

@@ -435,13 +435,15 @@ func (r *Renderer) renderExamples(w io.Writer, examples Examples, ind int) error
 				return err
 			}
 		}
-		if _, err := fmt.Fprintf(
-			w,
-			"%s%s\n",
-			pad,
-			r.Theme.HelpDim.Render("# "+ex.Comment),
-		); err != nil {
-			return err
+		if strings.TrimSpace(ex.Comment) != "" {
+			if _, err := fmt.Fprintf(
+				w,
+				"%s%s\n",
+				pad,
+				r.Theme.HelpDim.Render("# "+ex.Comment),
+			); err != nil {
+				return err
+			}
 		}
 		ue := r.Theme.HelpUsageExample
 		if _, err := fmt.Fprintf(
