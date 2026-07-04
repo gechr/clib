@@ -421,7 +421,8 @@ func leadingIndentWidth(line string) int {
 	stripped := ansi.Strip(line)
 	trimmed := strings.TrimLeft(stripped, " ")
 	hang := len(stripped) - len(trimmed)
-	if len(trimmed) >= 2 && strings.ContainsRune(listMarkers, rune(trimmed[0])) && trimmed[1] == ' ' {
+	if len(trimmed) >= 2 && strings.ContainsRune(listMarkers, rune(trimmed[0])) &&
+		trimmed[1] == ' ' {
 		hang += 2
 	}
 	return hang
@@ -435,7 +436,7 @@ func (r *Renderer) renderExamples(w io.Writer, examples Examples, ind int) error
 				return err
 			}
 		}
-		if strings.TrimSpace(ex.Comment) != "" {
+		if !xstrings.IsBlank(ex.Comment) {
 			if _, err := fmt.Fprintf(
 				w,
 				"%s%s\n",

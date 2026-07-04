@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	xstrings "github.com/gechr/x/strings"
 )
 
 // GeneratePwsh generates a PowerShell completion script.
@@ -117,7 +119,7 @@ func pwshQuote(s string) string {
 // pwshTooltip returns desc when set, else text; CompletionResult rejects empty
 // list-item and tooltip strings, so callers must always pass a non-empty value.
 func pwshTooltip(text, desc string) string {
-	if strings.TrimSpace(desc) != "" {
+	if !xstrings.IsBlank(desc) {
 		return desc
 	}
 	return text

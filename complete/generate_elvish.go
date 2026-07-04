@@ -3,6 +3,8 @@ package complete
 import (
 	"fmt"
 	"strings"
+
+	xstrings "github.com/gechr/x/strings"
 )
 
 // GenerateElvish generates an Elvish completion script.
@@ -90,7 +92,7 @@ func elvQuote(s string) string {
 // with a description uses edit:complex-candidate so the menu shows the
 // description alongside the inserted stem.
 func elvCand(sb *strings.Builder, indent, stem, desc string) {
-	if strings.TrimSpace(desc) == "" {
+	if xstrings.IsBlank(desc) {
 		fmt.Fprintf(sb, "%sput %s\n", indent, elvQuote(stem))
 		return
 	}

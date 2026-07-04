@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/help"
+	xstrings "github.com/gechr/x/strings"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -263,7 +264,7 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 		Desc:  f.Usage,
 	}
 	typeName := f.Value.Type()
-	isRepeatable := strings.Contains(typeName, "Slice") || strings.Contains(typeName, "Array")
+	isRepeatable := xstrings.ContainsAny(typeName, "Slice", "Array")
 	extra := getExtra(f)
 	// Only extract a backquoted placeholder for non-bool flags: bool flags
 	// take no value, so a placeholder is nonsensical and backticks in their

@@ -1,9 +1,8 @@
 package cobra
 
 import (
-	"strings"
-
 	"github.com/gechr/clib/complete"
+	xstrings "github.com/gechr/x/strings"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -46,7 +45,7 @@ func pflagToMeta(f *pflag.Flag) complete.FlagMeta {
 	}
 
 	typeName := f.Value.Type()
-	meta.IsSlice = strings.Contains(typeName, "Slice") || strings.Contains(typeName, "Array")
+	meta.IsSlice = xstrings.ContainsAny(typeName, "Slice", "Array")
 
 	if _, ok := f.Value.(*CSVFlag); ok {
 		meta.IsCSV = true

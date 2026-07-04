@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/x/term"
+	"github.com/gechr/x/terminal"
 	"github.com/muesli/termenv"
 )
 
@@ -38,7 +38,7 @@ func (b Background) valid() bool {
 
 // DetectBackground queries a terminal for its background color.
 func DetectBackground(out *os.File) (Background, bool) {
-	if out == nil || !term.IsTerminal(out.Fd()) {
+	if !terminal.Is(out) {
 		return BackgroundUnspecified, false
 	}
 

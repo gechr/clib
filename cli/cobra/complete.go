@@ -16,6 +16,7 @@ import (
 	_ "github.com/gechr/clib/complete/zsh"    // register shell generators
 	"github.com/gechr/clib/internal/tag"
 	"github.com/gechr/x/shell"
+	xstrings "github.com/gechr/x/strings"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -259,7 +260,7 @@ func limitFromUse(use string) (int, bool) {
 		}
 
 		token := strings.Trim(field, ",")
-		repeatable := strings.Contains(token, "...") || strings.Contains(token, "…")
+		repeatable := xstrings.ContainsAny(token, "...", "…")
 		token = strings.TrimSuffix(token, "...")
 		token = strings.TrimSuffix(token, "…")
 		token = strings.TrimPrefix(token, "[")
