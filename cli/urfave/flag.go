@@ -3,7 +3,7 @@ package urfave
 import (
 	"strings"
 
-	csvutil "github.com/gechr/clib/cli/util/csv"
+	xstrings "github.com/gechr/x/strings"
 )
 
 // CSVFlag implements urfave/cli's Value interface for comma-separated values.
@@ -19,7 +19,7 @@ func (c *CSVFlag) String() string {
 
 // Set appends comma-separated values, filtering empty entries.
 func (c *CSVFlag) Set(val string) error {
-	c.Values = csvutil.Append(c.Values, val)
+	c.Values = xstrings.AppendCSV(c.Values, val)
 	return nil
 }
 

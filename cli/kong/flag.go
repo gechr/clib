@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	konglib "github.com/alecthomas/kong"
-	csvutil "github.com/gechr/clib/cli/util/csv"
+	xstrings "github.com/gechr/x/strings"
 )
 
 // CSVFlag implements kong.MapperValue that splits comma-separated values.
@@ -23,6 +23,6 @@ func (c *CSVFlag) Decode(ctx *konglib.DecodeContext) error {
 	if err := ctx.Scan.PopValueInto("value", &value); err != nil {
 		return err
 	}
-	c.Values = csvutil.Append(c.Values, value)
+	c.Values = xstrings.AppendCSV(c.Values, value)
 	return nil
 }
