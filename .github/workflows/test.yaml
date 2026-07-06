@@ -21,4 +21,4 @@ jobs:
     uses: gechr/actions/.github/workflows/test.yaml@854917523e0f0f5208e64c557bd645509944170b # v0.2.6
     with:
       language: go
-      apt-packages: zsh fish
+      apt-packages: fish zsh
