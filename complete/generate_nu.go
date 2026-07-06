@@ -559,7 +559,7 @@ func nuWritePositionalsHelper(sb *strings.Builder, id string) {
 		nuName(nuPositionalsName(id)),
 	)
 	sb.WriteString("    let trailing = ($context | str ends-with \" \")\n")
-	// Materialize with [ ...(...) ]: see nuWriteForwardedHelper — a lazy
+	// Materialize with [ ...(...) ]: see nuWriteForwardedHelper - a lazy
 	// `where`-closure stream trips nu 0.114 type inference in the `for` below.
 	sb.WriteString(
 		"    let toks0 = [ ...($context | split row \" \" | where {|x| $x != \"\" } | skip 1) ]\n",

@@ -4,6 +4,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strings"
 
 	konglib "github.com/alecthomas/kong"
 	"github.com/gechr/clib/complete"
@@ -146,15 +147,25 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 			}
 		}
 		for _, arg := range child.Positional {
-			if arg.Tag == nil || !arg.Tag.Has(tagPredictor) {
+			if arg.Tag == nil {
 				break
 			}
-			predictor := arg.Tag.Get(tagPredictor)
-			if predictor == predictorPath {
+			if arg.Tag.Has(tagPredictor) {
+				predictor := arg.Tag.Get(tagPredictor)
+				if predictor == predictorPath {
+					sub.PathArgs = true
+					break
+				}
+				sub.DynamicArgs = append(sub.DynamicArgs, predictor)
+				continue
+			}
+			// Kong's built-in path-like value types (existingfile, path, ...)
+			// imply file completion without any clib annotation.
+			if kongTypeValueHint(arg.Tag.Type) != "" {
 				sub.PathArgs = true
 				break
 			}
-			sub.DynamicArgs = append(sub.DynamicArgs, predictor)
+			break
 		}
 		sub.MaxPositionalArgs, sub.HasMaxPositionalArgs = positionalLimit(child)
 		// Recurse into nested subcommands.
@@ -230,5 +241,22 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 	if flag.Tag != nil && flag.Tag.Has(tagNegatable) {
 		meta.Negatable = true
 	}
+	if meta.ValueHint == "" && flag.Tag != nil {
+		meta.ValueHint = kongTypeValueHint(flag.Tag.Type)
+	}
 	return meta
+}
+
+// kongTypeValueHint maps kong's built-in path-like value types
+// (`type:"existingfile"` etc.) to completion value hints, so file/dir
+// completion works without a clib annotation.
+func kongTypeValueHint(kongType string) string {
+	switch strings.ToLower(kongType) {
+	case "existingfile", "filecontent", "path":
+		return complete.HintFile
+	case "existingdir":
+		return complete.HintDir
+	default:
+		return ""
+	}
 }
