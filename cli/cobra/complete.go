@@ -163,7 +163,10 @@ func commandSubSpecs(cmd *cobralib.Command) []complete.SubSpec {
 
 		appendFlags := func(fs *pflag.FlagSet, persistent bool) {
 			fs.VisitAll(func(f *pflag.Flag) {
-				if f.Hidden || f.Deprecated != "" || f.Name == "help" {
+				// Hidden flags are carried through (marked Hidden on the spec)
+				// so they can be surfaced via the per-flag complete-hidden
+				// opt-in or WithIncludeHidden.
+				if f.Deprecated != "" || f.Name == "help" {
 					return
 				}
 				meta := pflagToMeta(f)

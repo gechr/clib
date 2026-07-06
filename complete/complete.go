@@ -144,6 +144,7 @@ type Generator struct {
 	AppName              string
 	DynamicArgs          []string // per-position dynamic completion; final entry repeats for additional positional args
 	HasMaxPositionalArgs bool
+	IncludeHidden        bool // offer hidden flags as completions instead of omitting them
 	MaxPositionalArgs    int
 	Order                Order
 	Specs                []Spec
@@ -187,7 +188,7 @@ func SpecsFromFlagMeta(f FlagMeta) []Spec {
 		Extension:  f.Extension,
 		Forward:    f.Forward,
 		HasArg:     f.HasArg,
-		Hidden:     f.Hidden,
+		Hidden:     f.Hidden && !f.CompleteWhenHidden,
 		LongFlag:   longFlag,
 		Order:      f.Order,
 		Persistent: f.Persistent,
@@ -549,6 +550,48 @@ func SortSubSpecs(subs []SubSpec) []SubSpec {
 	return sorted
 }
 
+// resolveHidden returns a generator whose spec tree reflects the IncludeHidden
+// setting, applied once before script generation. When IncludeHidden is false,
+// hidden specs are removed entirely so no generation logic (display or helpers)
+// observes them - identical to omitting hidden flags. When true, hidden specs
+// are unhidden so they are emitted as ordinary completions.
+//
+// Specs marked visible via a per-flag complete-hidden opt-in are already
+// Hidden:false by the time they reach here, so they survive regardless.
+func (g *Generator) resolveHidden() *Generator {
+	ng := *g
+	ng.Specs = resolveHiddenSpecs(g.Specs, g.IncludeHidden)
+	ng.Subs = resolveHiddenSubs(g.Subs, g.IncludeHidden)
+	return &ng
+}
+
+func resolveHiddenSpecs(specs []Spec, includeHidden bool) []Spec {
+	out := make([]Spec, 0, len(specs))
+	for _, s := range specs {
+		if s.Hidden {
+			if !includeHidden {
+				continue
+			}
+			s.Hidden = false
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func resolveHiddenSubs(subs []SubSpec, includeHidden bool) []SubSpec {
+	if len(subs) == 0 {
+		return subs
+	}
+	out := make([]SubSpec, len(subs))
+	for i, sub := range subs {
+		sub.Specs = resolveHiddenSpecs(sub.Specs, includeHidden)
+		sub.Subs = resolveHiddenSubs(sub.Subs, includeHidden)
+		out[i] = sub
+	}
+	return out
+}
+
 // Print writes the completion script for the given shell to w.
 // An empty shell defaults to fish.
 func (g *Generator) Print(w io.Writer, sh string) error {
@@ -559,6 +602,7 @@ func (g *Generator) Print(w io.Writer, sh string) error {
 	if !ok {
 		return fmt.Errorf("unsupported shell %q (supported: %s)", sh, supportedShells())
 	}
+	g = g.resolveHidden()
 	script, err := fn(g)
 	if err != nil {
 		return err

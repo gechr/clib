@@ -132,10 +132,9 @@ func commandSubSpecs(cmd *clilib.Command) []complete.SubSpec {
 			Terse:   child.Usage,
 		}
 		for _, f := range child.Flags {
-			// Skip hidden flags.
-			if vf, ok := f.(clilib.VisibleFlag); ok && !vf.IsVisible() {
-				continue
-			}
+			// Hidden flags are carried through (marked Hidden on the spec) so
+			// they can be surfaced via the per-flag complete-hidden opt-in or
+			// WithIncludeHidden.
 			meta := flagToMeta(child, f)
 			if meta.Name == "help" {
 				continue

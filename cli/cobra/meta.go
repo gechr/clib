@@ -54,6 +54,7 @@ func pflagToMeta(f *pflag.Flag) complete.FlagMeta {
 	if extra := getExtra(f); extra != nil {
 		meta.Aliases = extra.Aliases
 		meta.Complete = extra.Complete
+		meta.CompleteWhenHidden = extra.CompleteHidden
 		meta.Enum = extra.Enum
 		meta.EnumDefault = extra.EnumDefault
 		meta.EnumHighlight = extra.EnumHighlight

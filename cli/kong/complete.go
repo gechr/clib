@@ -120,10 +120,12 @@ func nodeSubSpecs(node *konglib.Node) []complete.SubSpec {
 			Terse:   child.Help,
 		}
 		for _, flag := range child.Flags {
-			if flag == nil || flag.Hidden {
+			if flag == nil {
 				continue
 			}
-			// Skip kong's built-in help flag.
+			// Skip kong's built-in help flag. Hidden flags are carried through
+			// (marked Hidden on the spec) so they can be surfaced via the
+			// per-flag complete-hidden opt-in or WithIncludeHidden.
 			if flag.Name == "help" {
 				continue
 			}
@@ -206,6 +208,7 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 		Name:       flag.Name,
 		Help:       flag.Help,
 		HasArg:     !flag.IsBool(),
+		Hidden:     flag.Hidden,
 		Persistent: true,
 	}
 	if flag.Short != 0 {

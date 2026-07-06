@@ -242,6 +242,30 @@ func TestSubcommands_SkipsHidden(t *testing.T) {
 	require.Equal(t, "visible", subs[0].Name)
 }
 
+func TestSubcommands_CompleteHiddenFlag(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}
+	child.Flags().String("public", "", "Public")
+	child.Flags().String("secret", "", "Secret")
+	child.Flags().String("debug", "", "Debug")
+	_ = child.Flags().MarkHidden("secret")
+	_ = child.Flags().MarkHidden("debug")
+	cobracli.Extend(child.Flags().Lookup("debug"), cobracli.FlagExtra{CompleteHidden: true})
+	root.AddCommand(child)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+
+	byName := map[string]complete.Spec{}
+	for _, s := range subs[0].Specs {
+		byName[s.LongFlag] = s
+	}
+	require.False(t, byName["public"].Hidden)
+	require.True(t, byName["secret"].Hidden, "plain hidden flag stays hidden from completions")
+	require.Contains(t, byName, "debug")
+	require.False(t, byName["debug"].Hidden, "complete-hidden opt-in is offered to completions")
+}
+
 func TestSubcommands_SkipsHelpFlag(t *testing.T) {
 	root := &cobralib.Command{Use: "myapp"}
 	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}

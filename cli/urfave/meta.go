@@ -66,6 +66,7 @@ func flagToMeta(cmd *clilib.Command, f clilib.Flag) complete.FlagMeta {
 	// Clib extras.
 	if extra != nil {
 		meta.Complete = extra.Complete
+		meta.CompleteWhenHidden = extra.CompleteHidden
 		meta.Enum = extra.Enum
 		meta.EnumDefault = extra.EnumDefault
 		meta.EnumHighlight = extra.EnumHighlight

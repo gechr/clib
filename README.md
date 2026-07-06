@@ -203,6 +203,8 @@ Use `order=keep` (Kong) or `Order: complete.OrderKeep` (Cobra/urfave) to preserv
 Use `order=shell` or `Order: complete.OrderShell` to force the shell's normal ordering for a flag.
 Use `complete.WithOrder(complete.OrderKeep)` to make keep-order the generator default.
 
+Flags hidden from `--help` are omitted from completions by default. Use `complete-hidden` (Kong) or `FlagExtra.CompleteHidden` (Cobra/urfave) to still offer a specific hidden flag as a completion, or `complete.WithIncludeHidden()` to offer every hidden flag across the command tree.
+
 ### Enum Formatting
 
 ```go

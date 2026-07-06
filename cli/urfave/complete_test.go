@@ -294,6 +294,36 @@ func TestSubcommands_SkipsHelpFlag(t *testing.T) {
 	}
 }
 
+func TestSubcommands_CompleteHiddenFlag(t *testing.T) {
+	debugFlag := &clilib.StringFlag{Name: "debug", Usage: "Debug", Hidden: true}
+	urfavecli.Extend(debugFlag, urfavecli.FlagExtra{CompleteHidden: true})
+	child := &clilib.Command{
+		Name:  "child",
+		Usage: "A child command",
+		Flags: []clilib.Flag{
+			&clilib.StringFlag{Name: "public", Usage: "Public"},
+			&clilib.StringFlag{Name: "secret", Usage: "Secret", Hidden: true},
+			debugFlag,
+		},
+	}
+	root := &clilib.Command{
+		Name:     "myapp",
+		Commands: []*clilib.Command{child},
+	}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+
+	byName := map[string]complete.Spec{}
+	for _, s := range subs[0].Specs {
+		byName[s.LongFlag] = s
+	}
+	require.False(t, byName["public"].Hidden)
+	require.True(t, byName["secret"].Hidden, "plain hidden flag stays hidden from completions")
+	require.Contains(t, byName, "debug")
+	require.False(t, byName["debug"].Hidden, "complete-hidden opt-in is offered to completions")
+}
+
 func TestSubcommands_EnumValues(t *testing.T) {
 	formatFlag := &clilib.StringFlag{Name: "format", Usage: "Output format"}
 	urfavecli.Extend(formatFlag, urfavecli.FlagExtra{

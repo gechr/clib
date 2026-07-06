@@ -20,3 +20,13 @@ func WithOrder(order Order) Option {
 		g.Order = order
 	}
 }
+
+// WithIncludeHidden offers hidden flags as completions instead of omitting
+// them. By default a flag hidden from --help is also withheld from completions;
+// enabling this surfaces every hidden flag across the command tree. For a
+// single flag, prefer the per-flag complete-hidden opt-in instead.
+func WithIncludeHidden() Option {
+	return func(g *Generator) {
+		g.IncludeHidden = true
+	}
+}

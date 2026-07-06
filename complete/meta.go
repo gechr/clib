@@ -11,6 +11,7 @@ import (
 type FlagMeta struct {
 	Aliases             []string // flag aliases
 	Complete            string   // completion directive
+	CompleteWhenHidden  bool     // still offer this flag in completions even when hidden from help
 	Default             string   // default value for non-enum flags (rendered as " (default: X)" suffix)
 	Enum                []string // enum values
 	EnumDefault         string   // default value annotation for enum display
@@ -63,8 +64,8 @@ func (f *FlagMeta) Desc() string {
 //
 //	clib:"terse='Draft filter',complete='predictor=repo',group='filters'"
 //
-// Supported keys: complete, enum, group, inverse, negatable, negative, order,
-// placeholder, positive, terse.
+// Supported keys: complete, complete-hidden, enum, group, inverse, negatable,
+// negative, order, placeholder, positive, terse.
 func (f *FlagMeta) ParseClibTag(t string) error {
 	if t == "" {
 		return nil
@@ -83,6 +84,8 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 		switch key {
 		case tag.Complete:
 			f.Complete = val
+		case tag.CompleteHidden:
+			f.CompleteWhenHidden = true
 		case tag.Default:
 			f.EnumDefault = val
 		case tag.Ext:

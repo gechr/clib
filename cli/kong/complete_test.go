@@ -301,6 +301,31 @@ func TestSubcommands_SkipsHidden(t *testing.T) {
 	require.Equal(t, "public", subs[0].Name)
 }
 
+func TestSubcommands_CompleteHiddenFlag(t *testing.T) {
+	type Cmd struct {
+		Public string `name:"public" help:"Public"`
+		Secret string `name:"secret" help:"Secret" hidden:""`
+		Debug  string `name:"debug"  help:"Debug"  hidden:"" clib:"complete-hidden"`
+	}
+	var cli struct {
+		Build Cmd `help:"Build" cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+
+	byName := map[string]complete.Spec{}
+	for _, s := range subs[0].Specs {
+		byName[s.LongFlag] = s
+	}
+	require.False(t, byName["public"].Hidden)
+	require.True(t, byName["secret"].Hidden, "plain hidden flag stays hidden from completions")
+	require.Contains(t, byName, "debug")
+	require.False(t, byName["debug"].Hidden, "complete-hidden opt-in is offered to completions")
+}
+
 func TestSubcommands_SkipsHelpFlag(t *testing.T) {
 	type Cmd struct {
 		Output string `name:"output" help:"Output path"`

@@ -371,6 +371,30 @@ complete -c ordered -l mode -x -a "fast safe" -d "Mode"
 `, buf.String())
 }
 
+func TestGenerator_HiddenFlagCompletions(t *testing.T) {
+	flags := []complete.FlagMeta{
+		{Name: "visible", Help: "Visible"},
+		{Name: "secret", Help: "Secret", Hidden: true},
+		{Name: "debug", Help: "Debug", Hidden: true, CompleteWhenHidden: true},
+	}
+
+	// Default: hidden flags are omitted, except the per-flag complete-hidden
+	// opt-in, which is still offered.
+	var def strings.Builder
+	require.NoError(t, complete.NewGenerator("hid").FromFlags(flags).Print(&def, "fish"))
+	require.Contains(t, def.String(), "-l visible")
+	require.Contains(t, def.String(), "-l debug")
+	require.NotContains(t, def.String(), "-l secret")
+
+	// WithIncludeHidden: every hidden flag is offered.
+	var all strings.Builder
+	require.NoError(t, complete.NewGenerator("hid", complete.WithIncludeHidden()).
+		FromFlags(flags).Print(&all, "fish"))
+	require.Contains(t, all.String(), "-l visible")
+	require.Contains(t, all.String(), "-l debug")
+	require.Contains(t, all.String(), "-l secret")
+}
+
 // --- Install tests ---
 
 func TestGenerator_Install_Fish(t *testing.T) {
