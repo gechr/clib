@@ -1,7 +1,7 @@
 # myapp Nushell completion
 
 def "_myapp_forwarded_flags" [context: string] {
-    let toks = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    let toks = [ ...($context | split row " " | where {|x| $x != "" } | skip 1) ]
     mut out = []
     mut skipnext = false
     mut name = ""
@@ -23,7 +23,7 @@ def "_myapp_forwarded_flags" [context: string] {
 
 def "_myapp_positionals" [context: string, cmdskip: int, valueflags: list<string>] {
     let trailing = ($context | str ends-with " ")
-    let toks0 = ($context | split row " " | where {|x| $x != "" } | skip 1)
+    let toks0 = [ ...($context | split row " " | where {|x| $x != "" } | skip 1) ]
     let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })
     mut pos = []
     mut skipnext = false

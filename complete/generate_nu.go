@@ -493,8 +493,11 @@ func nuValueFlagList(specs []Spec) string {
 // context flags and returns them normalized as --name=value, stopping at "--".
 func nuWriteForwardedHelper(sb *strings.Builder, id string, fwd []forwardSpec) {
 	fmt.Fprintf(sb, "\ndef %s [context: string] {\n", nuName(nuForwardedName(id)))
+	// Materialize the token list with [ ...(...) ]: nu 0.114's type inference
+	// rejects a lazy `where`-closure stream consumed by the `for` loop below
+	// ("can't convert to oneof<table, binary, list<any>>").
 	sb.WriteString(
-		"    let toks = ($context | split row \" \" | where {|x| $x != \"\" } | skip 1)\n",
+		"    let toks = [ ...($context | split row \" \" | where {|x| $x != \"\" } | skip 1) ]\n",
 	)
 	sb.WriteString("    mut out = []\n")
 	sb.WriteString("    mut skipnext = false\n")
@@ -556,8 +559,10 @@ func nuWritePositionalsHelper(sb *strings.Builder, id string) {
 		nuName(nuPositionalsName(id)),
 	)
 	sb.WriteString("    let trailing = ($context | str ends-with \" \")\n")
+	// Materialize with [ ...(...) ]: see nuWriteForwardedHelper — a lazy
+	// `where`-closure stream trips nu 0.114 type inference in the `for` below.
 	sb.WriteString(
-		"    let toks0 = ($context | split row \" \" | where {|x| $x != \"\" } | skip 1)\n",
+		"    let toks0 = [ ...($context | split row \" \" | where {|x| $x != \"\" } | skip 1) ]\n",
 	)
 	sb.WriteString("    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })\n")
 	sb.WriteString("    mut pos = []\n")
