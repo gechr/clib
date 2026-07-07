@@ -12,8 +12,9 @@ import (
 
 // HelpPrinter returns a func(io.Writer, string, any) suitable for assigning
 // to clilib.HelpPrinter (the global variable). The data parameter is the *Command.
-// By default, examples are hidden on -h and shown last on --help;
-// pass [help.WithAlwaysShowExamples] to disable this.
+// By default, the description blurb and examples are hidden on -h and shown
+// on --help (examples last); pass [help.WithAlwaysShowDescription] and/or
+// [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinter(
 	r *help.Renderer,
 	sections func(cmd *clilib.Command) []help.Section,
@@ -27,6 +28,9 @@ func HelpPrinter(
 			return
 		}
 		s := help.Apply(sections(cmd), opts...)
+		if !behavior.AlwaysShowDescription {
+			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
+		}
 		if !behavior.AlwaysShowExamples {
 			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
 		}

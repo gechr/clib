@@ -2914,6 +2914,67 @@ func TestWithExamplesOnLongHelp_LongHelp(t *testing.T) {
 	require.Equal(t, []string{"Usage", "Options", "Examples"}, titles)
 }
 
+func TestWithDescriptionOnLongHelp_ShortHelp(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "app"},
+			help.Description("Does a thing."),
+		}},
+		{Title: "Options", Content: []help.Content{help.FlagGroup{{Long: "verbose"}}}},
+	}
+
+	result := help.Apply(sections, help.WithDescriptionOnLongHelp([]string{"app", "-h"}))
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Usage", result[0].Title)
+	// The Description block is stripped; the Usage line survives.
+	require.Len(t, result[0].Content, 1)
+	_, isUsage := result[0].Content[0].(help.Usage)
+	require.True(t, isUsage)
+}
+
+func TestWithDescriptionOnLongHelp_LongHelp(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "app"},
+			help.Description("Does a thing."),
+		}},
+		{Title: "Options", Content: []help.Content{help.FlagGroup{{Long: "verbose"}}}},
+	}
+
+	result := help.Apply(sections, help.WithDescriptionOnLongHelp([]string{"app", "--help"}))
+
+	require.Len(t, result, 2)
+	// Description is preserved unchanged on long help.
+	require.Len(t, result[0].Content, 2)
+	desc, isDesc := result[0].Content[1].(help.Description)
+	require.True(t, isDesc)
+	require.Equal(t, help.Description("Does a thing."), desc)
+}
+
+func TestWithDescriptionOnLongHelp_DropsEmptySection(t *testing.T) {
+	sections := []help.Section{
+		{Title: "Blurb", Content: []help.Content{help.Description("Only a description.")}},
+		{Title: "Options", Content: []help.Content{help.FlagGroup{{Long: "verbose"}}}},
+	}
+
+	result := help.Apply(sections, help.WithDescriptionOnLongHelp([]string{"app", "-h"}))
+
+	// A section left with no content after stripping the Description is dropped.
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+}
+
+func TestWithAlwaysShowDescription_Policy(t *testing.T) {
+	require.False(t, help.ResolvePolicy().AlwaysShowDescription)
+	require.True(t, help.ResolvePolicy(help.WithAlwaysShowDescription()).AlwaysShowDescription)
+	// The policy option is a no-op as a section transform.
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{help.Description("Does a thing.")}},
+	}
+	require.Equal(t, sections, help.Apply(sections, help.WithAlwaysShowDescription()))
+}
+
 func TestBuildFlagSections_InheritedOnly(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "config", Desc: "Config file"}, Group: "", AncestorDepth: 1},

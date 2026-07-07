@@ -33,6 +33,9 @@ type Policy struct {
 	// AlwaysShowExamples disables the default [WithExamplesOnLongHelp] behavior,
 	// making examples visible on both -h and --help.
 	AlwaysShowExamples bool
+	// AlwaysShowDescription disables the default [WithDescriptionOnLongHelp]
+	// behavior, making the description blurb visible on both -h and --help.
+	AlwaysShowDescription bool
 }
 
 // ResolvePolicy walks opts and builds a [Policy] from any options
@@ -59,6 +62,19 @@ func (alwaysShowExamplesOption) applyPolicy(b *Policy) {
 // WithAlwaysShowExamples disables the default [WithExamplesOnLongHelp]
 // behavior, making examples visible on both -h and --help.
 func WithAlwaysShowExamples() Option { return alwaysShowExamplesOption{} }
+
+// alwaysShowDescriptionOption implements both [Option] (no-op transform) and
+// behaviorOption (sets AlwaysShowDescription).
+type alwaysShowDescriptionOption struct{}
+
+func (alwaysShowDescriptionOption) apply(s []Section) []Section { return s }
+func (alwaysShowDescriptionOption) applyPolicy(b *Policy) {
+	b.AlwaysShowDescription = true
+}
+
+// WithAlwaysShowDescription disables the default [WithDescriptionOnLongHelp]
+// behavior, making the description blurb visible on both -h and --help.
+func WithAlwaysShowDescription() Option { return alwaysShowDescriptionOption{} }
 
 // WithHelpFlags replaces any combined help flag (Long=="help") with separate
 // -h and --help entries. Appends as a new FlagGroup to the last section
@@ -148,6 +164,35 @@ func WithExamplesOnLongHelp(args []string) Option {
 		}
 		if IsLongHelp(args) {
 			out = append(out, examples...)
+		}
+		return out
+	})
+}
+
+// WithDescriptionOnLongHelp hides [Description] content blocks on short help
+// (-h) and keeps them on long help (--help). A description blurb (a command's
+// Help()/Long/Description detail) is nested inside a section (typically Usage)
+// rather than being a section of its own, so this strips the Description items
+// in place. Sections left with no content are dropped.
+func WithDescriptionOnLongHelp(args []string) Option {
+	return OptionFunc(func(sections []Section) []Section {
+		if IsLongHelp(args) {
+			return sections
+		}
+		out := make([]Section, 0, len(sections))
+		for _, s := range sections {
+			content := make([]Content, 0, len(s.Content))
+			for _, c := range s.Content {
+				if _, ok := c.(Description); ok {
+					continue
+				}
+				content = append(content, c)
+			}
+			if len(content) == 0 {
+				continue
+			}
+			s.Content = content
+			out = append(out, s)
 		}
 		return out
 	})

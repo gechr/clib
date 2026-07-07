@@ -86,8 +86,15 @@ func Split(s string) ([]string, error) {
 	return parts, nil
 }
 
-// SplitCSV splits s on commas, trims whitespace from each element,
-// and returns the resulting slice. Returns nil for empty input.
+// SplitCSV splits s on commas, trims whitespace from each element, and returns
+// the resulting slice. Returns nil for empty input.
+//
+// Empty fields are preserved deliberately. An empty entry can be a valid enum
+// member - e.g. a `enum:",json,wide" default:""` flag whose empty value is the
+// default - and, crucially, keeping empties keeps Enum index-aligned with the
+// separately-split EnumHighlight/EnumTerse slices. Empties are hidden from help
+// output later by dropEmptyEnum in help/render.go, which drops the paired
+// highlight in lockstep.
 func SplitCSV(s string) []string {
 	if s == "" {
 		return nil

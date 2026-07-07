@@ -13,8 +13,9 @@ import (
 
 // HelpFunc returns a cobra-compatible help function that renders themed help.
 // The sections callback receives the command and returns sections to render.
-// By default, examples are hidden on -h and shown last on --help;
-// pass [help.WithAlwaysShowExamples] to disable this.
+// By default, the description blurb and examples are hidden on -h and shown
+// on --help (examples last); pass [help.WithAlwaysShowDescription] and/or
+// [help.WithAlwaysShowExamples] to disable this.
 func HelpFunc(
 	r *help.Renderer,
 	sections func(cmd *cobralib.Command) []help.Section,
@@ -24,6 +25,9 @@ func HelpFunc(
 		w := colorprofile.NewWriter(cmd.OutOrStdout(), os.Environ())
 		behavior := help.ResolvePolicy(opts...)
 		renderSections := help.Apply(sections(cmd), opts...)
+		if !behavior.AlwaysShowDescription {
+			renderSections = help.Apply(renderSections, help.WithDescriptionOnLongHelp(os.Args))
+		}
 		if !behavior.AlwaysShowExamples {
 			renderSections = help.Apply(renderSections, help.WithExamplesOnLongHelp(os.Args))
 		}
@@ -429,15 +433,10 @@ func sectionHasFlagContent(content []help.Content) bool {
 }
 
 func parseExamples(s string) help.Examples {
-	lines := strings.Split(s, "\n")
 	var examples help.Examples
 	var currentComment string
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+	for _, line := range xstrings.SplitLines(s) {
 		if after, ok := strings.CutPrefix(line, "#"); ok {
 			currentComment = strings.TrimSpace(after)
 		} else if after, ok := strings.CutPrefix(line, "$"); ok {

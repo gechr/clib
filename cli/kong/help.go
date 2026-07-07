@@ -15,8 +15,9 @@ import (
 
 // HelpPrinter returns a kong.HelpPrinter that renders the sections
 // returned by the provided callback.
-// By default, examples are hidden on -h and shown last on --help;
-// pass [help.WithAlwaysShowExamples] to disable this.
+// By default, the description blurb and examples are hidden on -h and shown
+// on --help (examples last); pass [help.WithAlwaysShowDescription] and/or
+// [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinter(
 	r *help.Renderer,
 	sections func() ([]help.Section, error),
@@ -29,6 +30,9 @@ func HelpPrinter(
 		}
 		behavior := help.ResolvePolicy(opts...)
 		s = help.Apply(s, opts...)
+		if !behavior.AlwaysShowDescription {
+			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
+		}
 		if !behavior.AlwaysShowExamples {
 			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
 		}
@@ -40,8 +44,9 @@ func HelpPrinter(
 // HelpPrinterFunc returns a context-aware kong.HelpPrinter.
 // The sections callback receives the kong context, allowing help output
 // to vary by subcommand.
-// By default, examples are hidden on -h and shown last on --help;
-// pass [help.WithAlwaysShowExamples] to disable this.
+// By default, the description blurb and examples are hidden on -h and shown
+// on --help (examples last); pass [help.WithAlwaysShowDescription] and/or
+// [help.WithAlwaysShowExamples] to disable this.
 func HelpPrinterFunc(
 	r *help.Renderer,
 	sections func(*konglib.Context) ([]help.Section, error),
@@ -54,6 +59,9 @@ func HelpPrinterFunc(
 		}
 		behavior := help.ResolvePolicy(opts...)
 		s = help.Apply(s, opts...)
+		if !behavior.AlwaysShowDescription {
+			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
+		}
 		if !behavior.AlwaysShowExamples {
 			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
 		}
