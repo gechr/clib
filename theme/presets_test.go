@@ -78,6 +78,7 @@ func TestPresets(t *testing.T) {
 			require.NotNil(t, th.MarkdownCode, "MarkdownCode")
 			require.NotNil(t, th.MarkdownText, "MarkdownText")
 
+			require.Nil(t, th.HelpAlias)
 			require.Equal(t, "$", th.HelpUsageExample.Prompt)
 			require.Equal(t, ' ', th.HelpKeyValueSeparator)
 			require.True(t, th.HelpRepeatEllipsisEnabled)
