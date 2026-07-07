@@ -185,6 +185,93 @@ func TestRender_Usage_Description_NoWrap(t *testing.T) {
 	)
 }
 
+func TestRender_Description_WidthRange(t *testing.T) {
+	// A paragraph whose greedy wrap at exactly 60 columns leaves a short word
+	// poking out past the other lines' right edge. With a width range, the
+	// renderer is free to narrow the wrap within [50, 60] to whichever width
+	// evens the edge out.
+	const desc = "Scans the given paths for directives, resolves each one's newest version allowed by its constraint from the upstream source, and rewrites the target line in place. Paths default to the current directory."
+
+	render := func(t *testing.T, opts ...help.RendererOption) []string {
+		t.Helper()
+		r := help.NewRenderer(testTheme(), opts...)
+		var buf bytes.Buffer
+		sections := []help.Section{
+			{Title: "Usage", Content: []help.Content{
+				help.Usage{Command: "mycli update"},
+				help.Description(desc),
+			}},
+		}
+		require.NoError(t, r.Render(&buf, sections))
+		lines := strings.Split(strings.TrimRight(ansi.Strip(buf.String()), "\n"), "\n")
+		// Drop "Usage", the blank line, the usage line, and the separator
+		// blank, leaving only the wrapped description lines.
+		require.Greater(t, len(lines), 4)
+		return lines[4:]
+	}
+
+	// edgeGaps measures raggedness: the sum of squared gaps between each
+	// line (except the last) and the longest line's right edge.
+	edgeGaps := func(lines []string) int {
+		longest := 0
+		for _, l := range lines {
+			longest = max(longest, len(l))
+		}
+		total := 0
+		for _, l := range lines[:len(lines)-1] {
+			gap := longest - len(l)
+			total += gap * gap
+		}
+		return total
+	}
+
+	strict := render(t, help.WithDescriptionWidth(60))
+	flexible := render(t, help.WithDescriptionWidthRange(50, 60))
+
+	// The flexible wrap must still respect the range's upper bound...
+	for _, l := range flexible {
+		require.LessOrEqual(t, len(l), 60, "line exceeds max width: %q", l)
+	}
+	// ...and produce a measurably more even right edge than the strict wrap.
+	require.Less(t, edgeGaps(flexible), edgeGaps(strict))
+
+	// The range's upper bound is capped at MaxWidth, so a range set wider
+	// than the output width can never overflow it.
+	capped := render(t, help.WithMaxWidth(40), help.WithDescriptionWidthRange(60, 80))
+	for _, l := range capped {
+		require.LessOrEqual(t, len(l), 40, "line exceeds MaxWidth: %q", l)
+	}
+
+	// The default (no width option at all) is the flexible 70-100 range, so
+	// descriptions wrap within that band: no line exceeds 100, and the widest
+	// line sits inside the band (well past the narrower 40/50 wraps below),
+	// proving the default range is active.
+	def := render(t)
+	require.Greater(t, len(def), 1, "default should wrap the long paragraph")
+	defLongest := 0
+	for _, l := range def {
+		require.LessOrEqual(t, len(l), 100, "default line exceeds 100: %q", l)
+		defLongest = max(defLongest, len(l))
+	}
+	require.GreaterOrEqual(t, defLongest, 70, "default should wrap in the 70-100 band")
+
+	// WithDescriptionWidth overrides the default range, pinning the wrap to a
+	// single fixed column: no line exceeds the width, and at least one line
+	// reaches close to it (proving it's not still using the wider default).
+	fixed := render(t, help.WithDescriptionWidth(50))
+	longest := 0
+	for _, l := range fixed {
+		require.LessOrEqual(t, len(l), 50, "fixed line exceeds 50: %q", l)
+		longest = max(longest, len(l))
+	}
+	require.Greater(
+		t,
+		longest,
+		40,
+		"fixed width should pack lines near 50, not stay at the default band",
+	)
+}
+
 func TestRender_FlagNotSplitAcrossLines(t *testing.T) {
 	// Word-wrapping must never break a flag mid-token ("--\nexample").
 	// charmbracelet's ansi.Wordwrap treats "-" as a break point; the renderer

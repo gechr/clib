@@ -20,20 +20,22 @@ import (
 type Renderer struct {
 	Theme *theme.Theme
 
-	argPad            int           // padding between arg and description
-	cmdAlign          Alignment     // command name alignment
-	cmdAlignMode      AlignMode     // per-section vs global command alignment
-	cmdPad            int           // padding between command and description
-	descRefs          descRefs      // per-render index of names referenced in Description backticks
-	plain             bool          // per-render: true when the writer can't display styling, so leave backtick delimiters intact
-	descriptionIndent int           // extra indent (cols) for Description beyond the section content indent
-	descriptionWidth  int           // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
-	backtickStyle     BacktickStyle // how backticked tokens in descriptions are styled
-	flagAlign         Alignment     // flag name alignment
-	flagPad           int           // padding between flag and description
-	hideDefaults      bool          // suppress " (default: X)" annotations globally
-	maxWidth          int           // max output width (0 = no wrapping)
-	wrapStyle         WrapStyle     // continuation line indent style
+	argPad              int           // padding between arg and description
+	cmdAlign            Alignment     // command name alignment
+	cmdAlignMode        AlignMode     // per-section vs global command alignment
+	cmdPad              int           // padding between command and description
+	descRefs            descRefs      // per-render index of names referenced in Description backticks
+	plain               bool          // per-render: true when the writer can't display styling, so leave backtick delimiters intact
+	descriptionIndent   int           // extra indent (cols) for Description beyond the section content indent
+	descriptionWidth    int           // wrap width for Description content (autoDescriptionWidth = inherit maxWidth, 0 = no wrap)
+	descriptionWidthMin int           // lower bound of the flexible wrap-width range (0 = no range)
+	descriptionWidthMax int           // upper bound of the flexible wrap-width range (0 = no range)
+	backtickStyle       BacktickStyle // how backticked tokens in descriptions are styled
+	flagAlign           Alignment     // flag name alignment
+	flagPad             int           // padding between flag and description
+	hideDefaults        bool          // suppress " (default: X)" annotations globally
+	maxWidth            int           // max output width (0 = no wrapping)
+	wrapStyle           WrapStyle     // continuation line indent style
 }
 
 // descRefs indexes the names a Description blurb might reference back to:
@@ -56,14 +58,16 @@ func NewRenderer(th *theme.Theme, opts ...RendererOption) *Renderer {
 	}
 
 	r := &Renderer{
-		Theme:             th.Init(),
-		argPad:            defaultArgPad,
-		cmdAlign:          AlignLeft,
-		cmdPad:            defaultCmdPad,
-		descriptionIndent: defaultDescriptionIndent,
-		descriptionWidth:  autoDescriptionWidth,
-		flagPad:           defaultFlagPad,
-		maxWidth:          autoMaxWidth,
+		Theme:               th.Init(),
+		argPad:              defaultArgPad,
+		cmdAlign:            AlignLeft,
+		cmdPad:              defaultCmdPad,
+		descriptionIndent:   defaultDescriptionIndent,
+		descriptionWidth:    autoDescriptionWidth,
+		descriptionWidthMin: defaultDescriptionWidthMin,
+		descriptionWidthMax: defaultDescriptionWidthMax,
+		flagPad:             defaultFlagPad,
+		maxWidth:            autoMaxWidth,
 	}
 	for _, o := range opts {
 		o(r)
@@ -80,10 +84,24 @@ const (
 	defaultCmdPad            = 2 // padding between command and description
 	defaultDescriptionIndent = 2 // extra indent for Description content beyond section content indent
 
+	// defaultDescriptionWidthMin/Max are the flexible wrap-width range applied
+	// to Description content when the caller sets neither [WithDescriptionWidth]
+	// nor [WithDescriptionWidthRange]. The range lets the renderer even out a
+	// paragraph's right edge rather than wrapping at one hard column; both
+	// bounds are still capped at [WithMaxWidth] when that is set.
+	defaultDescriptionWidthMin = 70
+	defaultDescriptionWidthMax = 100
+
 	overflowPad = 2 // minimum gap when name overflows past descCol
 
 	autoMaxWidth         = -1
 	autoDescriptionWidth = -1
+
+	// orphanPenaltyDivisor scales down the raggedness penalty for a wrapped
+	// paragraph ending in a single orphaned word, so a lone trailing word
+	// counts less than a mid-paragraph short line but still discourages the
+	// wrap that produced it.
+	orphanPenaltyDivisor = 4
 )
 
 // visibleWidth computes the visible width of a string, ignoring ANSI escapes.
@@ -350,14 +368,16 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		return nil
 	}
 	pad := strings.Repeat(" ", ind)
-	width := r.descriptionWidth
-	if width == autoDescriptionWidth {
-		width = r.maxWidth
+	paragraphs := strings.Split(text, "\n")
+	styled := make([]string, len(paragraphs))
+	for i, p := range paragraphs {
+		if p != "" {
+			styled[i] = r.renderBackticks(p, nil)
+		}
 	}
-	wrap := width > 0
-	avail := max(width-ind, 1)
+	avail, wrap := r.descriptionWrapAvail(styled, ind)
 	prevBlank := false
-	for paragraph := range strings.SplitSeq(text, "\n") {
+	for i, paragraph := range paragraphs {
 		if paragraph == "" {
 			if prevBlank {
 				continue
@@ -369,10 +389,9 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 			continue
 		}
 		prevBlank = false
-		styled := r.renderBackticks(paragraph, nil)
-		lines := []string{styled}
+		lines := []string{styled[i]}
 		if wrap {
-			lines = wrapDescriptionParagraph(styled, avail)
+			lines = wrapDescriptionParagraph(styled[i], avail)
 		}
 		for _, line := range lines {
 			if _, err := fmt.Fprintf(w, "%s%s\n", pad, line); err != nil {
@@ -381,6 +400,81 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		}
 	}
 	return nil
+}
+
+// descriptionWrapAvail resolves the wrap width available to a Description
+// block after its indent. With a width range configured
+// ([WithDescriptionWidthRange]), the width in [min, max] whose wrapped
+// paragraphs produce the most even right edge wins; the range's upper bound
+// is capped at maxWidth so flexible wrapping never overflows the output
+// width. Otherwise the fixed descriptionWidth applies, falling back to
+// maxWidth. The second return reports whether wrapping is enabled at all.
+func (r *Renderer) descriptionWrapAvail(paragraphs []string, ind int) (int, bool) {
+	if r.descriptionWidthMax > 0 {
+		maxW := r.descriptionWidthMax
+		if r.maxWidth > 0 {
+			maxW = min(maxW, r.maxWidth)
+		}
+		minW := min(r.descriptionWidthMin, maxW)
+		minAvail := max(minW-ind, 1)
+		maxAvail := max(maxW-ind, 1)
+		return bestWrapAvail(paragraphs, minAvail, maxAvail), true
+	}
+	width := r.descriptionWidth
+	if width == autoDescriptionWidth {
+		width = r.maxWidth
+	}
+	return max(width-ind, 1), width > 0
+}
+
+// bestWrapAvail returns the wrap width in [minAvail, maxAvail] whose greedy
+// wrap of paragraphs is least ragged. A single width is chosen for the whole
+// block so all paragraphs share one right edge. Ties prefer the widest
+// candidate, so the range only narrows when doing so genuinely evens out the
+// edge.
+func bestWrapAvail(paragraphs []string, minAvail, maxAvail int) int {
+	best, bestScore := maxAvail, -1
+	for avail := maxAvail; avail >= minAvail; avail-- {
+		score := 0
+		for _, p := range paragraphs {
+			if p == "" {
+				continue
+			}
+			score += raggedness(wrapDescriptionParagraph(p, avail))
+		}
+		if bestScore < 0 || score < bestScore {
+			best, bestScore = avail, score
+		}
+	}
+	return best
+}
+
+// raggedness scores how uneven a wrapped paragraph's right edge is: the sum
+// of squared gaps between each line and the paragraph's longest line. The
+// final line is exempt - a short last line is natural in prose - unless it
+// holds a single orphaned word, which reads as a wrap misfire and contributes
+// a quarter-weighted penalty.
+func raggedness(lines []string) int {
+	if len(lines) <= 1 {
+		return 0
+	}
+	widths := make([]int, len(lines))
+	longest := 0
+	for i, line := range lines {
+		widths[i] = visibleWidth(line)
+		longest = max(longest, widths[i])
+	}
+	score := 0
+	for _, w := range widths[:len(widths)-1] {
+		gap := longest - w
+		score += gap * gap
+	}
+	last := strings.TrimSpace(ansi.Strip(lines[len(lines)-1]))
+	if !strings.Contains(last, " ") {
+		gap := longest - widths[len(widths)-1]
+		score += gap * gap / orphanPenaltyDivisor
+	}
+	return score
 }
 
 // wrapDescriptionParagraph wraps a single paragraph to avail columns. When the

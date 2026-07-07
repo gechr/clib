@@ -70,14 +70,41 @@ func WithDescriptionIndent(n int) RendererOption {
 	}
 }
 
-// WithDescriptionWidth sets the wrap width for [Description] content (e.g.
-// the long-form help surfaced by kong's HelpProvider interface). When left
-// unset, descriptions inherit the [WithMaxWidth] value so they wrap to the
-// same column as flag descriptions. Pass 0 to disable wrapping for
-// descriptions specifically while keeping flag/arg wrapping intact.
+// WithDescriptionWidth sets a fixed wrap width for [Description] content (e.g.
+// the long-form help surfaced by kong's HelpProvider interface). It overrides
+// the default flexible [WithDescriptionWidthRange], pinning descriptions to
+// exactly n columns. Pass 0 to disable wrapping for descriptions specifically
+// while keeping flag/arg wrapping intact.
 func WithDescriptionWidth(n int) RendererOption {
 	return func(r *Renderer) {
 		r.descriptionWidth = n
+		// A fixed width overrides the default range; clear it so the fixed
+		// path in descriptionWrapAvail takes effect.
+		r.descriptionWidthMin = 0
+		r.descriptionWidthMax = 0
+	}
+}
+
+// WithDescriptionWidthRange sets a flexible wrap width for [Description]
+// content. Instead of wrapping strictly at one column, the renderer tries
+// every width from minWidth to maxWidth and keeps the one whose wrapped
+// lines form the most even right edge - so a short word never pokes out
+// past an otherwise clean margin just to satisfy an exact width. One width
+// is chosen per Description block, so all its paragraphs share the same
+// right edge. The upper bound is capped at [WithMaxWidth] when that is set.
+//
+// A range of 70-100 is the default; call this to widen or narrow it, or call
+// [WithDescriptionWidth] to pin descriptions to one fixed column instead.
+func WithDescriptionWidthRange(minWidth, maxWidth int) RendererOption {
+	return func(r *Renderer) {
+		if minWidth > maxWidth {
+			minWidth, maxWidth = maxWidth, minWidth
+		}
+		r.descriptionWidthMin = minWidth
+		r.descriptionWidthMax = maxWidth
+		// A range overrides any fixed width; reset to auto so the range path
+		// in descriptionWrapAvail takes effect.
+		r.descriptionWidth = autoDescriptionWidth
 	}
 }
 
