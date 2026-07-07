@@ -73,6 +73,10 @@ func TestSplitListMarker(t *testing.T) {
 	}
 }
 
+func TestBestWrapAvailPrefersLowerBoundWhenEquallyGood(t *testing.T) {
+	require.Equal(t, 10, bestWrapAvail([]string{"short text"}, 10, 20))
+}
+
 func TestIsNumberedMarker(t *testing.T) {
 	require.True(t, isNumberedMarker("1."))
 	require.True(t, isNumberedMarker("2)"))

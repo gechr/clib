@@ -4,7 +4,8 @@
 
     Authenticate with a provider.
 
-    The [34mgithub[m provider uses an OAuth device flow; pass [31m--host[m for self-hosted instances.
+    The [34mgithub[m provider uses an OAuth device flow; pass [31m--host[m for
+    self-hosted instances.
 
 [1;33mArguments[m
 

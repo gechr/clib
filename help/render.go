@@ -645,12 +645,12 @@ func (r *Renderer) descriptionWrapAvail(paragraphs []string, ind int) (int, bool
 
 // bestWrapAvail returns the wrap width in [minAvail, maxAvail] whose greedy
 // wrap of paragraphs is least ragged. A single width is chosen for the whole
-// block so all paragraphs share one right edge. Ties prefer the widest
-// candidate, so the range only narrows when doing so genuinely evens out the
+// block so all paragraphs share one right edge. Ties prefer the lower bound,
+// so flexible descriptions stay compact unless a wider width improves the
 // edge.
 func bestWrapAvail(paragraphs []string, minAvail, maxAvail int) int {
-	best, bestScore := maxAvail, -1
-	for avail := maxAvail; avail >= minAvail; avail-- {
+	best, bestScore := minAvail, -1
+	for avail := minAvail; avail <= maxAvail; avail++ {
 		score := 0
 		for _, p := range paragraphs {
 			if p == "" {

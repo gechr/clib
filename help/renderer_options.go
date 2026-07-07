@@ -89,9 +89,10 @@ func WithDescriptionWidth(n int) RendererOption {
 // content. Instead of wrapping strictly at one column, the renderer tries
 // every width from minWidth to maxWidth and keeps the one whose wrapped
 // lines form the most even right edge - so a short word never pokes out
-// past an otherwise clean margin just to satisfy an exact width. One width
-// is chosen per Description block, so all its paragraphs share the same
-// right edge. The upper bound is capped at [WithMaxWidth] when that is set.
+// past an otherwise clean margin just to satisfy an exact width. If multiple
+// widths are equally good, the lower width wins. One width is chosen per
+// Description block, so all its paragraphs share the same right edge. The
+// upper bound is capped at [WithMaxWidth] when that is set.
 //
 // A range of 70-100 is the default; call this to widen or narrow it, or call
 // [WithDescriptionWidth] to pin descriptions to one fixed column instead.
