@@ -5,7 +5,9 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
@@ -34,6 +36,7 @@ type Renderer struct {
 	flagAlign           Alignment     // flag name alignment
 	flagPad             int           // padding between flag and description
 	hideDefaults        bool          // suppress " (default: X)" annotations globally
+	listIndent          int           // leading indent (cols) for detected list items in Descriptions
 	maxWidth            int           // max output width (0 = no wrapping)
 	wrapStyle           WrapStyle     // continuation line indent style
 }
@@ -67,6 +70,7 @@ func NewRenderer(th *theme.Theme, opts ...RendererOption) *Renderer {
 		descriptionWidthMin: defaultDescriptionWidthMin,
 		descriptionWidthMax: defaultDescriptionWidthMax,
 		flagPad:             defaultFlagPad,
+		listIndent:          defaultListIndent,
 		maxWidth:            autoMaxWidth,
 	}
 	for _, o := range opts {
@@ -83,6 +87,7 @@ const (
 	defaultArgPad            = 2 // padding between arg and description
 	defaultCmdPad            = 2 // padding between command and description
 	defaultDescriptionIndent = 2 // extra indent for Description content beyond section content indent
+	defaultListIndent        = 2 // leading indent for detected list items in Descriptions
 
 	// defaultDescriptionWidthMin/Max are the flexible wrap-width range applied
 	// to Description content when the caller sets neither [WithDescriptionWidth]
@@ -368,38 +373,249 @@ func (r *Renderer) renderDescription(w io.Writer, d Description, ind int) error 
 		return nil
 	}
 	pad := strings.Repeat(" ", ind)
-	paragraphs := strings.Split(text, "\n")
-	styled := make([]string, len(paragraphs))
-	for i, p := range paragraphs {
-		if p != "" {
-			styled[i] = r.renderBackticks(p, nil)
-		}
+	lines := r.parseDescLines(strings.Split(text, "\n"))
+
+	styled := make([]string, len(lines))
+	for i, dl := range lines {
+		styled[i] = dl.styled
 	}
 	avail, wrap := r.descriptionWrapAvail(styled, ind)
-	prevBlank := false
-	for i, paragraph := range paragraphs {
-		if paragraph == "" {
-			if prevBlank {
-				continue
+
+	// Emit lines, managing blank separators. Consecutive author-supplied blanks
+	// collapse to one, and a single blank line is enforced at every boundary
+	// between a list block and adjacent paragraph text, mirroring how Markdown
+	// separates list blocks from surrounding prose.
+	pendingBlank := false
+	wrote := false
+	prevList := false
+	for i, dl := range lines {
+		if dl.blank {
+			if wrote {
+				pendingBlank = true
 			}
+			continue
+		}
+		if wrote && (pendingBlank || dl.isList != prevList) {
 			if _, err := fmt.Fprintln(w); err != nil {
 				return err
 			}
-			prevBlank = true
-			continue
 		}
-		prevBlank = false
-		lines := []string{styled[i]}
+		pendingBlank = false
+		out := []string{styled[i]}
 		if wrap {
-			lines = wrapDescriptionParagraph(styled[i], avail)
+			if dl.hang > 0 {
+				// List item: continuation lines align under the item's text.
+				out = wrapParagraphHang(styled[i], avail, dl.hang)
+			} else {
+				out = wrapDescriptionParagraph(styled[i], avail)
+			}
 		}
-		for _, line := range lines {
+		for _, line := range out {
 			if _, err := fmt.Fprintf(w, "%s%s\n", pad, line); err != nil {
 				return err
 			}
 		}
+		wrote = true
+		prevList = dl.isList
 	}
 	return nil
+}
+
+// descLine is one classified, pre-styled line of a Description blurb.
+type descLine struct {
+	blank  bool   // an empty source line (paragraph/list separator)
+	isList bool   // an unordered or ordered list item
+	hang   int    // continuation indent (cols) for a wrapped list item; 0 = derive
+	styled string // rendered content, indent + marker + text (empty when blank)
+}
+
+// numberedItem is an ordered-list line buffered until its run's marker width
+// is known, so all markers in the run can be right-aligned to a common column.
+type numberedItem struct {
+	idx     int    // index into the descLine slice being built
+	ordinal int    // sequential position within the run (1-based)
+	delim   byte   // trailing delimiter, '.' or ')'
+	text    string // item text following the marker
+}
+
+// listFrame is one open nesting level while parsing a Description's lists. It
+// records the author indent that opened the level, the column its markers render
+// at, and the column its children (one level deeper) align under.
+type listFrame struct {
+	authorIndent int
+	renderCol    int
+	contentCol   int
+}
+
+// parseDescLines classifies and styles each raw Description line. List items
+// (both unordered "-"/"*"/"+" and ordered "1."/"2)", mirroring Markdown) have
+// their author-supplied top-level indentation replaced with the configured list
+// indent. Ordered items are renumbered sequentially from 1 within each
+// contiguous run - so authors can write "1." on every line and still get "1.",
+// "2.", "3." - and their markers are right-aligned (left-padded) to the width of
+// the run's largest ordinal, so the delimiters line up (" 1." over "10.").
+//
+// Nesting follows GitHub-flavoured Markdown: it activates only when the author
+// indents a child past its parent. A nested item aligns under its parent's text,
+// and unordered markers cycle glyphs by depth (HelpDescUnorderedListChars).
+func (r *Renderer) parseDescLines(raw []string) []descLine {
+	lines := make([]descLine, len(raw))
+
+	var stack []listFrame
+	var run []numberedItem
+	runCol, runIndent := 0, 0
+
+	// place adjusts the nesting stack for an item at author indent ai and
+	// returns the column it renders at and its depth. A deeper indent than the
+	// current level opens a child (aligned under the parent's text); an equal
+	// indent is a sibling; a shallower indent pops back out. The new frame is
+	// left on top so the caller can set its contentCol once the marker width is
+	// known.
+	place := func(ai int) (int, int) {
+		for len(stack) > 0 && ai < stack[len(stack)-1].authorIndent {
+			stack = stack[:len(stack)-1]
+		}
+		var col int
+		switch {
+		case len(stack) == 0:
+			col = r.listIndent
+			stack = append(stack, listFrame{authorIndent: ai, renderCol: col, contentCol: col})
+		case ai > stack[len(stack)-1].authorIndent:
+			col = stack[len(stack)-1].contentCol
+			stack = append(stack, listFrame{authorIndent: ai, renderCol: col, contentCol: col})
+		default: // sibling at the current level
+			top := &stack[len(stack)-1]
+			top.authorIndent, col = ai, top.renderCol
+		}
+		return col, len(stack) - 1
+	}
+
+	// flushRun styles the buffered numbered items once the run's width is known.
+	// Ordinals increase monotonically, so the last item holds the max.
+	flushRun := func() {
+		if len(run) == 0 {
+			return
+		}
+		width := len(strconv.Itoa(run[len(run)-1].ordinal)) + 1 // digits + delimiter
+		textCol := runCol + width + 1                           // where the item text (and children) align
+		style := r.numberedListStyle()
+		for _, n := range run {
+			marker := xstrings.PadLeft(strconv.Itoa(n.ordinal)+string(n.delim), width)
+			if style != nil {
+				marker = style.Render(marker)
+			}
+			lines[n.idx] = descLine{
+				isList: true,
+				hang:   textCol,
+				styled: strings.Repeat(" ", runCol) + marker + " " +
+					r.renderBackticks(n.text, nil),
+			}
+		}
+		// Children of this run align under the number's text.
+		stack[len(stack)-1].contentCol = textCol
+		run = run[:0]
+	}
+
+	ordinal := 0
+	for i, ln := range raw {
+		switch {
+		case ln == "":
+			// A blank line separates list groups: it ends the current run and
+			// closes all nesting so the next group starts afresh.
+			flushRun()
+			ordinal, stack = 0, stack[:0]
+			lines[i] = descLine{blank: true}
+		case isListMarkerNumbered(ln):
+			ai := leadingSpaces(ln)
+			if len(run) > 0 && ai != runIndent {
+				flushRun() // an indent change starts a new run at a new level
+			}
+			if len(run) == 0 {
+				runIndent = ai
+				runCol, _ = place(ai)
+			}
+			ordinal++
+			marker, rest, _ := splitListMarker(ln)
+			run = append(run, numberedItem{
+				idx: i, ordinal: ordinal, delim: marker[len(marker)-1], text: rest,
+			})
+		default:
+			marker, rest, ok := splitListMarker(ln)
+			if !ok {
+				// Paragraph text ends every list context.
+				flushRun()
+				ordinal, stack = 0, stack[:0]
+				lines[i] = descLine{styled: r.renderBackticks(ln, nil)}
+				continue
+			}
+			// Unordered item: flush any pending numbered run first so a nested
+			// child can align under the number's text.
+			flushRun()
+			col, depth := place(leadingSpaces(ln))
+			// A top-level unordered item ends any ordered numbering; a nested one
+			// leaves the parent's counter intact so it can resume afterwards.
+			if depth == 0 {
+				ordinal = 0
+			}
+			glyph := r.unorderedGlyph(marker, depth)
+			textCol := col + visibleWidth(glyph) + 1 // where the item text (and children) align
+			stack[len(stack)-1].contentCol = textCol
+			if style := r.unorderedListStyle(); style != nil {
+				glyph = style.Render(glyph)
+			}
+			lines[i] = descLine{
+				isList: true,
+				hang:   textCol,
+				styled: strings.Repeat(" ", col) + glyph + " " + r.renderBackticks(rest, nil),
+			}
+		}
+	}
+	flushRun()
+	return lines
+}
+
+// unorderedGlyph returns the marker glyph for an unordered item at the given
+// nesting depth. When HelpDescUnorderedListChars is set, its glyphs are cycled
+// by depth (disc, circle, square, ...); when empty, the author's original marker
+// is kept unchanged.
+func (r *Renderer) unorderedGlyph(authorMarker string, depth int) string {
+	chars := r.Theme.HelpDescUnorderedListChars
+	if len(chars) == 0 {
+		return authorMarker
+	}
+	return chars[depth%len(chars)]
+}
+
+// leadingSpaces returns the number of leading ASCII spaces in s.
+func leadingSpaces(s string) int {
+	return len(s) - len(strings.TrimLeft(s, " "))
+}
+
+// isListMarkerNumbered reports whether a raw Description line is an ordered-list
+// item (after optional leading whitespace).
+func isListMarkerNumbered(line string) bool {
+	marker, _, ok := splitListMarker(line)
+	return ok && isNumberedMarker(marker)
+}
+
+// numberedListStyle resolves the style for a numbered-list marker: the specific
+// HelpDescNumberedList when set, otherwise the HelpDescList fallback (nil when
+// neither is set, meaning the marker is left unstyled).
+func (r *Renderer) numberedListStyle() *lipgloss.Style {
+	if r.Theme.HelpDescNumberedList != nil {
+		return r.Theme.HelpDescNumberedList
+	}
+	return r.Theme.HelpDescList
+}
+
+// unorderedListStyle resolves the style for an unordered-list marker: the
+// specific HelpDescUnorderedList when set, otherwise the HelpDescList fallback
+// (nil when neither is set).
+func (r *Renderer) unorderedListStyle() *lipgloss.Style {
+	if r.Theme.HelpDescUnorderedList != nil {
+		return r.Theme.HelpDescUnorderedList
+	}
+	return r.Theme.HelpDescList
 }
 
 // descriptionWrapAvail resolves the wrap width available to a Description
@@ -486,12 +702,22 @@ func wrapDescriptionParagraph(text string, avail int) []string {
 	if len(lines) <= 1 {
 		return lines
 	}
+	return wrapParagraphHang(text, avail, leadingIndentWidth(lines[0]))
+}
 
-	hang := leadingIndentWidth(lines[0])
+// wrapParagraphHang wraps text to avail columns and indents every continuation
+// line by hang columns. It is used for list items, whose text column is known
+// exactly (so it need not be re-derived from the styled marker, which may use a
+// theme glyph the marker detector doesn't recognise). A hang outside (0, avail)
+// leaves the greedy wrap unchanged.
+func wrapParagraphHang(text string, avail, hang int) []string {
+	lines := strings.Split(gansi.WrapSoft(text, avail), "\n")
+	if len(lines) <= 1 {
+		return lines
+	}
 	if hang <= 0 || hang >= avail {
 		return lines
 	}
-
 	contAvail := avail - hang
 	contText := strings.Join(lines[1:], " ")
 	rewrapped := strings.Split(gansi.WrapSoft(contText, contAvail), "\n")
@@ -502,24 +728,71 @@ func wrapDescriptionParagraph(text string, avail int) []string {
 	return append(lines[:1], rewrapped...)
 }
 
-// listMarkers are the bullet characters recognised when computing the
-// hanging indent for a wrapped list item; each must be followed by a space.
-const listMarkers = "-*•"
+// listMarkers are the unordered-list bullet characters recognised in
+// Description content, mirroring Markdown syntax. Each must be followed by a
+// space. (Ordered markers like "1." / "2)" are recognised separately.)
+const listMarkers = "-*+•"
+
+const (
+	markerTrailingSpace = 1 // the single space that must follow any list marker
+	orderedMarkerTrail  = 2 // delimiter + trailing space after the digits, e.g. ". "
+)
 
 // leadingIndentWidth returns the visible width of the leading run of spaces
 // in line, ignoring ANSI escape sequences. When the leading spaces are
-// followed by a recognised list marker (e.g. "- "), the marker is included
-// so wrapped continuation lines align with the item's text rather than its
-// marker.
+// followed by a recognised list marker (e.g. "- " or "1. "), the marker is
+// included so wrapped continuation lines align with the item's text rather
+// than its marker.
 func leadingIndentWidth(line string) int {
 	stripped := ansi.Strip(line)
 	trimmed := strings.TrimLeft(stripped, " ")
-	hang := len(stripped) - len(trimmed)
-	if len(trimmed) >= 2 && strings.ContainsRune(listMarkers, rune(trimmed[0])) &&
-		trimmed[1] == ' ' {
-		hang += 2
+	leadSpaces := len(stripped) - len(trimmed) // spaces: byte count == visible width
+	mw := listMarkerWidth(trimmed)
+	if mw == 0 {
+		return leadSpaces
 	}
-	return hang
+	// The marker may include a multi-byte glyph (e.g. "•"), so measure its
+	// visible width rather than its byte length for the hanging indent.
+	return leadSpaces + visibleWidth(trimmed[:mw])
+}
+
+// listMarkerWidth returns the byte width (including the single trailing space)
+// of a leading Markdown list marker in s, or 0 when s does not begin with one.
+// Recognised markers are unordered bullets ("-", "*", "+", "•") and ordered
+// numbers ("1.", "2)"), each followed by a space.
+func listMarkerWidth(s string) int {
+	if r, size := utf8.DecodeRuneInString(s); size > 0 &&
+		strings.ContainsRune(listMarkers, r) &&
+		len(s) > size && s[size] == ' ' {
+		return size + markerTrailingSpace
+	}
+	n := 0
+	for n < len(s) && s[n] >= '0' && s[n] <= '9' {
+		n++
+	}
+	if n > 0 && n+1 < len(s) && (s[n] == '.' || s[n] == ')') && s[n+1] == ' ' {
+		return n + orderedMarkerTrail
+	}
+	return 0
+}
+
+// splitListMarker splits a Description line into its list marker (without the
+// trailing space) and the remaining item text, discarding any author-supplied
+// leading whitespace so callers can re-indent uniformly. The final bool is
+// false when the line does not begin with a recognised list marker.
+func splitListMarker(line string) (string, string, bool) {
+	s := strings.TrimLeft(line, " ")
+	w := listMarkerWidth(s)
+	if w == 0 {
+		return "", "", false
+	}
+	return s[:w-1], s[w:], true
+}
+
+// isNumberedMarker reports whether marker (a marker returned by
+// [splitListMarker], e.g. "1." or "12)") is an ordered-list marker.
+func isNumberedMarker(marker string) bool {
+	return len(marker) >= 2 && xstrings.IsDigits(marker[:len(marker)-1])
 }
 
 func (r *Renderer) renderExamples(w io.Writer, examples Examples, ind int) error {

@@ -55,6 +55,10 @@ type Theme struct {
 	HelpBoldDim                *lipgloss.Style
 	HelpCommand                *lipgloss.Style
 	HelpDescBacktick           *lipgloss.Style // Backtick-enclosed text in flag descriptions (nil = leave backticks intact).
+	HelpDescList               *lipgloss.Style // Fallback marker style for any list detected in a Description (nil = unstyled).
+	HelpDescNumberedList       *lipgloss.Style // Marker ("1.", "2)") of a numbered list (nil = fall back to HelpDescList; default: bold).
+	HelpDescUnorderedList      *lipgloss.Style // Marker of an unordered list (nil = fall back to HelpDescList).
+	HelpDescUnorderedListChars []string        // Glyphs unordered markers are normalised to, cycled by nesting depth (default "•","◦","▪"; empty = keep author's char).
 	HelpDim                    *lipgloss.Style
 	HelpEnumDefault            *lipgloss.Style // Default value in EnumStyleHighlightDefault lists (default: dim green).
 	HelpFlag                   *lipgloss.Style
@@ -87,6 +91,14 @@ type Theme struct {
 	EntityColors []color.Color
 }
 
+// unorderedListGlyphs returns the default glyphs unordered-list markers are
+// normalised to, cycled by nesting depth (disc, circle, small square) - the
+// same progression GitHub-flavoured Markdown uses. A fresh slice is returned
+// per call so themes never share a mutable default.
+func unorderedListGlyphs() []string {
+	return []string{"•", "◦", "▪"}
+}
+
 // Dark returns clib's default dark-background theme.
 func Dark() *Theme {
 	return &Theme{
@@ -108,9 +120,13 @@ func Dark() *Theme {
 			Bold(true).
 			Faint(true).
 			Foreground(lipgloss.Color("4"))),
-		HelpCommand:      new(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))),
-		HelpDescBacktick: new(lipgloss.NewStyle().Foreground(lipgloss.Color("183"))),
-		HelpDim:          new(lipgloss.NewStyle().Faint(true)),
+		HelpCommand: new(
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")),
+		),
+		HelpDescBacktick:           new(lipgloss.NewStyle().Foreground(lipgloss.Color("183"))),
+		HelpDescNumberedList:       new(lipgloss.NewStyle().Bold(true)),
+		HelpDescUnorderedListChars: unorderedListGlyphs(),
+		HelpDim:                    new(lipgloss.NewStyle().Faint(true)),
 		HelpEnumDefault: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("2")),
 		),

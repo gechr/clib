@@ -108,6 +108,17 @@ func WithDescriptionWidthRange(minWidth, maxWidth int) RendererOption {
 	}
 }
 
+// WithListIndent sets the leading indent (in columns) applied to list items
+// auto-detected in [Description] content, relative to the description's base
+// indent. Both unordered ("-", "*", "+") and ordered ("1.", "2)") markers are
+// re-indented to this width regardless of how many spaces the author wrote, so
+// list indentation stays uniform. The default is 2.
+func WithListIndent(n int) RendererOption {
+	return func(r *Renderer) {
+		r.listIndent = n
+	}
+}
+
 // WithBacktickStyle sets how backticked tokens in descriptions are styled.
 // See [BacktickStyle] for the supported modes. The default is
 // [BacktickStyleSmart].

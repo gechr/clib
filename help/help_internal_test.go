@@ -18,6 +18,90 @@ func TestHelpContentMarkers(_ *testing.T) {
 	(&Section{}).helpContent()
 }
 
+func TestListMarkerWidth(t *testing.T) {
+	tests := []struct {
+		text string
+		want int
+	}{
+		{"- item", 2},
+		{"* item", 2},
+		{"+ item", 2},
+		{"1. item", 3},
+		{"2) item", 3},
+		{"10. item", 4},
+		{"123. item", 5},
+		{"no marker", 0},
+		{"-no space", 0},  // marker must be followed by a space
+		{"1.no space", 0}, // digits + delimiter but no trailing space
+		{"3.14 is pi", 0}, // decimal, not a marker (no space after '.')
+		{"1st place", 0},  // digit then letter, not a delimiter
+		{"", 0},           // empty
+		{"-", 0},          // bullet with nothing after
+		{"1.", 0},         // marker with no trailing space
+		{"•no space", 0},  // multibyte bullet not treated as ASCII marker
+		{"a. item", 0},    // non-digit ordered marker
+	}
+	for _, tt := range tests {
+		t.Run(tt.text, func(t *testing.T) {
+			require.Equal(t, tt.want, listMarkerWidth(tt.text))
+		})
+	}
+}
+
+func TestSplitListMarker(t *testing.T) {
+	tests := []struct {
+		line       string
+		wantMarker string
+		wantRest   string
+		wantOK     bool
+	}{
+		{"- item", "-", "item", true},
+		{"  - item", "-", "item", true}, // leading whitespace discarded
+		{"      1. deeply indented", "1.", "deeply indented", true},
+		{"1. first", "1.", "first", true},
+		{"12) twelfth", "12)", "twelfth", true},
+		{"plain text", "", "", false},
+		{"3.14 is pi", "", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			marker, rest, ok := splitListMarker(tt.line)
+			require.Equal(t, tt.wantOK, ok)
+			require.Equal(t, tt.wantMarker, marker)
+			require.Equal(t, tt.wantRest, rest)
+		})
+	}
+}
+
+func TestIsNumberedMarker(t *testing.T) {
+	require.True(t, isNumberedMarker("1."))
+	require.True(t, isNumberedMarker("2)"))
+	require.True(t, isNumberedMarker("42."))
+	require.False(t, isNumberedMarker("-"))
+	require.False(t, isNumberedMarker("*"))
+	require.False(t, isNumberedMarker(""))
+	require.False(t, isNumberedMarker("."))
+}
+
+func TestLeadingIndentWidth(t *testing.T) {
+	tests := []struct {
+		line string
+		want int
+	}{
+		{"no indent", 0},
+		{"  two spaces", 2},
+		{"  - bullet", 4},     // 2 spaces + "- "
+		{"  1. numbered", 5},  // 2 spaces + "1. "
+		{"  10. numbered", 6}, // 2 spaces + "10. "
+		{"    * deep bullet", 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.line, func(t *testing.T) {
+			require.Equal(t, tt.want, leadingIndentWidth(tt.line))
+		})
+	}
+}
+
 func TestUnclosedBracketCol(t *testing.T) {
 	tests := []struct {
 		text string

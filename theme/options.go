@@ -76,6 +76,36 @@ func WithHelpDescBacktick(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpDescBacktick = new(s) }
 }
 
+// WithHelpDescList sets the fallback marker style for lists auto-detected in a
+// Description blurb, used when no marker-specific style (numbered/bullet) applies.
+func WithHelpDescList(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpDescList = new(s) }
+}
+
+// WithHelpDescNumberedList sets the style applied to the marker ("1.", "2)")
+// of a numbered list auto-detected in a Description blurb. Passing a zero style
+// still overrides the fallback; leave it nil on the theme to fall back to
+// [WithHelpDescList].
+func WithHelpDescNumberedList(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpDescNumberedList = new(s) }
+}
+
+// WithHelpDescUnorderedList sets the style applied to the marker of an unordered
+// list auto-detected in a Description blurb, falling back to [WithHelpDescList]
+// when left nil on the theme.
+func WithHelpDescUnorderedList(s lipgloss.Style) Option {
+	return func(t *Theme) { t.HelpDescUnorderedList = new(s) }
+}
+
+// WithHelpDescUnorderedListChars sets the glyphs that unordered list markers
+// ("-", "*", "+") are normalised to in Description blurbs, cycled by nesting
+// depth (default "•", "◦", "▪" - the same progression GitHub-flavoured Markdown
+// uses). Pass no arguments to leave each author's original marker character
+// unchanged.
+func WithHelpDescUnorderedListChars(chars ...string) Option {
+	return func(t *Theme) { t.HelpDescUnorderedListChars = chars }
+}
+
 // WithHelpDim sets the dim style used in help output.
 func WithHelpDim(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpDim = new(s) }
