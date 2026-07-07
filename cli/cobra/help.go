@@ -125,7 +125,7 @@ func rawUseSuffix(cmd *cobralib.Command) string {
 func aliasSection(cmd *cobralib.Command) help.Section {
 	return help.Section{
 		Title:   "Aliases",
-		Content: []help.Content{help.Text(strings.Join(cmd.Aliases, ", "))},
+		Content: []help.Content{help.Aliases(cmd.Aliases)},
 	}
 }
 

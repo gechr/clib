@@ -143,9 +143,9 @@ func TestSections_Aliases(t *testing.T) {
 	}
 	require.NotNil(t, aliasSection)
 
-	text, ok := aliasSection.Content[0].(help.Text)
+	aliases, ok := aliasSection.Content[0].(help.Aliases)
 	require.True(t, ok)
-	require.Equal(t, "a, application", string(text))
+	require.Equal(t, help.Aliases{"a", "application"}, aliases)
 }
 
 func TestSections_Commands(t *testing.T) {

@@ -119,7 +119,7 @@ func usageSection(cmd *clilib.Command, hasFlags bool, cfg sectionsConfig) help.S
 func aliasSection(cmd *clilib.Command) help.Section {
 	return help.Section{
 		Title:   "Aliases",
-		Content: []help.Content{help.Text(strings.Join(cmd.Aliases, ", "))},
+		Content: []help.Content{help.Aliases(cmd.Aliases)},
 	}
 }
 
