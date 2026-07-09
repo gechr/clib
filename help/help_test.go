@@ -1306,7 +1306,7 @@ func TestRender_DescNoteBackticksKeepsClosingParenStyled(t *testing.T) {
 			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
 			note.Render(
 				"(alias for ",
-			)+th.HelpFlag.Inherit(code).Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+			)+code.Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
 		buf.String(),
 	)
 }
@@ -1359,7 +1359,7 @@ func TestRender_DescFlagBackticksUseHelpFlagByDefault(t *testing.T) {
 			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
 			th.HelpFlagNote.Render(
 				"(alias for ",
-			)+th.HelpFlag.Inherit(code).Inherit(*th.HelpFlagNote).Render("--vcs=git")+th.HelpFlagNote.Render(")")+"\n",
+			)+code.Inherit(*th.HelpFlagNote).Render("--vcs=git")+th.HelpFlagNote.Render(")")+"\n",
 		buf.String(),
 	)
 }
@@ -1389,7 +1389,44 @@ func TestRender_DescFlagBackticksCanBeOverridden(t *testing.T) {
 			th.HelpFlag.Render("--git")+"  Clone with "+code.Render("git")+" "+
 			note.Render(
 				"(alias for ",
-			)+flagCode.Inherit(code).Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+			)+code.Inherit(note).Render("--vcs=git")+note.Render(")")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_DescFlagBackticksOnlyUseCurrentHelpFlags(t *testing.T) {
+	th := testTheme()
+	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	flagCode := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	th.HelpDescBacktick = &code
+	th.HelpFlagBacktick = &flagCode
+
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{
+					Short: "k",
+					Long:  "known",
+					Desc:  "Uses `--known`, `--known=value`, and `-k`; external refs `--sibling`, `-known`, and `-external-long` stay generic.",
+				},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	flagStyle := flagCode.Inherit(code)
+	require.Equal(t,
+		th.HelpSection.Render("Options")+"\n\n  "+
+			th.HelpFlag.Render("-k")+","+" "+
+			th.HelpFlag.Render("--known")+"  Uses "+
+			flagStyle.Render("--known")+", "+
+			flagStyle.Render("--known=value")+", and "+
+			flagStyle.Render("-k")+
+			"; external refs "+code.Render("--sibling")+", "+
+			code.Render("-known")+", and "+
+			code.Render("-external-long")+" stay generic.\n",
 		buf.String(),
 	)
 }

@@ -43,13 +43,14 @@ type Renderer struct {
 
 // descRefs indexes the names a Description blurb might reference back to:
 // positional arguments (matched as `name` or `<name>`), flags (`--name`,
-// `-x`, handled separately via isFlagLikeBacktick), and subcommands
-// (`name`). Built by collectDescRefs at Render time so backtick styling can
-// pick the same style the renderer would use elsewhere for the same name.
+// `-x`), and subcommands (`name`). Built by collectDescRefs at Render time so
+// backtick styling can pick the same style the renderer would use elsewhere
+// for the same name.
 type descRefs struct {
 	args      map[string]Arg
 	binary    string // first token of the rendered Usage.Command (e.g. "mycli")
 	commands  map[string]struct{}
+	flags     map[string]struct{} // rendered flag names, e.g. "--verbose" and "-v"
 	argEnums  map[string]Arg      // enum value (e.g. "github") -> the arg that owns it, so the value styles like its arg
 	flagEnums map[string]struct{} // enum value owned by a flag -> styled with the flag color (HelpFlag)
 }
@@ -1133,7 +1134,7 @@ func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
 }
 
 func (r *Renderer) getBacktickStyle(text string) (lipgloss.Style, bool) {
-	if isFlagLikeBacktick(text) {
+	if r.descRefs.lookupFlag(text) {
 		style, hasStyle := r.flagBacktickBaseStyle()
 		if r.Theme.HelpDescBacktick == nil {
 			return style, hasStyle
@@ -1171,6 +1172,7 @@ func collectDescRefs(sections []Section) descRefs {
 	refs := descRefs{
 		args:      map[string]Arg{},
 		commands:  map[string]struct{}{},
+		flags:     map[string]struct{}{},
 		argEnums:  map[string]Arg{},
 		flagEnums: map[string]struct{}{},
 	}
@@ -1190,6 +1192,16 @@ func collectDescRefs(sections []Section) descRefs {
 		}
 	}
 	indexFlag := func(f Flag) {
+		if utf8.RuneCountInString(f.Short) == 1 {
+			refs.flags["-"+f.Short] = struct{}{}
+		}
+		if f.Long != "" {
+			refs.flags["--"+f.Long] = struct{}{}
+			if name, inverse, ok := splitNegatableLongFlag(f.Long); ok {
+				refs.flags["--"+name] = struct{}{}
+				refs.flags["--"+inverse] = struct{}{}
+			}
+		}
 		// Flag enum values style with the flag color, so a token like `debug`
 		// (a value of --log-level) matches its owning flag. Arg-owned enums
 		// take precedence in lookup(), so values shared by an arg keep the arg
@@ -1200,38 +1212,68 @@ func collectDescRefs(sections []Section) descRefs {
 			}
 		}
 	}
-	for _, sec := range sections {
-		for _, c := range sec.Content {
-			switch v := c.(type) {
-			case Usage:
-				for _, a := range v.Args {
-					indexArg(a)
-				}
-				// Capture the binary name (first token of the Usage command)
-				// so multi-segment command references like "mycli sub cmd" in
-				// Description backticks can be styled consistently with how
-				// the Usage line renders the same name.
-				if refs.binary == "" && v.Command != "" {
-					if first, _, _ := strings.Cut(v.Command, " "); first != "" {
-						refs.binary = first
+	var walkSections func([]Section)
+	walkSections = func(sections []Section) {
+		for _, sec := range sections {
+			for _, c := range sec.Content {
+				switch v := c.(type) {
+				case Usage:
+					for _, a := range v.Args {
+						indexArg(a)
 					}
-				}
-			case Args:
-				for _, a := range v {
-					indexArg(a)
-				}
-			case FlagGroup:
-				for _, f := range v {
-					indexFlag(f)
-				}
-			case CommandGroup:
-				for _, cmd := range v {
-					refs.commands[cmd.Name] = struct{}{}
+					// Capture the binary name (first token of the Usage command)
+					// so multi-segment command references like "mycli sub cmd" in
+					// Description backticks can be styled consistently with how
+					// the Usage line renders the same name.
+					if refs.binary == "" && v.Command != "" {
+						if first, _, _ := strings.Cut(v.Command, " "); first != "" {
+							refs.binary = first
+						}
+					}
+				case Args:
+					for _, a := range v {
+						indexArg(a)
+					}
+				case FlagGroup:
+					for _, f := range v {
+						indexFlag(f)
+					}
+				case CommandGroup:
+					for _, cmd := range v {
+						refs.commands[cmd.Name] = struct{}{}
+					}
+				case *Section:
+					walkSections([]Section{*v})
 				}
 			}
 		}
 	}
+	walkSections(sections)
 	return refs
+}
+
+func splitNegatableLongFlag(long string) (string, string, bool) {
+	prefix, rest, found := strings.Cut(long, "]")
+	if !found || !strings.HasPrefix(prefix, "[") || rest == "" {
+		return "", "", false
+	}
+	inversePrefix := strings.TrimPrefix(prefix, "[")
+	if inversePrefix == "" {
+		return "", "", false
+	}
+	return rest, inversePrefix + rest, true
+}
+
+func (d descRefs) lookupFlag(text string) bool {
+	if _, ok := d.flags[text]; ok {
+		return true
+	}
+	name, _, ok := strings.Cut(text, "=")
+	if !ok {
+		return false
+	}
+	_, ok = d.flags[name]
+	return ok
 }
 
 // lookup returns the style to apply to a backticked token, if it resolves
@@ -1307,10 +1349,6 @@ func (r *Renderer) flagBacktickBaseStyle() (lipgloss.Style, bool) {
 	default:
 		return lipgloss.Style{}, false
 	}
-}
-
-func isFlagLikeBacktick(s string) bool {
-	return len(s) > 1 && s[0] == '-'
 }
 
 // isLetterAt reports whether s[i] is an ASCII letter. Returns false if i is out of bounds.
