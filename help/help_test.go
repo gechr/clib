@@ -1431,6 +1431,42 @@ func TestRender_DescFlagBackticksOnlyUseCurrentHelpFlags(t *testing.T) {
 	)
 }
 
+func TestRender_DescFlagBacktickSpanWithConsecutiveFlags(t *testing.T) {
+	th := testTheme()
+	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	flagCode := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	th.HelpDescBacktick = &code
+	th.HelpFlagBacktick = &flagCode
+
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Options", Content: []help.Content{
+			help.FlagGroup{
+				{Long: "alpha", Desc: "Enable alpha"},
+				{Long: "beta", Desc: "Enable beta"},
+				{Long: "to", Desc: "Pin version (implies `--alpha --beta`)"},
+				{Long: "other", Desc: "Uses `--beta fast`"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	note := *th.HelpFlagNote
+	require.Equal(t,
+		th.HelpSection.Render("Options")+"\n\n  "+
+			th.HelpFlag.Render("--alpha")+"  Enable alpha\n  "+
+			th.HelpFlag.Render("--beta")+"   Enable beta\n  "+
+			th.HelpFlag.Render("--to")+"     Pin version "+
+			note.Render("(implies ")+
+			flagCode.Inherit(code).Inherit(note).Render("--alpha --beta")+
+			note.Render(")")+"\n  "+
+			th.HelpFlag.Render("--other")+"  Uses "+
+			code.Render("--beta fast")+"\n",
+		buf.String(),
+	)
+}
+
 func TestRender_DescBracketDefault(t *testing.T) {
 	th := testTheme()
 	r := help.NewRenderer(th)

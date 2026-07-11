@@ -1264,7 +1264,18 @@ func splitNegatableLongFlag(long string) (string, string, bool) {
 	return rest, inversePrefix + rest, true
 }
 
+// lookupFlag reports whether text resolves to a known flag reference. A span
+// of multiple whitespace-separated tokens (e.g. `--alpha --beta`) counts
+// when every token resolves, so consecutive flag refs share one backtick pair.
 func (d descRefs) lookupFlag(text string) bool {
+	if fields := strings.Fields(text); len(fields) > 1 {
+		for _, f := range fields {
+			if !d.lookupFlag(f) {
+				return false
+			}
+		}
+		return true
+	}
 	if _, ok := d.flags[text]; ok {
 		return true
 	}
