@@ -82,11 +82,11 @@ func TestAutoUsesFallbackWhenDetectionUnavailable(t *testing.T) {
 	resetThemeEnvPrefix(t)
 	t.Setenv("CLIB_THEME", "")
 
-	require.Equal(t, theme.Dark().String(), theme.Auto(nil).String())
+	require.Equal(t, theme.Dark().String(), theme.Auto().String())
 	require.Equal(
 		t,
 		theme.Light().String(),
-		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto(nil).String(),
+		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto().String(),
 	)
 }
 
@@ -94,11 +94,11 @@ func TestAutoThemeEnvTakesPrecedence(t *testing.T) {
 	resetThemeEnvPrefix(t)
 	t.Setenv("CLIB_THEME", "dracula")
 
-	require.Equal(t, theme.Dracula().String(), theme.Auto(nil).String())
+	require.Equal(t, theme.Dracula().String(), theme.Auto().String())
 	require.Equal(
 		t,
 		theme.Dracula().String(),
-		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto(nil).String(),
+		theme.DefaultPair(theme.WithFallback(theme.BackgroundLight)).Auto().String(),
 	)
 }
 
@@ -107,7 +107,7 @@ func TestAutoThemeEnvOverridesExplicitPair(t *testing.T) {
 	t.Setenv("CLIB_THEME", "monokai")
 
 	pair := theme.MustPair(theme.CatppuccinLatte(), theme.Nord())
-	require.Equal(t, theme.Monokai().String(), pair.Auto(nil).String())
+	require.Equal(t, theme.Monokai().String(), pair.Auto().String())
 }
 
 func TestAutoThemeEnvCustomPrefixTakesPrecedence(t *testing.T) {
@@ -116,14 +116,14 @@ func TestAutoThemeEnvCustomPrefixTakesPrecedence(t *testing.T) {
 	t.Setenv("MYAPP_THEME", "nord")
 	t.Setenv("CLIB_THEME", "dracula")
 
-	require.Equal(t, theme.Nord().String(), theme.Auto(nil).String())
+	require.Equal(t, theme.Nord().String(), theme.Auto().String())
 }
 
 func TestAutoThemeEnvInvalidIgnored(t *testing.T) {
 	resetThemeEnvPrefix(t)
 	t.Setenv("CLIB_THEME", "bogus")
 
-	require.Equal(t, theme.Dark().String(), theme.Auto(nil).String())
+	require.Equal(t, theme.Dark().String(), theme.Auto().String())
 }
 
 func TestDefaultPair_ForBackground(t *testing.T) {
