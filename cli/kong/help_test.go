@@ -14,6 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type textEnum int
+
+func (*textEnum) String() string { return "auto" }
+
+func (*textEnum) UnmarshalText([]byte) error { return nil }
+
 func TestHelpPrinter(t *testing.T) {
 	var buf bytes.Buffer
 	renderer := help.NewRenderer(theme.Dark())
@@ -805,9 +811,10 @@ func TestNodeSections_PathTypePlaceholders(t *testing.T) {
 func TestNodeSections_IntegerPlaceholders(t *testing.T) {
 	type CLI struct {
 		Limit   int           `help:"Maximum results"`
-		IDs     []uint64      `name:"ids"             help:"IDs to include"`
+		IDs     []uint64      `name:"ids"               help:"IDs to include"`
 		Timeout time.Duration `help:"Request timeout"`
-		Custom  int           `help:"Custom number"   placeholder:"<count>"`
+		Custom  int           `help:"Custom number"     placeholder:"<count>"`
+		Color   textEnum      `help:"When to use color" default:"auto"        enum:"auto,always,never"`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
@@ -824,6 +831,7 @@ func TestNodeSections_IntegerPlaceholders(t *testing.T) {
 	}{
 		"limit": {"n", false}, "ids": {"n", true},
 		"timeout": {"timeout", false}, "custom": {"count", false},
+		"color": {"color", false},
 	}
 	for _, flag := range fg {
 		if expected, ok := want[flag.Long]; ok {

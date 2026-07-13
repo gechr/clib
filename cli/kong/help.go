@@ -1,6 +1,8 @@
 package kong
 
 import (
+	"encoding"
+	"fmt"
 	"os"
 	"reflect"
 	"slices"
@@ -473,6 +475,12 @@ func kongIntegerType(t reflect.Type) bool {
 		t = t.Elem()
 	}
 	if t == reflect.TypeFor[time.Duration]() {
+		return false
+	}
+	textUnmarshaler := reflect.TypeFor[encoding.TextUnmarshaler]()
+	stringer := reflect.TypeFor[fmt.Stringer]()
+	if t.Implements(textUnmarshaler) || reflect.PointerTo(t).Implements(textUnmarshaler) ||
+		t.Implements(stringer) || reflect.PointerTo(t).Implements(stringer) {
 		return false
 	}
 	switch t.Kind() { //nolint:exhaustive // only integer kinds are relevant

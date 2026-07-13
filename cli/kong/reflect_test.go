@@ -317,12 +317,13 @@ func TestReflect_IntegerPlaceholder(t *testing.T) {
 		IDs     []uint64 `name:"ids"`
 		Timeout time.Duration
 		Custom  int `placeholder:"count"`
+		Color   textEnum
 	}
 
 	flags, err := kong.Reflect(&CLI{})
 	require.NoError(t, err)
 	for name, want := range map[string]string{
-		"limit": "n", "ids": "n", "timeout": "", "custom": "count",
+		"limit": "n", "ids": "n", "timeout": "", "custom": "count", "color": "",
 	} {
 		f := findFlagByName(flags, name)
 		require.NotNil(t, f)
