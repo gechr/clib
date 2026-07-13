@@ -3,6 +3,7 @@ package cobra_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/gechr/clib/cli/cobra"
@@ -240,6 +241,73 @@ func TestSections_Flags_Placeholder(t *testing.T) {
 	require.Equal(t, "name", nameFlag.Placeholder)
 	require.NotNil(t, verboseFlag)
 	require.Empty(t, verboseFlag.Placeholder)
+}
+
+func TestSections_Flags_CompletionPlaceholder(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().String("config", "", "Config file")
+	cmd.Flags().String("root", "", "Root directory")
+	cmd.Flags().String("source", "", "Source `input`")
+	require.NoError(t, cmd.MarkFlagFilename("config"))
+	require.NoError(t, cmd.MarkFlagDirname("root"))
+	require.NoError(t, cmd.MarkFlagFilename("source"))
+
+	sections := cobra.Sections(cmd)
+	var flagSection *help.Section
+	for i := range sections {
+		if sections[i].Title == "Options" {
+			flagSection = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, flagSection)
+	flags, ok := flagSection.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	for name, want := range map[string]string{"config": "file", "root": "dir", "source": "input"} {
+		var got *help.Flag
+		for i := range flags {
+			if flags[i].Long == name {
+				got = &flags[i]
+				break
+			}
+		}
+		require.NotNil(t, got, name)
+		require.Equal(t, want, got.Placeholder, name)
+	}
+}
+
+func TestSections_Flags_IntegerPlaceholder(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().Int("limit", 0, "Maximum results")
+	cmd.Flags().UintSlice("ids", nil, "IDs to include")
+	cmd.Flags().Duration("timeout", time.Second, "Request timeout")
+	cmd.Flags().Int("custom", 0, "Custom `count`")
+
+	sections := cobra.Sections(cmd)
+	var flags help.FlagGroup
+	for _, section := range sections {
+		if section.Title == "Options" {
+			flags, _ = section.Content[0].(help.FlagGroup)
+			break
+		}
+	}
+	require.NotNil(t, flags)
+	want := map[string]struct {
+		placeholder string
+		repeatable  bool
+	}{
+		"limit": {"n", false}, "ids": {"n", true},
+		"timeout": {"timeout", false}, "custom": {"count", false},
+	}
+	for _, flag := range flags {
+		if expected, ok := want[flag.Long]; ok {
+			require.Equal(t, expected.placeholder, flag.Placeholder, flag.Long)
+			require.Equal(t, expected.repeatable, flag.Repeatable, flag.Long)
+			delete(want, flag.Long)
+		}
+	}
+	require.Empty(t, want, "missing flags")
 }
 
 // TestSections_Flags_Placeholder_BoolBackticks ensures that backticked text in

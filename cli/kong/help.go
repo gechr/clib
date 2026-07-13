@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	konglib "github.com/alecthomas/kong"
 	"github.com/charmbracelet/colorprofile"
@@ -431,6 +432,14 @@ func flagPlaceholder(f *konglib.Flag) (string, bool) {
 		return "", false
 	}
 	if f.PlaceHolder == "" {
+		if f.Tag != nil {
+			if placeholder := kongTypePlaceholder(f.Tag.Type); placeholder != "" {
+				return placeholder, false
+			}
+		}
+		if kongIntegerType(f.Target.Type()) {
+			return "n", false
+		}
 		return f.Name, false
 	}
 	// Explicit placeholder from the struct tag. If it has angle brackets,
@@ -439,6 +448,40 @@ func flagPlaceholder(f *konglib.Flag) (string, bool) {
 	ph := strings.TrimPrefix(f.PlaceHolder, help.ArgOpen)
 	ph = strings.TrimSuffix(ph, help.ArgClose)
 	return ph, ph == f.PlaceHolder
+}
+
+// kongTypePlaceholder returns a concise placeholder for Kong's built-in
+// path-like types. Keep this aligned with kongTypeValueHint so help and shell
+// completion describe the same kind of value.
+func kongTypePlaceholder(kongType string) string {
+	switch strings.ToLower(kongType) {
+	case kongTypeExistingFile, kongTypeFileContent:
+		return "file"
+	case kongTypeExistingDir:
+		return "dir"
+	case kongTypePath:
+		return kongTypePath
+	default:
+		return ""
+	}
+}
+
+// kongIntegerType reports whether a Kong target is an integer or integer
+// slice. time.Duration is intentionally excluded despite its int64 backing.
+func kongIntegerType(t reflect.Type) bool {
+	for t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+	if t == reflect.TypeFor[time.Duration]() {
+		return false
+	}
+	switch t.Kind() { //nolint:exhaustive // only integer kinds are relevant
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	default:
+		return false
+	}
 }
 
 // isCSVFlag reports whether the kong flag's target type is CSVFlag or *CSVFlag.

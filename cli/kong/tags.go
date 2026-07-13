@@ -17,9 +17,14 @@ const (
 	tagPredictor   = "predictor"
 	tagShort       = "short"
 	tagShowAliases = "show-aliases"
+	tagType        = "type"
 )
 
 // Kong struct tag values.
 const (
-	predictorPath = "path"
+	kongTypeExistingDir  = "existingdir"
+	kongTypeExistingFile = "existingfile"
+	kongTypeFileContent  = "filecontent"
+	kongTypePath         = "path"
+	predictorPath        = "path"
 )

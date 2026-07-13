@@ -110,6 +110,12 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if !meta.PlaceholderOverride && meta.Placeholder != "" {
 			meta.PlaceholderOverride = true
 		}
+		if meta.Placeholder == "" {
+			meta.Placeholder = kongTypePlaceholder(field.Tag.Get(tagType))
+		}
+		if meta.Placeholder == "" && kongIntegerType(field.Type) {
+			meta.Placeholder = "n"
+		}
 
 		if _, ok := field.Tag.Lookup(tagNegatable); ok {
 			meta.Negatable = true

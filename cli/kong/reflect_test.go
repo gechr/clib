@@ -2,6 +2,7 @@ package kong_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gechr/clib/cli/kong"
 	"github.com/gechr/clib/complete"
@@ -286,6 +287,47 @@ func TestReflect_PlaceholderOverride_NotSetWhenEmpty(t *testing.T) {
 	require.NotNil(t, f)
 
 	require.False(t, f.PlaceholderOverride, "empty placeholder should not set PlaceholderOverride")
+}
+
+func TestReflect_PathTypePlaceholder(t *testing.T) {
+	type CLI struct {
+		Input  string `type:"existingfile"`
+		Config []byte `type:"filecontent"`
+		Root   string `type:"existingdir"`
+		Output string `type:"path"`
+		Custom string `placeholder:"source" type:"existingfile"`
+	}
+
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	for name, want := range map[string]string{
+		"input": "file", "config": "file", "root": "dir", "output": "path", "custom": "source",
+	} {
+		f := findFlagByName(flags, name)
+		require.NotNil(t, f)
+		require.Equal(t, want, f.Placeholder, name)
+	}
+	require.False(t, findFlagByName(flags, "input").PlaceholderOverride)
+	require.True(t, findFlagByName(flags, "custom").PlaceholderOverride)
+}
+
+func TestReflect_IntegerPlaceholder(t *testing.T) {
+	type CLI struct {
+		Limit   int
+		IDs     []uint64 `name:"ids"`
+		Timeout time.Duration
+		Custom  int `placeholder:"count"`
+	}
+
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	for name, want := range map[string]string{
+		"limit": "n", "ids": "n", "timeout": "", "custom": "count",
+	} {
+		f := findFlagByName(flags, name)
+		require.NotNil(t, f)
+		require.Equal(t, want, f.Placeholder, name)
+	}
 }
 
 func TestReflect_Group(t *testing.T) {

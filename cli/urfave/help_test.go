@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	urfavecli "github.com/gechr/clib/cli/urfave"
 	"github.com/gechr/clib/help"
@@ -238,6 +239,78 @@ func TestSections_Flags_Placeholder(t *testing.T) {
 	require.Equal(t, "name", nameFlag.Placeholder)
 	require.NotNil(t, verboseFlag)
 	require.Empty(t, verboseFlag.Placeholder)
+}
+
+func TestSections_Flags_FilePlaceholder(t *testing.T) {
+	fileFlag := &clilib.StringFlag{Name: "config", Usage: "Config file", TakesFile: true}
+	filesFlag := &clilib.StringSliceFlag{
+		Name:      "include",
+		Usage:     "Files to include",
+		TakesFile: true,
+	}
+	customFlag := &clilib.StringFlag{Name: "source", Usage: "Source file", TakesFile: true}
+	urfavecli.Extend(customFlag, urfavecli.FlagExtra{Placeholder: "input"})
+	cmd := &clilib.Command{Name: "app", Flags: []clilib.Flag{fileFlag, filesFlag, customFlag}}
+
+	sections := urfavecli.Sections(cmd)
+	var flagSection *help.Section
+	for i := range sections {
+		if sections[i].Title == "Options" {
+			flagSection = &sections[i]
+			break
+		}
+	}
+	require.NotNil(t, flagSection)
+	flags, ok := flagSection.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	for name, want := range map[string]string{"config": "file", "include": "file", "source": "input"} {
+		var got *help.Flag
+		for i := range flags {
+			if flags[i].Long == name {
+				got = &flags[i]
+				break
+			}
+		}
+		require.NotNil(t, got, name)
+		require.Equal(t, want, got.Placeholder, name)
+	}
+}
+
+func TestSections_Flags_IntegerPlaceholder(t *testing.T) {
+	customFlag := &clilib.IntFlag{Name: "custom", Usage: "Custom number"}
+	urfavecli.Extend(customFlag, urfavecli.FlagExtra{Placeholder: "count"})
+	cmd := &clilib.Command{Name: "app", Flags: []clilib.Flag{
+		&clilib.IntFlag{Name: "limit", Usage: "Maximum results"},
+		&clilib.Uint64SliceFlag{Name: "ids", Usage: "IDs to include"},
+		&clilib.DurationFlag{Name: "timeout", Usage: "Request timeout", Value: time.Second},
+		customFlag,
+	}}
+
+	sections := urfavecli.Sections(cmd)
+	var flags help.FlagGroup
+	for _, section := range sections {
+		if section.Title == "Options" {
+			flags, _ = section.Content[0].(help.FlagGroup)
+			break
+		}
+	}
+	require.NotNil(t, flags)
+	want := map[string]struct {
+		placeholder string
+		repeatable  bool
+	}{
+		"limit": {"n", false}, "ids": {"n", true},
+		"timeout": {"timeout", false}, "custom": {"count", false},
+	}
+	for _, flag := range flags {
+		if expected, ok := want[flag.Long]; ok {
+			require.Equal(t, expected.placeholder, flag.Placeholder, flag.Long)
+			require.Equal(t, expected.repeatable, flag.Repeatable, flag.Long)
+			delete(want, flag.Long)
+		}
+	}
+	require.Empty(t, want, "missing flags")
 }
 
 func TestSections_GroupedFlags(t *testing.T) {

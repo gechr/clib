@@ -252,9 +252,9 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 // completion works without a clib annotation.
 func kongTypeValueHint(kongType string) string {
 	switch strings.ToLower(kongType) {
-	case "existingfile", "filecontent", "path":
+	case kongTypeExistingFile, kongTypeFileContent, kongTypePath:
 		return complete.HintFile
-	case "existingdir":
+	case kongTypeExistingDir:
 		return complete.HintDir
 	default:
 		return ""

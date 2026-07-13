@@ -282,6 +282,10 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 		if hasUsagePlaceholder {
 			hf.Placeholder = normalizePlaceholder(usagePlaceholder, cfg)
 			hf.Desc = usage
+		} else if placeholder := completionPlaceholder(f); placeholder != "" {
+			hf.Placeholder = placeholder
+		} else if isIntegerPflagType(typeName) {
+			hf.Placeholder = "n"
 		} else {
 			hf.Placeholder = f.Name
 		}
@@ -315,6 +319,30 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 	}
 
 	return hf
+}
+
+// completionPlaceholder derives a placeholder from Cobra's native file and
+// directory completion annotations.
+func completionPlaceholder(f *pflag.Flag) string {
+	if _, ok := f.Annotations[cobralib.BashCompSubdirsInDir]; ok {
+		return "dir"
+	}
+	if _, ok := f.Annotations[cobralib.BashCompFilenameExt]; ok {
+		return "file"
+	}
+	return ""
+}
+
+func isIntegerPflagType(typeName string) bool {
+	typeName = strings.TrimSuffix(typeName, "Slice")
+	typeName = strings.TrimSuffix(typeName, "Array")
+	switch typeName {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {

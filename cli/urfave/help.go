@@ -264,8 +264,15 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
 		hf.Repeatable = isMultiValue
 	} else if hasArg {
-		// Default placeholder is the flag name.
-		hf.Placeholder = long
+		switch {
+		case takesFile(f):
+			hf.Placeholder = "file"
+		case takesInteger(f):
+			hf.Placeholder = "n"
+		default:
+			// Default placeholder is the flag name.
+			hf.Placeholder = long
+		}
 		hf.Repeatable = isMultiValue
 	}
 
@@ -301,6 +308,29 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 	}
 
 	return hf
+}
+
+// takesFile reports whether urfave has been told that a string flag accepts a
+// file. TakesFile is also used by urfave's own shell-completion generators.
+func takesFile(f clilib.Flag) bool {
+	switch f := f.(type) {
+	case *clilib.StringFlag:
+		return f.TakesFile
+	case *clilib.StringSliceFlag:
+		return f.TakesFile
+	default:
+		return false
+	}
+}
+
+// takesInteger reports whether urfave identifies a flag's value as an int or
+// uint. Duration flags have their own type name and are not included.
+func takesInteger(f clilib.Flag) bool {
+	docFlag, ok := f.(clilib.DocGenerationFlag)
+	if !ok {
+		return false
+	}
+	return docFlag.TypeName() == "int" || docFlag.TypeName() == "uint"
 }
 
 func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {

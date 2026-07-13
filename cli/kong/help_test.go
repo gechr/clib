@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"testing"
+	"time"
 
 	konglib "github.com/alecthomas/kong"
 	"github.com/gechr/clib/cli/kong"
@@ -769,6 +770,69 @@ func TestNodeSections_Short(t *testing.T) {
 		}
 	}
 	require.True(t, found, "expected -v/--verbose flag")
+}
+
+func TestNodeSections_PathTypePlaceholders(t *testing.T) {
+	type CLI struct {
+		Input  string `help:"Input file"  type:"existingfile"`
+		Config []byte `help:"Config file" type:"filecontent"`
+		Root   string `help:"Root dir"    type:"existingdir"`
+		Output string `help:"Output path" type:"path"`
+		Custom string `help:"Custom file" placeholder:"<source>" type:"existingfile"`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	flags := findSection(sections, "Options")
+	require.NotNil(t, flags)
+	fg, ok := flags.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	want := map[string]string{
+		"input": "file", "config": "file", "root": "dir", "output": "path", "custom": "source",
+	}
+	for _, flag := range fg {
+		if placeholder, ok := want[flag.Long]; ok {
+			require.Equal(t, placeholder, flag.Placeholder, flag.Long)
+			delete(want, flag.Long)
+		}
+	}
+	require.Empty(t, want, "missing flags")
+}
+
+func TestNodeSections_IntegerPlaceholders(t *testing.T) {
+	type CLI struct {
+		Limit   int           `help:"Maximum results"`
+		IDs     []uint64      `name:"ids"             help:"IDs to include"`
+		Timeout time.Duration `help:"Request timeout"`
+		Custom  int           `help:"Custom number"   placeholder:"<count>"`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+	flags := findSection(sections, "Options")
+	require.NotNil(t, flags)
+	fg, ok := flags.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+
+	want := map[string]struct {
+		placeholder string
+		repeatable  bool
+	}{
+		"limit": {"n", false}, "ids": {"n", true},
+		"timeout": {"timeout", false}, "custom": {"count", false},
+	}
+	for _, flag := range fg {
+		if expected, ok := want[flag.Long]; ok {
+			require.Equal(t, expected.placeholder, flag.Placeholder, flag.Long)
+			require.Equal(t, expected.repeatable, flag.Repeatable, flag.Long)
+			delete(want, flag.Long)
+		}
+	}
+	require.Empty(t, want, "missing flags")
 }
 
 func TestNodeSections_CSVFlagRepeatable(t *testing.T) {
