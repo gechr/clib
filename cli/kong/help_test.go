@@ -370,16 +370,16 @@ func TestSections_SubGroupsOrdering(t *testing.T) {
 	require.Len(t, sections, 1)
 	require.Equal(t, "Filters", sections[0].Title)
 
-	// Sub-groups ordered by first appearance: 2, 1, 3.
+	// Sub-groups sort by numeric subkey ascending: 1, 2, 3.
 	require.Len(t, sections[0].Content, 3)
 
 	fg1, ok := sections[0].Content[0].(help.FlagGroup)
 	require.True(t, ok)
-	require.Equal(t, "author", fg1[0].Long)
+	require.Equal(t, "org", fg1[0].Long)
 
 	fg2, ok := sections[0].Content[1].(help.FlagGroup)
 	require.True(t, ok)
-	require.Equal(t, "org", fg2[0].Long)
+	require.Equal(t, "author", fg2[0].Long)
 
 	fg3, ok := sections[0].Content[2].(help.FlagGroup)
 	require.True(t, ok)

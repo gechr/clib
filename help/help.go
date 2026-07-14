@@ -574,9 +574,10 @@ func buildGroupedFlagSections(
 	flags []ClassifiedFlag, keepOrder, separateGlobal bool, localTitle, globalTitle string,
 ) []Section {
 	type subGroup struct {
-		key   string
-		order int // parsed numeric subkey; non-numeric keys sort as 0
-		flags FlagGroup
+		key     string
+		order   int  // parsed numeric subkey (0 when non-numeric; see numeric)
+		numeric bool // true when the subkey parsed as an integer
+		flags   FlagGroup
 	}
 	sectionGroups := make(map[string][]subGroup)
 	var sectionOrder []string
@@ -589,8 +590,10 @@ func buildGroupedFlagSections(
 				return subs
 			}
 		}
-		order, _ := strconv.Atoi(subKey) // non-numeric → 0 (top, first-seen)
-		return append(subs, subGroup{key: subKey, order: order, flags: FlagGroup{flag}})
+		order, err := strconv.Atoi(subKey)
+		return append(subs, subGroup{
+			key: subKey, order: order, numeric: err == nil, flags: FlagGroup{flag},
+		})
 	}
 
 	for i := range flags {
@@ -614,31 +617,36 @@ func buildGroupedFlagSections(
 		slices.Sort(sectionOrder)
 	}
 
-	// A subkey's sign chooses where its subgroup anchors: >= 0 above the
-	// ungrouped flags, < 0 below them. Order within each side stays
-	// first-seen (matching the positive-key contract) - only the sign moves
-	// a subgroup. This lets a consumer float a flag to the foot of a section
-	// (e.g. --color) without a heading and without it jumping above the
-	// section's other flags.
+	// A subkey's sign anchors its subgroup above (>= 0) or below (< 0) the
+	// ungrouped flags. Numeric subkeys then sort by their value ascending, so
+	// a consumer can order and blank-line-separate subgroups explicitly -
+	// independent of struct field order - and float a low-priority flag to
+	// the foot of a section without a heading. Non-numeric subkeys are left
+	// in first-seen order (the stable sort only reorders a numeric pair).
+	splitBySign := func(subs []subGroup) ([]Content, []Content) {
+		ordered := slices.Clone(subs)
+		slices.SortStableFunc(ordered, func(a, b subGroup) int {
+			if a.numeric && b.numeric {
+				return a.order - b.order
+			}
+			return 0
+		})
+		var topC, bottomC []Content
+		for _, sg := range ordered {
+			if sg.order < 0 {
+				bottomC = append(bottomC, sg.flags)
+			} else {
+				topC = append(topC, sg.flags)
+			}
+		}
+		return topC, bottomC
+	}
 	top := map[string][]Content{}
 	bottom := map[string][]Content{}
 	for _, section := range sectionOrder {
-		for _, sg := range sectionGroups[section] {
-			if sg.order < 0 {
-				bottom[section] = append(bottom[section], sg.flags)
-			} else {
-				top[section] = append(top[section], sg.flags)
-			}
-		}
+		top[section], bottom[section] = splitBySign(sectionGroups[section])
 	}
-	var globalRoleTop, globalRoleBottom []Content
-	for _, sg := range globalRoleGroups {
-		if sg.order < 0 {
-			globalRoleBottom = append(globalRoleBottom, sg.flags)
-		} else {
-			globalRoleTop = append(globalRoleTop, sg.flags)
-		}
-	}
+	globalRoleTop, globalRoleBottom := splitBySign(globalRoleGroups)
 
 	sections := make([]Section, 0, len(sectionOrder))
 	for _, section := range sectionOrder {
