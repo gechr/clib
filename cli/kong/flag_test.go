@@ -58,3 +58,19 @@ func TestCSVFlag_Decode_TrimsSpaces(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"a", "b", "c"}, cli.Tags.Values)
 }
+
+func TestCSVFlagPlaceholders(t *testing.T) {
+	type SendCmd struct {
+		Recipient kong.CSVFlag  `name:"recipient" required:""`
+		CC        *kong.CSVFlag `name:"cc"        placeholder:"ADDRESS" required:""`
+	}
+	type CLI struct {
+		Send SendCmd `cmd:""`
+	}
+
+	k, err := konglib.New(&CLI{}, kong.CSVFlagPlaceholders())
+	require.NoError(t, err)
+
+	_, err = k.Parse([]string{"send"})
+	require.EqualError(t, err, `missing flags: --cc=ADDRESS, --recipient=RECIPIENT`)
+}

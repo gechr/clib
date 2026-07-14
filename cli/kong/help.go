@@ -502,16 +502,6 @@ func kongIntegerType(t reflect.Type) bool {
 	}
 }
 
-// isCSVFlag reports whether the kong flag's target type is CSVFlag or *CSVFlag.
-func isCSVFlag(f *konglib.Flag) bool {
-	csvType := reflect.TypeFor[CSVFlag]()
-	t := f.Target.Type()
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	return t == csvType
-}
-
 // clibGroup reads the clib tag from a kong flag and returns the group value.
 func clibGroup(f *konglib.Flag) (string, error) {
 	if f.Tag == nil {

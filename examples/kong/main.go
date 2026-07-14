@@ -61,6 +61,7 @@ func main() {
 
 	k := kong.Must(&cli,
 		kong.Name("catalog"),
+		clib.CSVFlagPlaceholders(),
 		kong.Help(clib.HelpPrinter(r, func() ([]help.Section, error) {
 			args, argsErr := clib.Args(&cli)
 			if argsErr != nil {

@@ -126,6 +126,7 @@ Integrate with Kong's help system using `HelpPrinter` or `HelpPrinterFunc`:
 ```go
 r := help.NewRenderer(th)
 k := konglib.Must(&cli,
+  clib.CSVFlagPlaceholders(),
   konglib.Help(clib.HelpPrinterFunc(r, clib.NodeSectionsFunc())),
 )
 ```
