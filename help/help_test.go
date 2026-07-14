@@ -2509,6 +2509,67 @@ func TestBuildFlagSections_SubkeySignRoutesTopAndBottom(t *testing.T) {
 	require.Equal(t, []string{"top", "bottomA bottomB"}, flagGroupLongs(t, result[0].Content))
 }
 
+func TestBuildFlagSections_GlobalRoleAnchorsSeparatedBottom(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "local"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "shared"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "anchored"}, Group: help.GlobalSection + "/-1", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(
+		flags, help.WithKeepGroupOrder(), help.WithSeparateGlobalOptions(),
+	)
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Options", result[0].Title)
+	require.Equal(t, "Global Options", result[1].Title)
+	require.Equal(t, []string{"shared", "anchored"}, flagGroupLongs(t, result[1].Content))
+}
+
+func TestBuildFlagSections_GlobalRoleUsesCustomTitle(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "shared"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "anchored"}, Group: help.GlobalSection + "/-1", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithGlobalOptionsTitle("Shared Flags"))
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Shared Flags", result[0].Title)
+	require.Equal(t, []string{"shared", "anchored"}, flagGroupLongs(t, result[0].Content))
+}
+
+func TestBuildFlagSections_GlobalRoleIsCaseInsensitive(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "shared"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "anchored"}, Group: "@Global/-1", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithSeparateGlobalOptions())
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Global Options", result[0].Title)
+	require.Equal(t, []string{"shared", "anchored"}, flagGroupLongs(t, result[0].Content))
+}
+
+func TestBuildFlagSections_GlobalRoleFallsBackToLocalSection(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "local"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "shared"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "anchored"}, Group: help.GlobalSection + "/-1", AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(flags)
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+	require.Equal(
+		t,
+		[]string{"local", "shared", "anchored"},
+		flagGroupLongs(t, result[0].Content),
+	)
+}
+
 // flagGroupLongs flattens each FlagGroup in content to a space-joined string
 // of its flags' long names, one entry per group - a compact way to assert
 // both grouping and order.

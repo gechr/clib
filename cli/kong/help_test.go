@@ -1077,6 +1077,34 @@ func TestNodeSections_CustomOptionTitles(t *testing.T) {
 	require.Equal(t, []string{"Usage", "Flags", "Shared Flags"}, sectionTitles(sections))
 }
 
+func TestNodeSections_GlobalRoleUsesConfiguredTitle(t *testing.T) {
+	type CLI struct {
+		Shared   bool `help:"Shared"`
+		Anchored bool `help:"Anchored" clib:"group='@global/-1'"`
+		Run      struct {
+			Local bool `help:"Local"`
+		} `                                          cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(
+		ctx,
+		kong.WithOptionsTitle("Flags"),
+		kong.WithSeparateGlobalOptionsName("Shared Flags"),
+	)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Usage", "Flags", "Shared Flags"}, sectionTitles(sections))
+
+	shared := findSection(sections, "Shared Flags")
+	require.Len(t, shared.Content, 3)
+	for i, want := range []string{"shared", "anchored", "help"} {
+		group, ok := shared.Content[i].(help.FlagGroup)
+		require.True(t, ok)
+		require.Len(t, group, 1)
+		require.Equal(t, want, group[0].Long)
+	}
+}
+
 func TestNodeSections_SubcommandOnlyGrouperHidesOptions(t *testing.T) {
 	// "resolve" has only subcommands plus a Filter flag that only makes sense
 	// when dispatching; help for `app resolve -h` should hide the Options

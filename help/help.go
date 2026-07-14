@@ -472,10 +472,16 @@ func hasFlagContent(content []Content) bool {
 	return false
 }
 
+// GlobalSection is the title-agnostic group section for flags that belong in
+// the inherited/global options section. It resolves to the configured global
+// title when global options are separated, or the local options title when
+// they are merged.
+const GlobalSection = "@global"
+
 // ClassifiedFlag pairs a help.Flag with its group name and ancestor depth.
 type ClassifiedFlag struct {
 	Flag  Flag
-	Group string // group name ("" = ungrouped); may contain "/" for sub-groups
+	Group string // group name ("" = ungrouped); may contain "/" for sub-groups or use GlobalSection
 	// AncestorDepth is 0 for flags defined on the current command, 1 for the
 	// immediate parent, 2 for the grandparent, and so on. The deepest depth
 	// in a given set corresponds to the root command (or the ancestor closest
@@ -504,7 +510,9 @@ type ClassifiedFlag struct {
 //
 // Compound group names ("Section/SubGroup") split flags within the same
 // section into separate FlagGroup content entries (rendered with a blank-line
-// separator). Sub-groups appear in first-seen order within each section.
+// separator). Sub-groups appear in first-seen order within each section. The
+// case-insensitive [GlobalSection] sentinel resolves to the configured global
+// section title, or the local options title when global options are merged.
 func BuildFlagSections(flags []ClassifiedFlag, opts ...FlagSectionsOption) []Section {
 	if len(flags) == 0 {
 		return nil
@@ -573,6 +581,17 @@ func buildGroupedFlagSections(
 	sectionGroups := make(map[string][]subGroup)
 	var sectionOrder []string
 	var ungrouped []ClassifiedFlag
+	var globalRoleGroups []subGroup
+	addSubGroup := func(subs []subGroup, subKey string, flag Flag) []subGroup {
+		for i := range subs {
+			if subs[i].key == subKey {
+				subs[i].flags = append(subs[i].flags, flag)
+				return subs
+			}
+		}
+		order, _ := strconv.Atoi(subKey) // non-numeric → 0 (top, first-seen)
+		return append(subs, subGroup{key: subKey, order: order, flags: FlagGroup{flag}})
+	}
 
 	for i := range flags {
 		f := &flags[i]
@@ -581,23 +600,14 @@ func buildGroupedFlagSections(
 			continue
 		}
 		section, subKey, _ := strings.Cut(f.Group, "/")
+		if strings.EqualFold(section, GlobalSection) {
+			globalRoleGroups = addSubGroup(globalRoleGroups, subKey, f.Flag)
+			continue
+		}
 		if _, exists := sectionGroups[section]; !exists {
 			sectionOrder = append(sectionOrder, section)
 		}
-		subs := sectionGroups[section]
-		found := false
-		for j := range subs {
-			if subs[j].key == subKey {
-				subs[j].flags = append(subs[j].flags, f.Flag)
-				found = true
-				break
-			}
-		}
-		if !found {
-			order, _ := strconv.Atoi(subKey) // non-numeric → 0 (top, first-seen)
-			subs = append(subs, subGroup{key: subKey, order: order, flags: FlagGroup{f.Flag}})
-		}
-		sectionGroups[section] = subs
+		sectionGroups[section] = addSubGroup(sectionGroups[section], subKey, f.Flag)
 	}
 
 	if !keepOrder {
@@ -621,6 +631,14 @@ func buildGroupedFlagSections(
 			}
 		}
 	}
+	var globalRoleTop, globalRoleBottom []Content
+	for _, sg := range globalRoleGroups {
+		if sg.order < 0 {
+			globalRoleBottom = append(globalRoleBottom, sg.flags)
+		} else {
+			globalRoleTop = append(globalRoleTop, sg.flags)
+		}
+	}
 
 	sections := make([]Section, 0, len(sectionOrder))
 	for _, section := range sectionOrder {
@@ -638,7 +656,35 @@ func buildGroupedFlagSections(
 			}
 		}
 	}
+	globalRoleTitle := localTitle
+	if separateGlobal {
+		globalRoleTitle = globalTitle
+	}
+	sections = attachRoleGroups(
+		sections, globalRoleTitle, globalRoleTop, globalRoleBottom,
+	)
 	return sections
+}
+
+// attachRoleGroups places role-owned subgroups around a section's assembled
+// ungrouped content without affecting the section's normal ordering.
+func attachRoleGroups(sections []Section, title string, top, bottom []Content) []Section {
+	if len(top) == 0 && len(bottom) == 0 {
+		return sections
+	}
+	for i := range sections {
+		if sections[i].Title != title {
+			continue
+		}
+		content := make([]Content, 0, len(top)+len(sections[i].Content)+len(bottom))
+		content = append(content, top...)
+		content = append(content, sections[i].Content...)
+		content = append(content, bottom...)
+		sections[i].Content = content
+		return sections
+	}
+	content := append(slices.Clone(top), bottom...)
+	return append(sections, Section{Title: title, Content: content})
 }
 
 // flagsByDepth buckets flags into FlagGroups keyed by AncestorDepth, returning
