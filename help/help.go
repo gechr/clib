@@ -2,6 +2,7 @@ package help
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -548,6 +549,7 @@ func buildFlatFlagSections(flags []ClassifiedFlag, separateGlobal bool) []Sectio
 func buildGroupedFlagSections(flags []ClassifiedFlag, keepOrder, separateGlobal bool) []Section {
 	type subGroup struct {
 		key   string
+		order int // parsed numeric subkey; non-numeric keys sort as 0
 		flags FlagGroup
 	}
 	sectionGroups := make(map[string][]subGroup)
@@ -570,34 +572,53 @@ func buildGroupedFlagSections(flags []ClassifiedFlag, keepOrder, separateGlobal 
 			if subs[j].key == subKey {
 				subs[j].flags = append(subs[j].flags, f.Flag)
 				found = true
-				sectionGroups[section] = subs
 				break
 			}
 		}
 		if !found {
-			sectionGroups[section] = append(
-				subs,
-				subGroup{key: subKey, flags: FlagGroup{f.Flag}},
-			)
+			order, _ := strconv.Atoi(subKey) // non-numeric → 0 (top, first-seen)
+			subs = append(subs, subGroup{key: subKey, order: order, flags: FlagGroup{f.Flag}})
 		}
+		sectionGroups[section] = subs
 	}
 
 	if !keepOrder {
 		slices.Sort(sectionOrder)
 	}
 
-	var sections []Section
+	// A subkey's sign chooses where its subgroup anchors: >= 0 above the
+	// ungrouped flags, < 0 below them. Order within each side stays
+	// first-seen (matching the positive-key contract) - only the sign moves
+	// a subgroup. This lets a consumer float a flag to the foot of a section
+	// (e.g. --color) without a heading and without it jumping above the
+	// section's other flags.
+	top := map[string][]Content{}
+	bottom := map[string][]Content{}
 	for _, section := range sectionOrder {
-		var content []Content
 		for _, sg := range sectionGroups[section] {
-			content = append(content, sg.flags)
+			if sg.order < 0 {
+				bottom[section] = append(bottom[section], sg.flags)
+			} else {
+				top[section] = append(top[section], sg.flags)
+			}
 		}
-		sections = append(sections, Section{
-			Title:   section,
-			Content: content,
-		})
 	}
-	return assembleFlagSections(sections, flagsByDepth(ungrouped), separateGlobal)
+
+	sections := make([]Section, 0, len(sectionOrder))
+	for _, section := range sectionOrder {
+		sections = append(sections, Section{Title: section, Content: top[section]})
+	}
+	// The ungrouped flags (and, via MoveHelpFlagsToSection later, -h/--help)
+	// settle between each section's top and bottom subgroups.
+	sections = assembleFlagSections(sections, flagsByDepth(ungrouped), separateGlobal)
+	for _, section := range sectionOrder {
+		for _, c := range bottom[section] {
+			if fg, ok := c.(FlagGroup); ok {
+				sections = appendFlagGroupToSection(sections, section, fg)
+			}
+		}
+	}
+	return sections
 }
 
 // flagsByDepth buckets flags into FlagGroups keyed by AncestorDepth, returning

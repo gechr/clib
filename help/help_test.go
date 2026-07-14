@@ -2469,6 +2469,64 @@ func TestBuildFlagSections_UngroupedLocalAndInherited(t *testing.T) {
 	require.Equal(t, "config", inheritedFg[0].Long)
 }
 
+func TestBuildFlagSections_NegativeSubkeyAnchorsBottom(t *testing.T) {
+	// A negative subkey floats its subgroup below the ungrouped flags (no
+	// heading), while a >= 0 subkey stays above them. Within a sign, the
+	// order is ascending (/-1 is the bottom-most).
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "color"}, Group: "Options/-1"},
+		{Flag: help.Flag{Long: "quiet"}, Group: "", AncestorDepth: 1},
+		{Flag: help.Flag{Long: "verbose"}, Group: "", AncestorDepth: 1},
+		{Flag: help.Flag{Long: "region"}, Group: "", AncestorDepth: 0},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithKeepGroupOrder())
+
+	require.Len(t, result, 1)
+	require.Equal(t, "Options", result[0].Title)
+	// Order: local ungrouped, inherited ungrouped, then the bottom subgroup.
+	require.Equal(
+		t,
+		[]string{"region", "quiet verbose", "color"},
+		flagGroupLongs(t, result[0].Content),
+	)
+}
+
+func TestBuildFlagSections_SubkeySignRoutesTopAndBottom(t *testing.T) {
+	// The sign routes a subgroup above (>= 0) or below (< 0) the ungrouped
+	// flags; within each side the order stays first-seen, matching the
+	// positive-key contract.
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "bottomA"}, Group: "Options/-1"},
+		{Flag: help.Flag{Long: "top"}, Group: "Options/0"},
+		{Flag: help.Flag{Long: "bottomB"}, Group: "Options/-1"},
+	}
+
+	result := help.BuildFlagSections(flags, help.WithKeepGroupOrder())
+
+	require.Len(t, result, 1)
+	// Same -1 key coalesces; top stays above, bottoms below, first-seen.
+	require.Equal(t, []string{"top", "bottomA bottomB"}, flagGroupLongs(t, result[0].Content))
+}
+
+// flagGroupLongs flattens each FlagGroup in content to a space-joined string
+// of its flags' long names, one entry per group - a compact way to assert
+// both grouping and order.
+func flagGroupLongs(t *testing.T, content []help.Content) []string {
+	t.Helper()
+	var out []string
+	for _, c := range content {
+		fg, ok := c.(help.FlagGroup)
+		require.True(t, ok)
+		longs := make([]string, len(fg))
+		for i, f := range fg {
+			longs[i] = f.Long
+		}
+		out = append(out, strings.Join(longs, " "))
+	}
+	return out
+}
+
 func TestBuildFlagSections_UngroupedLocalAndInherited_Separate(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "verbose", Desc: "Verbose"}, Group: "", AncestorDepth: 0},
