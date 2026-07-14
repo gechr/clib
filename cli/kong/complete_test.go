@@ -286,6 +286,23 @@ func TestSubcommands(t *testing.T) {
 	require.False(t, test.Specs[0].HasArg)
 }
 
+func TestSubcommands_CounterHasNoArgument(t *testing.T) {
+	type RunCmd struct {
+		Verbose int `help:"Increase verbosity" short:"v" type:"counter"`
+	}
+	var cli struct {
+		Run RunCmd `cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "verbose", subs[0].Specs[0].LongFlag)
+	require.False(t, subs[0].Specs[0].HasArg)
+}
+
 func TestSubcommands_SkipsHidden(t *testing.T) {
 	type PublicCmd struct{}
 	type HiddenCmd struct{}

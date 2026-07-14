@@ -218,7 +218,7 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 	meta := complete.FlagMeta{
 		Name:       flag.Name,
 		Help:       flag.Help,
-		HasArg:     !flag.IsBool(),
+		HasArg:     !flag.IsBool() && !flag.IsCounter(),
 		Hidden:     flag.Hidden,
 		Persistent: true,
 	}

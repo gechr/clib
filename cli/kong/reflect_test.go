@@ -331,6 +331,27 @@ func TestReflect_IntegerPlaceholder(t *testing.T) {
 	}
 }
 
+func TestReflect_CounterPlaceholder(t *testing.T) {
+	type CLI struct {
+		Verbose int `type:"counter"`
+		Count   int `placeholder:"times" type:"counter"`
+	}
+
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	verbose := findFlagByName(flags, "verbose")
+	require.NotNil(t, verbose)
+	require.False(t, verbose.HasArg)
+	require.Empty(t, verbose.Placeholder)
+	require.False(t, verbose.PlaceholderOverride)
+
+	count := findFlagByName(flags, "count")
+	require.NotNil(t, count)
+	require.False(t, count.HasArg)
+	require.Equal(t, "times", count.Placeholder)
+	require.True(t, count.PlaceholderOverride)
+}
+
 func TestReflect_Group(t *testing.T) {
 	flags, err := kong.Reflect(&testFullCLI{})
 	require.NoError(t, err)

@@ -98,6 +98,7 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		meta.Short = field.Tag.Get(tagShort)
 		meta.Help = field.Tag.Get(tagHelp)
 		meta.Placeholder = field.Tag.Get(tagPlaceholder)
+		isCounter := field.Tag.Get(tagType) == kongTypeCounter
 
 		// clib-specific metadata: clib:"terse='...',complete='...',group='...'"
 		if err := meta.ParseClibTag(field.Tag.Get(tagClib)); err != nil {
@@ -110,11 +111,13 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if !meta.PlaceholderOverride && meta.Placeholder != "" {
 			meta.PlaceholderOverride = true
 		}
-		if meta.Placeholder == "" {
-			meta.Placeholder = kongTypePlaceholder(field.Tag.Get(tagType))
-		}
-		if meta.Placeholder == "" && kongIntegerType(field.Type) {
-			meta.Placeholder = "n"
+		if !isCounter {
+			if meta.Placeholder == "" {
+				meta.Placeholder = kongTypePlaceholder(field.Tag.Get(tagType))
+			}
+			if meta.Placeholder == "" && kongIntegerType(field.Type) {
+				meta.Placeholder = "n"
+			}
 		}
 
 		if _, ok := field.Tag.Lookup(tagNegatable); ok {
@@ -156,7 +159,7 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if fieldType.Kind() == reflect.Pointer {
 			fieldType = fieldType.Elem()
 		}
-		meta.HasArg = fieldType.Kind() != reflect.Bool
+		meta.HasArg = fieldType.Kind() != reflect.Bool && !isCounter
 		meta.IsSlice = fieldType.Kind() == reflect.Slice
 
 		// Determine IsCSV.

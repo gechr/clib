@@ -22,6 +22,7 @@ const (
 
 // Kong struct tag values.
 const (
+	kongTypeCounter      = "counter"
 	kongTypeExistingDir  = "existingdir"
 	kongTypeExistingFile = "existingfile"
 	kongTypeFileContent  = "filecontent"

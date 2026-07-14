@@ -430,7 +430,7 @@ func applyClibTag(meta *complete.FlagMeta, clibTag string) error {
 // flagPlaceholder returns the placeholder string and whether it's a literal
 // (i.e. should not be wrapped in <...> by the renderer).
 func flagPlaceholder(f *konglib.Flag) (string, bool) {
-	if f.IsBool() || f.IsCounter() {
+	if f.IsBool() || (f.IsCounter() && f.PlaceHolder == "") {
 		return "", false
 	}
 	if f.PlaceHolder == "" {

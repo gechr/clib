@@ -843,6 +843,30 @@ func TestNodeSections_IntegerPlaceholders(t *testing.T) {
 	require.Empty(t, want, "missing flags")
 }
 
+func TestNodeSections_CounterPlaceholder(t *testing.T) {
+	type CLI struct {
+		Verbose int `help:"Increase verbosity" short:"v"             type:"counter"`
+		Count   int `help:"Explicit counter"   placeholder:"<times>" type:"counter"`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+	flags := findSection(sections, "Options")
+	require.NotNil(t, flags)
+	fg, ok := flags.Content[0].(help.FlagGroup)
+	require.True(t, ok)
+	require.Len(t, fg, 2)
+	for _, flag := range fg {
+		switch flag.Long {
+		case "verbose":
+			require.Empty(t, flag.Placeholder)
+		case "count":
+			require.Equal(t, "times", flag.Placeholder)
+		}
+	}
+}
+
 func TestNodeSections_CSVFlagRepeatable(t *testing.T) {
 	type CLI struct {
 		Tags kong.CSVFlag `name:"tags" help:"Filter by tags" placeholder:"<tag>"`
