@@ -13,7 +13,9 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/complete"
 	"github.com/gechr/clib/help"
+	placeholders "github.com/gechr/clib/internal/placeholder"
 	"github.com/gechr/clib/internal/tag"
+	xslices "github.com/gechr/x/slices"
 )
 
 // HelpPrinter returns a kong.HelpPrinter that renders the sections
@@ -153,7 +155,9 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 	// picking a subcommand. The root still shows its options for
 	// top-level discoverability of global flags.
 	if !isSubcommandOnlyGrouper(node) {
-		flagSections, err := buildNodeFlagSections(node)
+		flagSections, err := buildNodeFlagSections(
+			node, cfg.separateGlobal, cfg.optionsTitle, cfg.globalTitle,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -360,6 +364,12 @@ func kongFlagToHelp(f *konglib.Flag) (help.Flag, error) {
 			meta.Enum = tag.SplitCSV(enum)
 		}
 	}
+	meta.Enum = xslices.Unique(meta.Enum)
+	if !meta.PlaceholderOverride {
+		if inferred := placeholders.ForEnum(meta.Enum); inferred != "" {
+			meta.Placeholder = inferred
+		}
+	}
 
 	// Fall back to kong's native default for enum highlighting.
 	if meta.EnumDefault == "" && len(meta.Enum) > 0 && f.HasDefault {
@@ -541,7 +551,9 @@ func ancestorFlagsByDepth(node *konglib.Node) [][]*konglib.Flag {
 //   - Compound group names ("Section/SubGroup") split flags within the same
 //     section into separate FlagGroup entries (blank line separator).
 //   - Otherwise: flat "Options" (local) + "Global Options" (ancestor).
-func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
+func buildNodeFlagSections(
+	node *konglib.Node, separateGlobal bool, optionsTitle, globalTitle string,
+) ([]help.Section, error) {
 	var classified []help.ClassifiedFlag
 	classifyKongFlags := func(flags []*konglib.Flag, depth int) error {
 		for _, f := range flags {
@@ -573,7 +585,17 @@ func buildNodeFlagSections(node *konglib.Node) ([]help.Section, error) {
 		}
 	}
 
-	return help.BuildFlagSections(classified, help.WithKeepGroupOrder()), nil
+	opts := []help.FlagSectionsOption{help.WithKeepGroupOrder()}
+	if optionsTitle != "" {
+		opts = append(opts, help.WithOptionsTitle(optionsTitle))
+	}
+	switch {
+	case globalTitle != "":
+		opts = append(opts, help.WithGlobalOptionsTitle(globalTitle))
+	case separateGlobal:
+		opts = append(opts, help.WithSeparateGlobalOptions())
+	}
+	return help.BuildFlagSections(classified, opts...), nil
 }
 
 // Args extracts positional argument entries from a CLI struct's reflected

@@ -815,6 +815,7 @@ func TestNodeSections_IntegerPlaceholders(t *testing.T) {
 		Timeout time.Duration `help:"Request timeout"`
 		Custom  int           `help:"Custom number"     placeholder:"<count>"`
 		Color   textEnum      `help:"When to use color" default:"auto"        enum:"auto,always,never"`
+		Setting textEnum      `help:"Explicit setting"  default:"auto"        enum:"auto,always,never" placeholder:"<mode>"`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("myapp"))
@@ -831,7 +832,8 @@ func TestNodeSections_IntegerPlaceholders(t *testing.T) {
 	}{
 		"limit": {"n", false}, "ids": {"n", true},
 		"timeout": {"timeout", false}, "custom": {"count", false},
-		"color": {"color", false},
+		"color":   {"when", false},
+		"setting": {"mode", false},
 	}
 	for _, flag := range fg {
 		if expected, ok := want[flag.Long]; ok {
@@ -1057,6 +1059,24 @@ func TestNodeSections_GroupedWithUngroupedLocalAndInherited(t *testing.T) {
 	require.Len(t, opts.Content, 3)
 }
 
+func TestNodeSections_CustomOptionTitles(t *testing.T) {
+	type CLI struct {
+		Verbose bool `help:"Verbose"`
+		Run     struct {
+			Debug bool `help:"Debug"`
+		} `               cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
+	sections, err := kong.NodeSections(
+		ctx,
+		kong.WithOptionsTitle("Flags"),
+		kong.WithSeparateGlobalOptionsName("Shared Flags"),
+	)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Usage", "Flags", "Shared Flags"}, sectionTitles(sections))
+}
+
 func TestNodeSections_SubcommandOnlyGrouperHidesOptions(t *testing.T) {
 	// "resolve" has only subcommands plus a Filter flag that only makes sense
 	// when dispatching; help for `app resolve -h` should hide the Options
@@ -1239,6 +1259,7 @@ func TestNodeSections_KongNativeDefaultFallback(t *testing.T) {
 	for _, f := range fg {
 		if f.Long == "color" {
 			found = true
+			require.Equal(t, "when", f.Placeholder)
 			require.Equal(t, []string{"auto", "always", "never"}, f.Enum)
 			require.Equal(t, "auto", f.EnumDefault, "should fall back to kong's native default")
 		}

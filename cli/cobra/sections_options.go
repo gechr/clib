@@ -9,6 +9,8 @@ type sectionsConfig struct {
 	subcommandOptional              bool
 	lowercasePlaceholders           bool
 	rawUsage                        bool
+	optionsTitle                    string
+	globalOptionsTitle              string
 }
 
 // SectionsOption configures cobra help-section generation.
@@ -77,4 +79,16 @@ func WithShowInheritedFlagsOnSubcommands() SectionsOption {
 // arg grammar would otherwise mangle.
 func WithRawUsage() SectionsOption {
 	return func(c *sectionsConfig) { c.rawUsage = true }
+}
+
+// WithOptionsTitle sets the section title for local and merged flags instead
+// of the default "Options".
+func WithOptionsTitle(title string) SectionsOption {
+	return func(c *sectionsConfig) { c.optionsTitle = title }
+}
+
+// WithGlobalOptionsTitle separates inherited flags under the given section
+// title instead of the default merged-options layout.
+func WithGlobalOptionsTitle(title string) SectionsOption {
+	return func(c *sectionsConfig) { c.globalOptionsTitle = title }
 }

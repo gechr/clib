@@ -2550,6 +2550,25 @@ func TestBuildFlagSections_UngroupedLocalAndInherited_Separate(t *testing.T) {
 	require.Equal(t, "config", inheritedFg[0].Long)
 }
 
+func TestBuildFlagSections_CustomOptionTitles(t *testing.T) {
+	flags := []help.ClassifiedFlag{
+		{Flag: help.Flag{Long: "verbose"}, AncestorDepth: 0},
+		{Flag: help.Flag{Long: "config"}, AncestorDepth: 1},
+		{Flag: help.Flag{Long: "help"}, AncestorDepth: 1},
+	}
+
+	result := help.BuildFlagSections(
+		flags,
+		help.WithOptionsTitle("Flags"),
+		help.WithGlobalOptionsTitle("Shared Flags"),
+	)
+
+	require.Len(t, result, 2)
+	require.Equal(t, "Flags", result[0].Title)
+	require.Equal(t, "Shared Flags", result[1].Title)
+	require.Len(t, result[1].Content, 2, "inherited flags + trailing help subgroup")
+}
+
 func TestBuildFlagSections_GroupedSortedAlphabetically(t *testing.T) {
 	flags := []help.ClassifiedFlag{
 		{Flag: help.Flag{Long: "format", Desc: "Output format"}, Group: "Output", AncestorDepth: 0},

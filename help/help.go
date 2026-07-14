@@ -377,7 +377,7 @@ func appendFlagGroupToSection(
 	}
 	if !appended {
 		sections = append(sections, Section{
-			Title:   "Options",
+			Title:   defaultOptionsTitle,
 			Content: []Content{flagGroup},
 		})
 	}
@@ -525,28 +525,46 @@ func BuildFlagSections(flags []ClassifiedFlag, opts ...FlagSectionsOption) []Sec
 
 	var sections []Section
 	if !hasAnyGroup {
-		sections = buildFlatFlagSections(flags, cfg.separateGlobalOptions)
+		sections = buildFlatFlagSections(
+			flags, cfg.separateGlobalOptions, cfg.localTitle(), cfg.globalTitle(),
+		)
 	} else {
-		sections = buildGroupedFlagSections(flags, cfg.keepGroupOrder, cfg.separateGlobalOptions)
+		sections = buildGroupedFlagSections(
+			flags, cfg.keepGroupOrder, cfg.separateGlobalOptions,
+			cfg.localTitle(), cfg.globalTitle(),
+		)
 	}
 	// Help flags always render last as their own sub-group, so the final
 	// entry a user sees is consistently "-h, --help" regardless of where
-	// help was defined in the ancestry chain.
-	return MoveHelpFlagsToSection(sections, "Options")
+	// help was defined in the ancestry chain. When global options are split
+	// out, help belongs with them (it is an inherited flag); otherwise it
+	// stays in the single "Options" section.
+	helpSection := cfg.localTitle()
+	if cfg.separateGlobalOptions {
+		helpSection = cfg.globalTitle()
+	}
+	return MoveHelpFlagsToSection(sections, helpSection)
 }
 
 // buildFlatFlagSections builds flat "Options" sections (with inherited flags
 // optionally split into a dedicated "Global Options" section) when no flag
 // carries a group name.
-func buildFlatFlagSections(flags []ClassifiedFlag, separateGlobal bool) []Section {
-	return assembleFlagSections(nil, flagsByDepth(flags), separateGlobal)
+func buildFlatFlagSections(
+	flags []ClassifiedFlag,
+	separateGlobal bool,
+	localTitle string,
+	globalTitle string,
+) []Section {
+	return assembleFlagSections(nil, flagsByDepth(flags), separateGlobal, localTitle, globalTitle)
 }
 
 // buildGroupedFlagSections builds sections when at least one flag has a group.
 // Groups are sorted alphabetically unless keepOrder is true (first-seen order).
 // Compound names ("Section/SubGroup") split into sub-groups within the same section.
 // Ungrouped flags are assembled by ancestor depth - see assembleFlagSections.
-func buildGroupedFlagSections(flags []ClassifiedFlag, keepOrder, separateGlobal bool) []Section {
+func buildGroupedFlagSections(
+	flags []ClassifiedFlag, keepOrder, separateGlobal bool, localTitle, globalTitle string,
+) []Section {
 	type subGroup struct {
 		key   string
 		order int // parsed numeric subkey; non-numeric keys sort as 0
@@ -610,7 +628,9 @@ func buildGroupedFlagSections(flags []ClassifiedFlag, keepOrder, separateGlobal 
 	}
 	// The ungrouped flags (and, via MoveHelpFlagsToSection later, -h/--help)
 	// settle between each section's top and bottom subgroups.
-	sections = assembleFlagSections(sections, flagsByDepth(ungrouped), separateGlobal)
+	sections = assembleFlagSections(
+		sections, flagsByDepth(ungrouped), separateGlobal, localTitle, globalTitle,
+	)
 	for _, section := range sectionOrder {
 		for _, c := range bottom[section] {
 			if fg, ok := c.(FlagGroup); ok {
@@ -657,6 +677,8 @@ func assembleFlagSections(
 	sections []Section,
 	depthGroups []FlagGroup,
 	separateGlobal bool,
+	localTitle string,
+	globalTitle string,
 ) []Section {
 	if len(depthGroups) == 0 {
 		return sections
@@ -668,13 +690,13 @@ func assembleFlagSections(
 		for _, g := range local {
 			localContent = append(localContent, g)
 		}
-		sections = mergeOrAppendSection(sections, "Options", localContent)
-		sections = mergeOrAppendSection(sections, "Global Options", []Content{global})
+		sections = mergeOrAppendSection(sections, localTitle, localContent)
+		sections = mergeOrAppendSection(sections, globalTitle, []Content{global})
 		return sections
 	}
-	title := "Options"
+	title := localTitle
 	if separateGlobal {
-		title = "Global Options"
+		title = globalTitle
 	}
 	content := make([]Content, 0, len(depthGroups))
 	for _, g := range depthGroups {

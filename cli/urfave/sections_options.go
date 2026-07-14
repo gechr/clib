@@ -3,6 +3,8 @@ package urfave
 type sectionsConfig struct {
 	lowercasePlaceholders bool
 	rawUsage              bool
+	optionsTitle          string
+	globalOptionsTitle    string
 }
 
 // SectionsOption configures urfave help-section generation.
@@ -21,4 +23,16 @@ func WithRawUsage() SectionsOption {
 // consistency with clib's help style.
 func WithPreservePlaceholders() SectionsOption {
 	return func(c *sectionsConfig) { c.lowercasePlaceholders = false }
+}
+
+// WithOptionsTitle sets the section title for local and merged flags instead
+// of the default "Options".
+func WithOptionsTitle(title string) SectionsOption {
+	return func(c *sectionsConfig) { c.optionsTitle = title }
+}
+
+// WithGlobalOptionsTitle separates inherited flags under the given section
+// title instead of the default merged-options layout.
+func WithGlobalOptionsTitle(title string) SectionsOption {
+	return func(c *sectionsConfig) { c.globalOptionsTitle = title }
 }

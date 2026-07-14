@@ -4,7 +4,9 @@ import (
 	"reflect"
 
 	"github.com/gechr/clib/complete"
+	placeholders "github.com/gechr/clib/internal/placeholder"
 	"github.com/gechr/clib/internal/tag"
+	xslices "github.com/gechr/x/slices"
 )
 
 // fieldNameToFlag converts a Go CamelCase field name to a kebab-case flag name,
@@ -140,6 +142,12 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if len(meta.Enum) == 0 {
 			if enum := field.Tag.Get(tagEnum); enum != "" {
 				meta.Enum = tag.SplitCSV(enum)
+			}
+		}
+		meta.Enum = xslices.Unique(meta.Enum)
+		if !meta.PlaceholderOverride {
+			if inferred := placeholders.ForEnum(meta.Enum); inferred != "" {
+				meta.Placeholder = inferred
 			}
 		}
 

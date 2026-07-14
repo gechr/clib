@@ -530,6 +530,37 @@ func TestSections_InheritedFlags(t *testing.T) {
 	require.Len(t, opts.Content, 3, "local + inherited + help sub-groups")
 }
 
+func TestSections_CustomOptionTitles(t *testing.T) {
+	verboseFlag := &clilib.BoolFlag{Name: "verbose", Usage: "Verbose output"}
+	parent := &clilib.Command{
+		Name:  "parent",
+		Flags: []clilib.Flag{verboseFlag},
+		Commands: []*clilib.Command{{
+			Name: "child",
+			Flags: []clilib.Flag{
+				&clilib.StringFlag{Name: "output", Usage: "Output format"},
+				verboseFlag,
+			},
+		}},
+	}
+
+	var sections []help.Section
+	parent.Commands[0].Action = func(_ context.Context, cmd *clilib.Command) error {
+		sections = urfavecli.SectionsWithOptions(
+			urfavecli.WithOptionsTitle("Flags"),
+			urfavecli.WithGlobalOptionsTitle("Shared Flags"),
+		)(cmd)
+		return nil
+	}
+	_ = parent.Run(context.Background(), []string{"parent", "child"})
+
+	var titles []string
+	for _, section := range sections {
+		titles = append(titles, section.Title)
+	}
+	require.Equal(t, []string{"Usage", "Flags", "Shared Flags"}, titles)
+}
+
 func TestSections_GroupedWithInherited(t *testing.T) {
 	filterFlag := &clilib.StringFlag{Name: "repo", Usage: "Filter by repo"}
 	urfavecli.Extend(filterFlag, urfavecli.FlagExtra{Group: "Filters"})
@@ -862,10 +893,15 @@ func TestSections_Flags_EnumDefaultFromDefaultText(t *testing.T) {
 	urfavecli.Extend(flag, urfavecli.FlagExtra{
 		Enum: []string{"auto", "always", "never"},
 	})
+	custom := &clilib.StringFlag{Name: "custom", Usage: "Custom mode", Value: "auto"}
+	urfavecli.Extend(custom, urfavecli.FlagExtra{
+		Enum:        []string{"never", "auto", "always"},
+		Placeholder: "setting",
+	})
 
 	cmd := &clilib.Command{
 		Name:  "app",
-		Flags: []clilib.Flag{flag},
+		Flags: []clilib.Flag{flag, custom},
 	}
 
 	sections := urfavecli.Sections(cmd)
@@ -890,7 +926,15 @@ func TestSections_Flags_EnumDefaultFromDefaultText(t *testing.T) {
 		}
 	}
 	require.NotNil(t, colorFlag)
+	require.Equal(t, "when", colorFlag.Placeholder)
 	require.Equal(t, "auto", colorFlag.EnumDefault, "should fall back to urfave default text")
+	for _, flag := range flags {
+		if flag.Long == "custom" {
+			require.Equal(t, "setting", flag.Placeholder)
+			return
+		}
+	}
+	t.Fatal("expected custom flag")
 }
 
 func TestSections_Flags_EnumDefaultExtraOverridesDefault(t *testing.T) {

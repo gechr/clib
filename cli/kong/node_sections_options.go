@@ -4,9 +4,35 @@ package kong
 type NodeSectionsOption func(*nodeSectionsConfig)
 
 type nodeSectionsConfig struct {
-	hideArguments bool
-	showAliases   bool
-	argsCLI       any // when set, use reflected args instead of kong's
+	hideArguments  bool
+	showAliases    bool
+	separateGlobal bool
+	globalTitle    string
+	optionsTitle   string
+	argsCLI        any // when set, use reflected args instead of kong's
+}
+
+// WithSeparateGlobalOptions splits inherited (ancestor) flags into their own
+// "Global Options" section, below the selected command's local "Options".
+// By default both share one "Options" section (local first, then a
+// blank-line-separated inherited subgroup).
+func WithSeparateGlobalOptions() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.separateGlobal = true }
+}
+
+// WithSeparateGlobalOptionsName is WithSeparateGlobalOptions with a custom
+// section title instead of the default "Global Options".
+func WithSeparateGlobalOptionsName(title string) NodeSectionsOption {
+	return func(c *nodeSectionsConfig) {
+		c.separateGlobal = true
+		c.globalTitle = title
+	}
+}
+
+// WithOptionsTitle sets the section title for local and merged flags instead
+// of the default "Options".
+func WithOptionsTitle(title string) NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.optionsTitle = title }
 }
 
 // WithShowAliases opts into rendering the "Aliases" section. By default

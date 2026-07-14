@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/help"
+	placeholders "github.com/gechr/clib/internal/placeholder"
+	xslices "github.com/gechr/x/slices"
 	xstrings "github.com/gechr/x/strings"
 	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -256,6 +258,12 @@ func buildFlagSections(cmd *cobralib.Command, cfg sectionsConfig) ([]help.Sectio
 	if cfg.keepGroupOrder && !cfg.sortGroupOrder {
 		opts = append(opts, help.WithKeepGroupOrder())
 	}
+	if cfg.optionsTitle != "" {
+		opts = append(opts, help.WithOptionsTitle(cfg.optionsTitle))
+	}
+	if cfg.globalOptionsTitle != "" {
+		opts = append(opts, help.WithGlobalOptionsTitle(cfg.globalOptionsTitle))
+	}
 
 	sections := help.BuildFlagSections(classified, opts...)
 	return sections, len(sections) > 0
@@ -292,7 +300,12 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 		hf.Repeatable = isRepeatable
 	}
 	if extra != nil && len(extra.Enum) > 0 {
-		hf.Enum = extra.Enum
+		hf.Enum = xslices.Unique(extra.Enum)
+	}
+	if extra != nil && extra.Placeholder == "" {
+		if inferred := placeholders.ForEnum(hf.Enum); inferred != "" {
+			hf.Placeholder = inferred
+		}
 	}
 	if extra != nil && len(extra.EnumHighlight) > 0 {
 		hf.EnumHighlight = extra.EnumHighlight

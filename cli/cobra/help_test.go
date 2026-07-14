@@ -715,6 +715,26 @@ func TestSectionsWithOptions_ShowInheritedFlagsOnSubcommands(t *testing.T) {
 	require.Len(t, opts.Content, 2, "local + inherited sub-groups")
 }
 
+func TestSectionsWithOptions_CustomOptionTitles(t *testing.T) {
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().Bool("debug", false, "Debug mode")
+	sub := &cobralib.Command{Use: "run", Run: func(*cobralib.Command, []string) {}}
+	sub.Flags().String("output", "", "Output format")
+	root.AddCommand(sub)
+
+	sections := cobra.SectionsWithOptions(
+		cobra.WithShowInheritedFlagsOnSubcommands(),
+		cobra.WithOptionsTitle("Flags"),
+		cobra.WithGlobalOptionsTitle("Shared Flags"),
+	)(sub)
+
+	var titles []string
+	for _, section := range sections {
+		titles = append(titles, section.Title)
+	}
+	require.Equal(t, []string{"Usage", "Flags", "Shared Flags"}, titles)
+}
+
 func TestSectionsWithOptions_PerLevelAncestorDepth(t *testing.T) {
 	noop := func(*cobralib.Command, []string) error { return nil }
 
@@ -967,6 +987,37 @@ func TestSections_Flags_EnumDefaultFromDefValue(t *testing.T) {
 	}
 	require.NotNil(t, stateFlag)
 	require.Equal(t, "open", stateFlag.EnumDefault, "should fall back to pflag DefValue")
+}
+
+func TestSections_Flags_WhenEnumPlaceholder(t *testing.T) {
+	cmd := &cobralib.Command{Use: "app"}
+	cmd.Flags().String("mode", "auto", "Output mode")
+	cmd.Flags().String("custom", "auto", "Custom mode")
+	cobra.Extend(cmd.Flags().Lookup("mode"), cobra.FlagExtra{
+		Enum: []string{"never", "auto", "always"},
+	})
+	cobra.Extend(cmd.Flags().Lookup("custom"), cobra.FlagExtra{
+		Enum:        []string{"auto", "always", "never"},
+		Placeholder: "setting",
+	})
+
+	sections := cobra.Sections(cmd)
+	var flags help.FlagGroup
+	for _, section := range sections {
+		if section.Title == "Options" {
+			flags, _ = section.Content[0].(help.FlagGroup)
+			break
+		}
+	}
+	require.NotNil(t, flags)
+	for _, flag := range flags {
+		switch flag.Long {
+		case "mode":
+			require.Equal(t, "when", flag.Placeholder)
+		case "custom":
+			require.Equal(t, "setting", flag.Placeholder)
+		}
+	}
 }
 
 func TestSections_Flags_EnumDefaultExtraOverridesDefValue(t *testing.T) {
