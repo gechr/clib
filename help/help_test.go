@@ -1636,7 +1636,8 @@ func TestRender_BackticksUnclosed(t *testing.T) {
 }
 
 func TestRender_InlineMarkdownModifiers(t *testing.T) {
-	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
 	var buf bytes.Buffer
 	sections := []help.Section{
 		{Title: "Flags", Content: []help.Content{
@@ -1648,28 +1649,25 @@ func TestRender_InlineMarkdownModifiers(t *testing.T) {
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
-	out := buf.String()
+	strike := lipgloss.NewStyle().Strikethrough(true)
+	bold := lipgloss.NewStyle().Bold(true)
+	italic := lipgloss.NewStyle().Italic(true)
+	all := lipgloss.NewStyle().Bold(true).Italic(true).Strikethrough(true)
 	require.Equal(
 		t,
-		"Flags\n\n  --format  Use old, bold, italic, or all three text\n",
-		ansi.Strip(out),
-	)
-	require.Contains(t, out, lipgloss.NewStyle().Strikethrough(true).Render("old"))
-	require.Contains(t, out, lipgloss.NewStyle().Bold(true).Render("bold"))
-	require.Contains(t, out, lipgloss.NewStyle().Italic(true).Render("italic"))
-	require.Contains(
-		t,
-		out,
-		lipgloss.NewStyle().
-			Bold(true).
-			Italic(true).
-			Strikethrough(true).
-			Render("all three"),
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--format")+"  Use "+
+			strike.Render("old")+", "+
+			bold.Render("bold")+", "+
+			italic.Render("italic")+", or "+
+			all.Render("all three")+" text\n",
+		buf.String(),
 	)
 }
 
 func TestRender_InlineMarkdownCodeIsOpaque(t *testing.T) {
-	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	th := testTheme()
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
 	var buf bytes.Buffer
 	sections := []help.Section{
 		{Title: "Flags", Content: []help.Content{
@@ -1680,8 +1678,10 @@ func TestRender_InlineMarkdownCodeIsOpaque(t *testing.T) {
 
 	require.Equal(
 		t,
-		"Flags\n\n  --literal  Use ~_*literal*_~ exactly\n",
-		ansi.Strip(buf.String()),
+		th.HelpSection.Render("Flags")+"\n\n  "+
+			th.HelpFlag.Render("--literal")+"  Use "+
+			th.HelpDescBacktick.Render("~_*literal*_~")+" exactly\n",
+		buf.String(),
 	)
 }
 
@@ -1695,7 +1695,11 @@ func TestRender_InlineMarkdownUnclosedMarkersRemainLiteral(t *testing.T) {
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
-	require.Contains(t, ansi.Strip(buf.String()), "Keep *bold, _italic, and ~old")
+	require.Equal(
+		t,
+		"Flags\n\n  --literal  Keep *bold, _italic, and ~old\n",
+		ansi.Strip(buf.String()),
+	)
 }
 
 func TestRender_InlineMarkdownWrapsWithoutCountingMarkers(t *testing.T) {
@@ -1719,7 +1723,7 @@ func TestRender_InlineMarkdownWrapsWithoutCountingMarkers(t *testing.T) {
 		ansi.Strip(buf.String()),
 	)
 	// The wrapper resets and reapplies bold across each inserted newline.
-	require.GreaterOrEqual(t, strings.Count(buf.String(), "\x1b[1m"), 3)
+	require.Equal(t, 3, strings.Count(buf.String(), "\x1b[1m"))
 }
 
 func TestRender_SingleQuotesStyled(t *testing.T) {
