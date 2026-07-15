@@ -1635,6 +1635,93 @@ func TestRender_BackticksUnclosed(t *testing.T) {
 	)
 }
 
+func TestRender_InlineMarkdownModifiers(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{{
+				Long: "format",
+				Desc: "Use ~old~, *bold*, _italic_, or ~_*all three*_~ text",
+			}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	out := buf.String()
+	require.Equal(
+		t,
+		"Flags\n\n  --format  Use old, bold, italic, or all three text\n",
+		ansi.Strip(out),
+	)
+	require.Contains(t, out, lipgloss.NewStyle().Strikethrough(true).Render("old"))
+	require.Contains(t, out, lipgloss.NewStyle().Bold(true).Render("bold"))
+	require.Contains(t, out, lipgloss.NewStyle().Italic(true).Render("italic"))
+	require.Contains(
+		t,
+		out,
+		lipgloss.NewStyle().
+			Bold(true).
+			Italic(true).
+			Strikethrough(true).
+			Render("all three"),
+	)
+}
+
+func TestRender_InlineMarkdownCodeIsOpaque(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{{Long: "literal", Desc: "Use `~_*literal*_~` exactly"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		"Flags\n\n  --literal  Use ~_*literal*_~ exactly\n",
+		ansi.Strip(buf.String()),
+	)
+}
+
+func TestRender_InlineMarkdownUnclosedMarkersRemainLiteral(t *testing.T) {
+	r := help.NewRenderer(testTheme(), help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Flags", Content: []help.Content{
+			help.FlagGroup{{Long: "literal", Desc: "Keep *bold, _italic, and ~old"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Contains(t, ansi.Strip(buf.String()), "Keep *bold, _italic, and ~old")
+}
+
+func TestRender_InlineMarkdownWrapsWithoutCountingMarkers(t *testing.T) {
+	r := help.NewRenderer(
+		testTheme(),
+		help.WithDescriptionIndent(0),
+		help.WithDescriptionWidth(16),
+	)
+	var buf bytes.Buffer
+	sections := []help.Section{{
+		Title: "Description",
+		Content: []help.Content{
+			help.Description("*this is a really long sentence*"),
+		},
+	}}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(
+		t,
+		"Description\n\n  this is a\n  really long\n  sentence\n",
+		ansi.Strip(buf.String()),
+	)
+	// The wrapper resets and reapplies bold across each inserted newline.
+	require.GreaterOrEqual(t, strings.Count(buf.String(), "\x1b[1m"), 3)
+}
+
 func TestRender_SingleQuotesStyled(t *testing.T) {
 	th := testTheme()
 	s := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))

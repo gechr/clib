@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
@@ -998,10 +999,11 @@ func (r *Renderer) buildArgDescPart(a Arg) string {
 	return strings.Join(parts, " ")
 }
 
-// renderDesc renders a description, styling backtick-enclosed text and
-// dimming trailing bracketed or parenthesized notes.
+// renderDesc renders a description, styling inline Markdown and dimming
+// trailing bracketed or parenthesized notes.
 //
-// Backtick processing: `text` -> styled with HelpDescBacktick (backticks removed).
+// Inline Markdown: `code`, *bold*, _italic_, and ~strikethrough~. Styles may
+// be nested and code spans are opaque to the other markers.
 //
 // Suffix patterns:
 //   - Trailing "(note)" -> HelpFlagNote style
@@ -1063,74 +1065,205 @@ func (r *Renderer) renderDesc(desc string) string {
 	return r.renderBackticks(desc, nil)
 }
 
-// renderBackticks replaces `text` and 'text' with styled text (delimiters removed).
-// Single-quoted strings are only matched when not preceded/followed by a letter,
-// so contractions like "don't" are left intact.
-// When HelpDescBacktick is nil, delimiters are left intact.
-func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
-	if r.plain || r.backtickStyle == BacktickStyleNone {
-		return s
-	}
-	if r.Theme.HelpDescBacktick == nil && base == nil {
-		return s
-	}
-	var sb strings.Builder
-	writePlain := func(text string) {
-		if text == "" {
-			return
-		}
-		if base != nil {
-			sb.WriteString(base.Render(text))
-			return
-		}
-		sb.WriteString(text)
-	}
-	renderCode := func(text string) string {
-		style, hasStyle := r.getBacktickStyle(text)
-		if !hasStyle {
-			if base != nil {
-				return base.Render(text)
-			}
-			return text
-		}
-		if base != nil {
-			style = style.Inherit(*base)
-		}
-		return style.Render(text)
-	}
-	last := 0
-	for i := 0; i < len(s); {
-		switch {
-		case s[i] == '`':
-			end := strings.IndexByte(s[i+1:], '`')
-			if end < 0 {
-				writePlain(s[last:])
-				return sb.String()
-			}
-			writePlain(s[last:i])
-			end += i + 1
-			sb.WriteString(renderCode(s[i+1 : end]))
-			i = end + 1
-			last = i
+type inlineStyle uint8
 
-		case s[i] == '\'' && !isLetterAt(s, i-1):
-			end := strings.IndexByte(s[i+1:], '\'')
-			if end < 0 || isLetterAt(s, i+1+end+1) {
+const (
+	inlineBold inlineStyle = 1 << iota
+	inlineItalic
+	inlineStrikethrough
+)
+
+// renderBackticks renders the inline Markdown supported by help descriptions.
+// The name is retained because backticks have additional context-aware styling:
+// `text` and 'text' use HelpDescBacktick, with single quotes ignored inside
+// words so contractions like "don't" are left intact. BacktickStyleNone only
+// disables code-span handling; the other inline styles remain enabled.
+func (r *Renderer) renderBackticks(s string, base *lipgloss.Style) string {
+	if r.plain {
+		return s
+	}
+
+	p := inlineParser{renderer: r, source: s, base: base}
+	rendered, _, _ := p.render(0, 0, 0)
+	return rendered
+}
+
+type inlineParser struct {
+	renderer *Renderer
+	source   string
+	base     *lipgloss.Style
+}
+
+// render consumes source until closing is found. A zero closing marker renders
+// to the end. Styles are carried into recursive calls so nested markers stack.
+func (p inlineParser) render(
+	start int,
+	closing byte,
+	active inlineStyle,
+) (string, int, bool) {
+	var sb strings.Builder
+	last := start
+	writeText := func(end int) {
+		sb.WriteString(p.renderText(p.source[last:end], active))
+	}
+
+	for i := start; i < len(p.source); {
+		if closing != 0 && p.source[i] == closing && inlineMarkerCanClose(p.source, i) {
+			writeText(i)
+			return sb.String(), i + 1, true
+		}
+
+		switch {
+		case p.source[i] == '`':
+			end := strings.IndexByte(p.source[i+1:], '`')
+			if end < 0 {
 				i++
 				continue
 			}
-			writePlain(s[last:i])
+			writeText(i)
 			end += i + 1
-			sb.WriteString(renderCode(s[i+1 : end]))
+			sb.WriteString(p.renderCode(p.source[i:end+1], "`", active))
 			i = end + 1
+			last = i
+
+		case p.source[i] == '\'' && !isLetterAt(p.source, i-1):
+			end := strings.IndexByte(p.source[i+1:], '\'')
+			if end < 0 || isLetterAt(p.source, i+1+end+1) {
+				i++
+				continue
+			}
+			writeText(i)
+			end += i + 1
+			sb.WriteString(p.renderCode(p.source[i:end+1], "'", active))
+			i = end + 1
+			last = i
+
+		case inlineMarkerStyle(p.source[i]) != 0 && inlineMarkerCanOpen(p.source, i):
+			marker := p.source[i]
+			inner, after, ok := p.render(i+1, marker, active|inlineMarkerStyle(marker))
+			if !ok {
+				i++
+				continue
+			}
+			writeText(i)
+			sb.WriteString(inner)
+			i = after
 			last = i
 
 		default:
 			i++
 		}
 	}
-	writePlain(s[last:])
-	return sb.String()
+	writeText(len(p.source))
+	return sb.String(), len(p.source), closing == 0
+}
+
+func (p inlineParser) renderText(text string, active inlineStyle) string {
+	if text == "" {
+		return ""
+	}
+	if active == 0 && p.base == nil {
+		return text
+	}
+	style := lipgloss.NewStyle()
+	if p.base != nil {
+		style = *p.base
+	}
+	return applyInlineStyle(style, active).Render(text)
+}
+
+func (p inlineParser) renderCode(span, delimiter string, active inlineStyle) string {
+	text, ok := xstrings.Unwrap(span, delimiter, delimiter)
+	if !ok {
+		return p.renderText(span, active)
+	}
+	if p.renderer.backtickStyle == BacktickStyleNone ||
+		(p.renderer.Theme.HelpDescBacktick == nil && p.base == nil) {
+		return p.renderText(span, active)
+	}
+
+	style, hasStyle := p.renderer.getBacktickStyle(text)
+	if !hasStyle {
+		if p.base == nil {
+			return span
+		}
+		style = *p.base
+	} else if p.base != nil {
+		style = style.Inherit(*p.base)
+	}
+	return applyInlineStyle(style, active).Render(text)
+}
+
+func applyInlineStyle(style lipgloss.Style, active inlineStyle) lipgloss.Style {
+	if active&inlineBold != 0 {
+		style = style.Bold(true)
+	}
+	if active&inlineItalic != 0 {
+		style = style.Italic(true)
+	}
+	if active&inlineStrikethrough != 0 {
+		style = style.Strikethrough(true)
+	}
+	return style
+}
+
+func inlineMarkerStyle(marker byte) inlineStyle {
+	switch marker {
+	case '*':
+		return inlineBold
+	case '_':
+		return inlineItalic
+	case '~':
+		return inlineStrikethrough
+	default:
+		return 0
+	}
+}
+
+func inlineMarkerCanOpen(s string, i int) bool {
+	if i+1 >= len(s) || isSpaceAt(s, i+1) {
+		return false
+	}
+	return s[i] != '_' || !isLetterOrDigitBefore(s, i)
+}
+
+func inlineMarkerCanClose(s string, i int) bool {
+	if i == 0 || isSpaceBefore(s, i) {
+		return false
+	}
+	return s[i] != '_' || !isLetterOrDigitAt(s, i+1)
+}
+
+func isSpaceAt(s string, i int) bool {
+	if i < 0 || i >= len(s) {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(s[i:])
+	return unicode.IsSpace(r)
+}
+
+func isSpaceBefore(s string, i int) bool {
+	if i <= 0 || i > len(s) {
+		return false
+	}
+	r, _ := utf8.DecodeLastRuneInString(s[:i])
+	return unicode.IsSpace(r)
+}
+
+func isLetterOrDigitAt(s string, i int) bool {
+	if i < 0 || i >= len(s) {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(s[i:])
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+func isLetterOrDigitBefore(s string, i int) bool {
+	if i <= 0 || i > len(s) {
+		return false
+	}
+	r, _ := utf8.DecodeLastRuneInString(s[:i])
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 func (r *Renderer) getBacktickStyle(text string) (lipgloss.Style, bool) {
