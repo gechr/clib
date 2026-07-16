@@ -319,6 +319,21 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 		hf.EnumDefault = f.DefValue
 	}
 
+	// Mirror the kong/urfave rendering of negatable flags: the bracketed
+	// [no-] form by default, or just the variant a PositiveOnly/NegativeOnly
+	// extra advertises. The flag stays negatable either way, so the hidden
+	// spelling still parses and completes.
+	if extra != nil && extra.Negatable {
+		switch {
+		case extra.PositiveOnly:
+			break
+		case extra.NegativeOnly:
+			hf.Long = "no-" + f.Name
+		default:
+			hf.Long = "[no-]" + f.Name
+		}
+	}
+
 	if extra != nil {
 		if extra.HideLong {
 			hf.Long = ""

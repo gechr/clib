@@ -86,6 +86,28 @@ func sectionsEnumRefs() []help.Section {
 	return cobracli.Sections(cmd)
 }
 
+// sectionsNegatable exercises the three negatable renderings: the default
+// bracketed [no-] form, a PositiveOnly extra advertising only --prerelease,
+// and a NegativeOnly extra advertising only --no-cache.
+func sectionsNegatable() []help.Section {
+	cmd := &cobralib.Command{Use: "clover"}
+	cmd.Flags().Bool("downgrade", false, "Allow selecting versions older than the current one")
+	cmd.Flags().Bool("prerelease", false, "Allow selecting prerelease versions")
+	cmd.Flags().Bool("cache", true, "Reuse cached HTTP responses across runs")
+	cobracli.Extend(cmd.Flags().Lookup("downgrade"), cobracli.FlagExtra{
+		Negatable: true,
+	})
+	cobracli.Extend(cmd.Flags().Lookup("prerelease"), cobracli.FlagExtra{
+		Negatable:    true,
+		PositiveOnly: true,
+	})
+	cobracli.Extend(cmd.Flags().Lookup("cache"), cobracli.FlagExtra{
+		Negatable:    true,
+		NegativeOnly: true,
+	})
+	return cobracli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
@@ -95,6 +117,7 @@ func TestGolden(t *testing.T) {
 		"flag_refs_in_backticks": sectionsFlagRefsInBackticks(),
 		"long_description":       sectionsLongDescription(),
 		"enum_refs":              sectionsEnumRefs(),
+		"negatable":              sectionsNegatable(),
 	}
 
 	for name, sections := range scenarios {

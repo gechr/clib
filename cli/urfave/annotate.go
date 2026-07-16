@@ -23,10 +23,12 @@ type FlagExtra struct {
 	HideShort      bool           // hide the short flag from help output
 	Hint           string         // value type hint for completion (file, dir, command, user, host, url, email)
 	NegativeDesc   string         // description for --no- variant (negatable flags)
+	NegativeOnly   bool           // advertise only the --no- variant in help (negatable flags)
 	NoIndent       bool           // suppress short-flag alignment indent in help
 	Order          complete.Order // completion ordering mode
 	Placeholder    string         // value placeholder (e.g. "repo")
 	PositiveDesc   string         // description for positive variant (negatable flags)
+	PositiveOnly   bool           // advertise only the positive variant in help (negatable flags)
 	Terse          string         // very short description for completions
 }
 

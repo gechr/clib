@@ -33,6 +33,7 @@ type FlagMeta struct {
 	IsSlice             bool     // true if the field type is a slice
 	Name                string   // flag name
 	Negatable           bool     // true if the flag supports --no- prefix
+	NegativeOnly        bool     // advertise only the --no- variant in help
 	NegativeDesc        string   // explicit description for --no- variant
 	NoIndent            bool     // suppress short-flag alignment indent in help
 	Optional            bool     // true if arg is optional
@@ -41,6 +42,7 @@ type FlagMeta struct {
 	Placeholder         string   // placeholder like <value>
 	PlaceholderOverride bool     // true if placeholder was set via clib tag
 	PositiveDesc        string   // explicit description for positive variant (negatable flags)
+	PositiveOnly        bool     // advertise only the positive variant in help
 	Short               string   // short flag letter
 	Terse               string   // very short description for completions
 	ValueHint           string   // value type hint for completion (file, dir, command, user, host, url, email)
@@ -66,6 +68,11 @@ func (f *FlagMeta) Desc() string {
 //
 // Supported keys: complete, complete-hidden, enum, group, inverse, negatable,
 // negative, order, placeholder, positive, terse.
+//
+// The positive and negative keys are dual-form: with a value they set that
+// variant's completion description, bare they advertise only that variant in
+// help output (the flag stays negatable, so both spellings still parse and
+// complete).
 func (f *FlagMeta) ParseClibTag(t string) error {
 	if t == "" {
 		return nil
@@ -75,7 +82,7 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 		return err
 	}
 	for _, entry := range parts {
-		key, val, _ := strings.Cut(entry, "=")
+		key, val, hasValue := strings.Cut(entry, "=")
 		if key == "" {
 			return fmt.Errorf("empty key in tag %q", t)
 		}
@@ -113,12 +120,20 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 		case tag.Negatable:
 			f.Negatable = true
 		case tag.Negative:
-			f.NegativeDesc = val
+			if hasValue {
+				f.NegativeDesc = val
+			} else {
+				f.NegativeOnly = true
+			}
 		case tag.Placeholder:
 			f.Placeholder = val
 			f.PlaceholderOverride = true
 		case tag.Positive:
-			f.PositiveDesc = val
+			if hasValue {
+				f.PositiveDesc = val
+			} else {
+				f.PositiveOnly = true
+			}
 		case tag.Enum:
 			if val != "" {
 				f.Enum = tag.SplitCSV(val)
@@ -147,6 +162,9 @@ func (f *FlagMeta) validateTagOnly() error {
 	if f.Order != "" && f.Order != OrderKeep && f.Order != OrderShell {
 		return fmt.Errorf("%s: unsupported order %q", f.flagLabel(), f.Order)
 	}
+	if f.PositiveOnly && f.NegativeOnly {
+		return fmt.Errorf("%s: bare positive and negative are mutually exclusive", f.flagLabel())
+	}
 	return nil
 }
 
@@ -164,10 +182,10 @@ func (f *FlagMeta) Validate() error {
 	if f.NoIndent && f.Short != "" {
 		return fmt.Errorf("%sno-indent has no effect on flags with a short form", p)
 	}
-	if f.NegativeDesc != "" && !f.Negatable {
+	if (f.NegativeDesc != "" || f.NegativeOnly) && !f.Negatable {
 		return fmt.Errorf("%snegative requires negatable", p)
 	}
-	if f.PositiveDesc != "" && !f.Negatable {
+	if (f.PositiveDesc != "" || f.PositiveOnly) && !f.Negatable {
 		return fmt.Errorf("%spositive requires negatable", p)
 	}
 	if f.InversePrefix != "" && !f.Negatable {

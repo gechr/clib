@@ -434,6 +434,18 @@ func applyClibTag(meta *complete.FlagMeta, clibTag string) error {
 	} else if ok {
 		meta.NoIndent = true
 	}
+	// Only the bare forms matter for help: a valued positive/negative sets a
+	// completion description, handled by ParseClibTag on the completion path.
+	if v, ok, err := parse(tag.Positive); err != nil {
+		return err
+	} else if ok && v == "" {
+		meta.PositiveOnly = true
+	}
+	if v, ok, err := parse(tag.Negative); err != nil {
+		return err
+	} else if ok && v == "" {
+		meta.NegativeOnly = true
+	}
 	return nil
 }
 
@@ -648,7 +660,16 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		if prefix == "" {
 			prefix = "no-"
 		}
-		long = "[" + prefix + "]" + long
+		// A bare positive/negative tag advertises just that variant; the flag
+		// stays negatable, so the hidden spelling still parses and completes.
+		switch {
+		case f.PositiveOnly:
+			break
+		case f.NegativeOnly:
+			long = prefix + long
+		default:
+			long = "[" + prefix + "]" + long
+		}
 	}
 	placeholder := f.Placeholder
 	if placeholder == "" && f.HasArg {

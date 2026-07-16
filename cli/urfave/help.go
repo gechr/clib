@@ -219,13 +219,24 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 	var short, long string
 	var isNegatable bool
 
+	extra := getFlagExtra(cmd, f)
 	if bif, ok := f.(*clilib.BoolWithInverseFlag); ok {
 		isNegatable = true
 		prefix := bif.InversePrefix
 		if prefix == "" {
 			prefix = clilib.DefaultInverseBoolPrefix
 		}
-		long = "[" + prefix + "]" + bif.Name
+		// A PositiveOnly/NegativeOnly extra advertises just that variant; the
+		// flag stays negatable, so the hidden spelling still parses and
+		// completes.
+		switch {
+		case extra != nil && extra.PositiveOnly:
+			long = bif.Name
+		case extra != nil && extra.NegativeOnly:
+			long = prefix + bif.Name
+		default:
+			long = "[" + prefix + "]" + bif.Name
+		}
 		for _, n := range bif.Aliases {
 			if len(n) == 1 && short == "" {
 				short = n
@@ -268,7 +279,6 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 		return hf
 	}
 
-	extra := getFlagExtra(cmd, f)
 	if extra != nil && extra.Placeholder != "" {
 		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
 		hf.Repeatable = isMultiValue

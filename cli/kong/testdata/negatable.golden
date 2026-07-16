@@ -1,0 +1,11 @@
+[1;33mUsage[m
+
+  [1;32mclover[m [31m[options][m
+
+[1;33mOptions[m
+
+      [31m--[no-]downgrade[m  Allow selecting versions older than the current one
+      [31m--prerelease[m      Allow selecting prerelease versions
+      [31m--no-cache[m        Reuse cached HTTP responses across runs
+
+  [31m-h[m, [31m--help[m            Print help

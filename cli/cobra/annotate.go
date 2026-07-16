@@ -24,9 +24,11 @@ type FlagExtra struct {
 	NoIndent       bool           `json:"noIndent"`       // suppress short-flag alignment indent in help
 	Negatable      bool           `json:"negatable"`      // supports --no- prefix
 	NegativeDesc   string         `json:"negativeDesc"`   // description for --no- variant (negatable flags)
+	NegativeOnly   bool           `json:"negativeOnly"`   // advertise only the --no- variant in help (negatable flags)
 	Order          complete.Order `json:"order"`          // completion ordering mode
 	Placeholder    string         `json:"placeholder"`    // value placeholder (e.g. "repo")
 	PositiveDesc   string         `json:"positiveDesc"`   // description for positive variant (negatable flags)
+	PositiveOnly   bool           `json:"positiveOnly"`   // advertise only the positive variant in help (negatable flags)
 	Terse          string         `json:"terse"`          // very short description for completions
 }
 

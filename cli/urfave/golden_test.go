@@ -120,6 +120,33 @@ func sectionsFlagEnumRefs() []help.Section {
 	return urfavecli.Sections(cmd)
 }
 
+// sectionsNegatable exercises the three negatable renderings: the default
+// bracketed [no-] form, a PositiveOnly extra advertising only --prerelease,
+// and a NegativeOnly extra advertising only --no-cache.
+func sectionsNegatable() []help.Section {
+	downgradeFlag := &clilib.BoolWithInverseFlag{
+		Name:  "downgrade",
+		Usage: "Allow selecting versions older than the current one",
+	}
+	prereleaseFlag := &clilib.BoolWithInverseFlag{
+		Name:  "prerelease",
+		Usage: "Allow selecting prerelease versions",
+	}
+	cacheFlag := &clilib.BoolWithInverseFlag{
+		Name:  "cache",
+		Usage: "Reuse cached HTTP responses across runs",
+	}
+
+	cmd := &clilib.Command{
+		Name:  "clover",
+		Flags: []clilib.Flag{downgradeFlag, prereleaseFlag, cacheFlag},
+	}
+
+	urfavecli.Extend(prereleaseFlag, urfavecli.FlagExtra{PositiveOnly: true})
+	urfavecli.Extend(cacheFlag, urfavecli.FlagExtra{NegativeOnly: true})
+	return urfavecli.Sections(cmd)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
@@ -129,6 +156,7 @@ func TestGolden(t *testing.T) {
 		"preserve_placeholders": sectionsPreservePlaceholders(),
 		"long_description":      sectionsLongDescription(),
 		"flag_enum_refs":        sectionsFlagEnumRefs(),
+		"negatable":             sectionsNegatable(),
 	}
 
 	for name, sections := range scenarios {
