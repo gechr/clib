@@ -21,6 +21,7 @@ type palette struct {
 	arg         color.Color // args
 	argOptional color.Color // optional args
 	comment     color.Color // dim text, placeholders, defaults
+	example     color.Color // example annotations, distinct from arg
 }
 
 // fromPalette builds a full [Theme] from a [palette].
@@ -31,12 +32,12 @@ func fromPalette(name string, background Background, p palette) *Theme {
 		Bold:       new(lipgloss.NewStyle().Bold(true)),
 		Dim:        new(lipgloss.NewStyle().Faint(true)),
 		Red:        new(lipgloss.NewStyle().Foreground(p.flag)),
-		Green:      new(lipgloss.NewStyle().Foreground(p.arg)),
+		Green:      new(lipgloss.NewStyle().Foreground(p.command)),
 		Yellow:     new(lipgloss.NewStyle().Foreground(p.heading)),
-		Blue:       new(lipgloss.NewStyle().Foreground(p.command)),
+		Blue:       new(lipgloss.NewStyle().Foreground(p.arg)),
 		Magenta:    new(lipgloss.NewStyle().Foreground(p.backtick)),
 		Orange:     new(lipgloss.NewStyle().Foreground(p.backtick)),
-		BoldGreen:  new(lipgloss.NewStyle().Bold(true).Foreground(p.arg)),
+		BoldGreen:  new(lipgloss.NewStyle().Bold(true).Foreground(p.command)),
 
 		HelpSection:     new(lipgloss.NewStyle().Bold(true).Foreground(p.heading)),
 		HelpCommand:     new(lipgloss.NewStyle().Bold(true).Foreground(p.command)),
@@ -59,7 +60,9 @@ func fromPalette(name string, background Background, p palette) *Theme {
 			Prompt:      "$",
 			PromptStyle: lipgloss.NewStyle().Foreground(p.arg),
 		},
-		HelpFlagExample:            new(lipgloss.NewStyle().Foreground(p.arg)),
+		HelpFlagExample: new(
+			lipgloss.NewStyle().Faint(true).Foreground(p.example),
+		),
 		HelpFlagNote:               new(lipgloss.NewStyle().Faint(true)),
 		HelpFlagDefault:            new(lipgloss.NewStyle().Faint(true)),
 		HelpDescBacktick:           new(lipgloss.NewStyle().Foreground(p.backtick)),
@@ -261,6 +264,7 @@ func Monokai() *Theme {
 		arg:         lipgloss.Color("#78dce8"), // cyan
 		argOptional: lipgloss.Color("#ab9df2"), // purple
 		comment:     lipgloss.Color("#939293"), // comment
+		example:     lipgloss.Color("#ff6188"), // pink
 	})
 }
 
@@ -275,6 +279,7 @@ func CatppuccinLatte() *Theme {
 		arg:         lipgloss.Color("#8839ef"), // mauve
 		argOptional: lipgloss.Color("#1e66f5"), // blue
 		comment:     lipgloss.Color("#7c7f93"), // overlay2
+		example:     lipgloss.Color("#ea76cb"), // pink
 	})
 }
 
@@ -289,6 +294,7 @@ func CatppuccinFrappe() *Theme {
 		arg:         lipgloss.Color("#ca9ee6"), // mauve
 		argOptional: lipgloss.Color("#8caaee"), // blue
 		comment:     lipgloss.Color("#949cbb"), // overlay2
+		example:     lipgloss.Color("#f4b8e4"), // pink
 	})
 }
 
@@ -303,6 +309,7 @@ func CatppuccinMacchiato() *Theme {
 		arg:         lipgloss.Color("#c6a0f6"), // mauve
 		argOptional: lipgloss.Color("#8aadf4"), // blue
 		comment:     lipgloss.Color("#939ab7"), // overlay2
+		example:     lipgloss.Color("#f5bde6"), // pink
 	})
 }
 
@@ -317,6 +324,7 @@ func CatppuccinMocha() *Theme {
 		arg:         lipgloss.Color("#cba6f7"), // mauve
 		argOptional: lipgloss.Color("#89b4fa"), // blue
 		comment:     lipgloss.Color("#9399b2"), // overlay2
+		example:     lipgloss.Color("#f5c2e7"), // pink
 	})
 }
 
@@ -331,6 +339,7 @@ func Dracula() *Theme {
 		arg:         lipgloss.Color("#ff79c6"), // pink
 		argOptional: lipgloss.Color("#bd93f9"), // purple
 		comment:     lipgloss.Color("#6272a4"), // comment
+		example:     lipgloss.Color("#bd93f9"), // purple
 	})
 }
 
@@ -345,6 +354,7 @@ func Nord() *Theme {
 		arg:         lipgloss.Color("#81a1c1"), // nord9, blue
 		argOptional: lipgloss.Color("#b48ead"), // nord15, purple
 		comment:     lipgloss.Color("#4c566a"), // nord3, dark gray
+		example:     lipgloss.Color("#b48ead"), // nord15, purple
 	})
 }
 
@@ -359,6 +369,7 @@ func SolarizedLight() *Theme {
 		arg:         lipgloss.Color("#268bd2"), // blue
 		argOptional: lipgloss.Color("#6c71c4"), // violet
 		comment:     lipgloss.Color("#586e75"), // base01
+		example:     lipgloss.Color("#6c71c4"), // violet
 	})
 }
 
@@ -373,6 +384,7 @@ func SolarizedDark() *Theme {
 		arg:         lipgloss.Color("#268bd2"), // blue
 		argOptional: lipgloss.Color("#6c71c4"), // violet
 		comment:     lipgloss.Color("#839496"), // base0
+		example:     lipgloss.Color("#6c71c4"), // violet
 	})
 }
 
@@ -387,6 +399,7 @@ func GruvboxDark() *Theme {
 		arg:         lipgloss.Color("#83a598"), // blue
 		argOptional: lipgloss.Color("#d3869b"), // purple
 		comment:     lipgloss.Color("#928374"), // gray
+		example:     lipgloss.Color("#d3869b"), // purple
 	})
 }
 
@@ -401,6 +414,7 @@ func GruvboxLight() *Theme {
 		arg:         lipgloss.Color("#076678"), // blue
 		argOptional: lipgloss.Color("#8f3f71"), // purple
 		comment:     lipgloss.Color("#928374"), // gray
+		example:     lipgloss.Color("#8f3f71"), // purple
 	})
 }
 
@@ -415,6 +429,7 @@ func TokyoNight() *Theme {
 		arg:         lipgloss.Color("#7aa2f7"), // blue
 		argOptional: lipgloss.Color("#bb9af7"), // magenta
 		comment:     lipgloss.Color("#565f89"), // comment
+		example:     lipgloss.Color("#bb9af7"), // magenta
 	})
 }
 
@@ -429,6 +444,7 @@ func Synthwave() *Theme {
 		arg:         lipgloss.Color("#03edf9"), // blue
 		argOptional: lipgloss.Color("#bb9af7"), // purple
 		comment:     lipgloss.Color("#848bbd"), // comment
+		example:     lipgloss.Color("#bb9af7"), // purple
 	})
 }
 
@@ -443,5 +459,6 @@ func OneDark() *Theme {
 		arg:         lipgloss.Color("#61afef"), // malibu/blue
 		argOptional: lipgloss.Color("#c678dd"), // violet/purple
 		comment:     lipgloss.Color("#5c6370"), // stone/gray
+		example:     lipgloss.Color("#c678dd"), // violet/purple
 	})
 }

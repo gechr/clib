@@ -130,13 +130,15 @@ func Dark() *Theme {
 		HelpEnumDefault: new(
 			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("2")),
 		),
-		HelpDefaultOpen:       "(",
-		HelpDefaultClose:      ")",
-		HelpExampleOpen:       "(",
-		HelpExampleClose:      ")",
-		HelpFlag:              new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
-		HelpFlagDefault:       new(lipgloss.NewStyle().Faint(true)),
-		HelpFlagExample:       new(lipgloss.NewStyle().Foreground(lipgloss.Color("2"))),
+		HelpDefaultOpen:  "(",
+		HelpDefaultClose: ")",
+		HelpExampleOpen:  "(",
+		HelpExampleClose: ")",
+		HelpFlag:         new(lipgloss.NewStyle().Foreground(lipgloss.Color("1"))),
+		HelpFlagDefault:  new(lipgloss.NewStyle().Faint(true)),
+		HelpFlagExample: new(
+			lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("13")),
+		),
 		HelpFlagNote:          new(lipgloss.NewStyle().Faint(true)),
 		HelpKeyValueSeparator: ' ',
 		HelpKeyValueSeparatorStyle: new(
@@ -206,6 +208,7 @@ func Light() *Theme {
 		arg:         lipgloss.Color("#2459b3"),
 		argOptional: lipgloss.Color("#7047b5"),
 		comment:     lipgloss.Color("#5f6368"),
+		example:     lipgloss.Color("#7047b5"),
 	})
 
 	// Faithful light-contrast semantic colors (mirroring Dark's meaning).

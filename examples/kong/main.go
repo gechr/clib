@@ -34,11 +34,11 @@ type CLI struct {
 	Preview bool `name:"preview" help:"Preview matching items"         short:"p" clib:"group='Actions',terse='Preview'"`
 
 	// Output
-	Format string       `name:"format" help:"Output format"     short:"f"                                                                                 clib:"group='Output',terse='Output format',placeholder='format'" default:"table"             enum:"table,json,yaml"`
-	Fields clib.CSVFlag `name:"fields" help:"Fields to show"    clib:"group='Output',terse='Fields',placeholder='field',complete='predictor=field,comma'"`
-	Color  string       `name:"color"  help:"Color output mode" clib:"group='Output',terse='Color mode',placeholder='color'"                              default:"auto"                                                   enum:"auto,always,never"`
-	Limit  int          `name:"limit"  help:"Maximum results"   short:"L"                                                                                 clib:"group='Output',terse='Max results',placeholder='n'"`
-	Sort   string       `name:"sort"   help:"Sort by"           clib:"group='Output',terse='Sort field',placeholder='field'"                              default:"name"                                                   enum:"name,created,updated"`
+	Format string       `name:"format" help:"Output format [example: json]" short:"f"                                                                                 clib:"group='Output',terse='Output format',placeholder='format'" default:"table"             enum:"table,json,yaml"`
+	Fields clib.CSVFlag `name:"fields" help:"Fields to show"                clib:"group='Output',terse='Fields',placeholder='field',complete='predictor=field,comma'"`
+	Color  string       `name:"color"  help:"Color output mode"             clib:"group='Output',terse='Color mode',placeholder='color'"                              default:"auto"                                                   enum:"auto,always,never"`
+	Limit  int          `name:"limit"  help:"Maximum results"               short:"L"                                                                                 clib:"group='Output',terse='Max results',placeholder='n'"`
+	Sort   string       `name:"sort"   help:"Sort by"                       clib:"group='Output',terse='Sort field',placeholder='field'"                              default:"name"                                                   enum:"name,created,updated"`
 
 	// Miscellaneous
 	Debug bool `name:"debug" help:"Log HTTP requests to stderr" clib:"group='Miscellaneous',terse='Debug mode'"`
