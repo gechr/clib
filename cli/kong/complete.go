@@ -220,6 +220,8 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 		Help:       flag.Help,
 		HasArg:     !flag.IsBool() && !flag.IsCounter(),
 		Hidden:     flag.Hidden,
+		IsCSV:      isCSVFlag(flag),
+		IsSlice:    flag.IsSlice() || flag.IsCumulative(),
 		Persistent: true,
 	}
 	if flag.Short != 0 {

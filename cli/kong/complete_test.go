@@ -398,6 +398,25 @@ func TestSubcommands_EnumValues(t *testing.T) {
 	require.ElementsMatch(t, []string{"json", "yaml", "text"}, formatSpec.Values)
 }
 
+func TestSubcommands_CSVFlagEnablesCommaCompletion(t *testing.T) {
+	type Cmd struct {
+		Route kong.CSVFlag `short:"r" clib:"enum='a,b,c'"`
+	}
+	var cli struct {
+		Run Cmd `cmd:""`
+	}
+	parser, err := konglib.New(&cli, konglib.Name("myapp"))
+	require.NoError(t, err)
+
+	subs := kong.Subcommands(parser)
+	require.Len(t, subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "route", subs[0].Specs[0].LongFlag)
+	require.Equal(t, "r", subs[0].Specs[0].ShortFlag)
+	require.Equal(t, []string{"a", "b", "c"}, subs[0].Specs[0].Values)
+	require.True(t, subs[0].Specs[0].CommaList)
+}
+
 func TestSubcommands_NilParser(t *testing.T) {
 	subs := kong.Subcommands(nil)
 	require.Nil(t, subs)
