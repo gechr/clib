@@ -27,6 +27,19 @@ func testGenerator() *complete.Generator {
 	})
 }
 
+func TestCSVFlagEnablesCommaCompletion(t *testing.T) {
+	type CLI struct {
+		Route kong.CSVFlag `clib:"complete='predictor=route'"`
+	}
+
+	flags, err := kong.Reflect(&CLI{})
+	require.NoError(t, err)
+	gen := complete.NewGenerator("clibapp").FromFlags(flags)
+	require.Len(t, gen.Specs, 1)
+	require.Equal(t, "route", gen.Specs[0].Dynamic)
+	require.True(t, gen.Specs[0].CommaList)
+}
+
 func TestPreflight_NoMatch(t *testing.T) {
 	t.Setenv("_TEST_ARGS", "1")
 	os.Args = []string{"myapp", "complete", "author"}

@@ -467,6 +467,22 @@ func TestSubcommands_CommaList(t *testing.T) {
 	require.Equal(t, []string{"a", "b", "c"}, colSpec.Values)
 }
 
+func TestSubcommands_CSVFlagEnablesCommaCompletion(t *testing.T) {
+	root := &cobralib.Command{Use: "myapp"}
+	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}
+	child.Flags().Var(&cobracli.CSVFlag{}, "route", "Routes")
+	cobracli.Extend(child.Flags().Lookup("route"), cobracli.FlagExtra{
+		Complete: "predictor=route",
+	})
+	root.AddCommand(child)
+
+	subs := cobracli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "route", subs[0].Specs[0].Dynamic)
+	require.True(t, subs[0].Specs[0].CommaList)
+}
+
 func TestSubcommands_NegatableFlag(t *testing.T) {
 	root := &cobralib.Command{Use: "myapp"}
 	child := &cobralib.Command{Use: "child", Short: "A child command", Run: noop}

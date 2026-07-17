@@ -245,6 +245,27 @@ func TestParseCompleteTag(t *testing.T) {
 	}
 }
 
+func TestCSVFlagEnablesCommaCompletion(t *testing.T) {
+	tests := []struct {
+		name     string
+		complete string
+	}{
+		{name: "dynamic", complete: "predictor=route"},
+		{name: "static", complete: "values=alice bob"},
+		{name: "unannotated"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gen := complete.NewGenerator("test").FromFlags([]complete.FlagMeta{{
+				Name: "route", HasArg: true, IsCSV: true, Complete: tc.complete,
+			}})
+
+			require.Len(t, gen.Specs, 1)
+			require.True(t, gen.Specs[0].CommaList)
+		})
+	}
+}
+
 // --- Print tests ---
 
 func TestGenerator_Print_DefaultShell(t *testing.T) {

@@ -14,8 +14,8 @@ type CSVFlag struct {
 }
 
 // CSVFlagPlaceholders returns a Kong option that makes Kong describe CSVFlag
-// values using each flag's name (for example, --recipient=RECIPIENT) instead
-// of the Go type name (--recipient=CSV-FLAG). Explicit placeholder tags are
+// values using each flag's name (for example, --route=ROUTE) instead
+// of the Go type name (--route=CSV-FLAG). Explicit placeholder tags are
 // preserved.
 //
 // Pass this option to [konglib.New] or [konglib.Must].

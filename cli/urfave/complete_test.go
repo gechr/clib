@@ -525,6 +525,23 @@ func TestSubcommands_CommaList(t *testing.T) {
 	require.Equal(t, []string{"a", "b", "c"}, colSpec.Values)
 }
 
+func TestSubcommands_CSVFlagEnablesCommaCompletion(t *testing.T) {
+	routeFlag := &clilib.GenericFlag{
+		Name: "route", Usage: "Routes", Value: &urfavecli.CSVFlag{},
+	}
+	urfavecli.Extend(routeFlag, urfavecli.FlagExtra{Complete: "predictor=route"})
+	child := &clilib.Command{
+		Name: "child", Usage: "A child command", Flags: []clilib.Flag{routeFlag},
+	}
+	root := &clilib.Command{Name: "myapp", Commands: []*clilib.Command{child}}
+
+	subs := urfavecli.Subcommands(root)
+	require.Len(t, subs, 1)
+	require.Len(t, subs[0].Specs, 1)
+	require.Equal(t, "route", subs[0].Specs[0].Dynamic)
+	require.True(t, subs[0].Specs[0].CommaList)
+}
+
 func TestSubcommands_NegatableFlag(t *testing.T) {
 	child := &clilib.Command{
 		Name:  "child",

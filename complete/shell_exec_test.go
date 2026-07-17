@@ -157,9 +157,9 @@ func driveBashReplies(
 	gen *complete.Generator,
 	stub string,
 	words []string,
-	cword int,
 ) []string {
 	t.Helper()
+	cword := len(words) - 1
 	bash := lookShell(t, "bash")
 	dir, scriptPath, logPath := completionEnvWithStub(t, gen, "bash", stub)
 
@@ -394,11 +394,11 @@ func TestShellExec_BashDynamicValuesPreserveSpaces(t *testing.T) {
 
 	require.Equal(t,
 		[]string{"In Progress"},
-		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "In"}, 2),
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "In"}),
 	)
 	require.Equal(t,
 		[]string{"To Do", "In Progress", "Done"},
-		driveBashReplies(t, gen, stub, []string{"myapp", "--status", ""}, 2),
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", ""}),
 	)
 }
 
@@ -419,7 +419,22 @@ func TestShellExec_BashCommaDynamicValuesPreserveSpaces(t *testing.T) {
 
 	require.Equal(t,
 		[]string{"To Do,In Progress"},
-		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "To Do,In"}, 2),
+		driveBashReplies(t, gen, stub, []string{"myapp", "--status", "To Do,In"}),
+	)
+}
+
+func TestShellExec_BashCSVShortFlagCompletesAfterComma(t *testing.T) {
+	gen := &complete.Generator{
+		AppName: "myapp",
+		Specs: []complete.Spec{{
+			ShortFlag: "r", HasArg: true, Dynamic: "route", CommaList: true,
+		}},
+	}
+	stub := "#!/usr/bin/env bash\nprintf '%s\\n' a b\n"
+
+	require.Equal(t,
+		[]string{"a,b"},
+		driveBashReplies(t, gen, stub, []string{"myapp", "-r", "a,"}),
 	)
 }
 

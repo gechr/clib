@@ -54,6 +54,9 @@ func HandleAction(a Action, gen *Generator, handler Handler, quiet bool) (bool, 
 // ApplyMeta populates spec fields from a FlagMeta's completion-related
 // annotations (Complete, Extension, ValueHint, Terse, Enum).
 func ApplyMeta(spec *Spec, meta *FlagMeta) {
+	if meta.IsCSV {
+		spec.CommaList = true
+	}
 	if meta.Terse != "" {
 		spec.Terse = meta.Terse
 	}
@@ -81,7 +84,7 @@ func ApplyMeta(spec *Spec, meta *FlagMeta) {
 		if predictor != "" {
 			spec.Dynamic = predictor
 		}
-		spec.CommaList = commaList
+		spec.CommaList = spec.CommaList || commaList
 		if len(staticValues) > 0 {
 			spec.Values = staticValues
 		}
