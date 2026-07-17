@@ -108,10 +108,24 @@ func sectionsNegatable() []help.Section {
 	return cobracli.Sections(cmd)
 }
 
+func sectionsAliases() []help.Section {
+	root := &cobralib.Command{Use: "app"}
+	run := &cobralib.Command{
+		Use:   "run",
+		Short: "Run the app",
+		Run:   func(*cobralib.Command, []string) {},
+	}
+	publish := &cobralib.Command{Use: "publish", Run: func(*cobralib.Command, []string) {}}
+	cobracli.ExtendCommand(publish, cobracli.CommandExtra{Alias: "tool release"})
+	root.AddCommand(run, publish)
+	return cobracli.Sections(root)
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
+		"aliases":                sectionsAliases(),
 		"lowercase_placeholders": sectionsLowercasePlaceholders(),
 		"preserve_placeholders":  sectionsPreservePlaceholders(),
 		"flag_refs_in_backticks": sectionsFlagRefsInBackticks(),

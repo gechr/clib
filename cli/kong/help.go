@@ -138,16 +138,29 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		})
 	}
 
-	// Commands section.
+	// Commands and command aliases sections.
 	if cmds := visibleChildren(node); len(cmds) > 0 {
 		var group help.CommandGroup
+		var aliases help.AliasGroup
 		for _, child := range cmds {
-			group = append(group, help.Command{Name: child.Name, Desc: child.Help})
+			command, alias := classifyCommand(child, cfg)
+			if command.Name != "" {
+				group = append(group, command)
+			}
+			if alias.Name != "" {
+				aliases = append(aliases, alias)
+			}
 		}
-		sections = append(sections, help.Section{
-			Title:   "Commands",
-			Content: []help.Content{group},
-		})
+		if len(group) > 0 {
+			sections = append(sections, help.Section{
+				Title: "Commands", Content: []help.Content{group},
+			})
+		}
+		if len(aliases) > 0 {
+			sections = append(sections, help.Section{
+				Title: "Aliases", Content: []help.Content{aliases},
+			})
+		}
 	}
 
 	// Flag sections - omitted for non-root commands that only dispatch to
@@ -240,6 +253,25 @@ func fillComputedUsage(u *help.Usage, node *konglib.Node) {
 	}
 }
 
+func classifyCommand(
+	child *konglib.Node, cfg nodeSectionsConfig,
+) (help.Command, help.Alias) {
+	target := nodeAlias(child)
+	switch {
+	case target == "":
+		return help.Command{Name: child.Name, Desc: child.Help}, help.Alias{}
+	case cfg.hideCommandAliases:
+		return help.Command{}, help.Alias{}
+	case cfg.inlineCommandAliases:
+		return help.Command{
+			Name: child.Name,
+			Desc: "Alias for `" + target + "`",
+		}, help.Alias{}
+	default:
+		return help.Command{}, help.Alias{Name: child.Name, Target: target}
+	}
+}
+
 // nodeUsageTag reads clib:"usage='...'" from the node's struct tag, returning
 // the verbatim usage string or "" if unset or malformed.
 func nodeUsageTag(node *konglib.Node) string {
@@ -251,6 +283,18 @@ func nodeUsageTag(node *konglib.Node) string {
 		return ""
 	}
 	return usage
+}
+
+// nodeAlias returns the target of a command alias from its clib metadata.
+func nodeAlias(node *konglib.Node) string {
+	if node == nil || node.Tag == nil {
+		return ""
+	}
+	var meta complete.FlagMeta
+	if err := meta.ParseClibTag(node.Tag.Get(tagClib)); err != nil {
+		return ""
+	}
+	return meta.Alias
 }
 
 // nodePath walks parents to build the command path (e.g. "app run"),

@@ -5,10 +5,12 @@ import (
 	"strings"
 
 	"github.com/gechr/clib/internal/tag"
+	xstrings "github.com/gechr/x/strings"
 )
 
 // FlagMeta holds metadata extracted from a single struct field's tags.
 type FlagMeta struct {
+	Alias               string   // command invoked by this alias command
 	Aliases             []string // flag aliases
 	Complete            string   // completion directive
 	CompleteWhenHidden  bool     // still offer this flag in completions even when hidden from help
@@ -66,8 +68,8 @@ func (f *FlagMeta) Desc() string {
 //
 //	clib:"terse='Draft filter',complete='predictor=repo',group='filters'"
 //
-// Supported keys: complete, complete-hidden, enum, group, inverse, negatable,
-// negative, order, placeholder, positive, terse.
+// Supported keys: alias, complete, complete-hidden, enum, group, inverse,
+// negatable, negative, order, placeholder, positive, terse.
 //
 // The positive and negative keys are dual-form: with a value they set that
 // variant's completion description, bare they advertise only that variant in
@@ -86,9 +88,10 @@ func (f *FlagMeta) ParseClibTag(t string) error {
 		if key == "" {
 			return fmt.Errorf("empty key in tag %q", t)
 		}
-		val = strings.TrimPrefix(val, "'")
-		val = strings.TrimSuffix(val, "'")
+		val, _ = xstrings.Unwrap(val, "'", "'")
 		switch key {
+		case tag.Alias:
+			f.Alias = val
 		case tag.Complete:
 			f.Complete = val
 		case tag.CompleteHidden:

@@ -45,7 +45,7 @@ func WithGreen(s lipgloss.Style) Option {
 }
 
 // WithHelpAlias sets the style for alias names in the Aliases section.
-// When unset, aliases fall back to the HelpCommand style.
+// When unset, command aliases use the HelpSubcommand style.
 func WithHelpAlias(s lipgloss.Style) Option {
 	return func(t *Theme) { t.HelpAlias = new(s) }
 }

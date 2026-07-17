@@ -951,6 +951,53 @@ func TestRender_CommandGroup(t *testing.T) {
 	)
 }
 
+func TestRender_AliasGroup(t *testing.T) {
+	aliasStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	th := testTheme().With(theme.WithHelpAlias(aliasStyle))
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Commands", Content: []help.Content{
+			help.CommandGroup{{Name: "serve", Desc: "Serve requests"}},
+		}},
+		{Title: "Aliases", Content: []help.Content{
+			help.AliasGroup{
+				{Name: "publish", Target: "tool release"},
+				{Name: "view", Target: "tool inspect"},
+			},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Commands")+"\n\n"+
+			"  "+th.HelpSubcommand.Render("serve")+"    Serve requests\n\n"+
+			th.HelpSection.Render("Aliases")+"\n\n"+
+			"  "+aliasStyle.Render("publish")+"  Alias for "+th.HelpCommand.Render("tool release")+"\n"+
+			"  "+aliasStyle.Render("view")+"     Alias for "+th.HelpCommand.Render("tool inspect")+"\n",
+		buf.String(),
+	)
+}
+
+func TestRender_AliasGroupDefaultsToHelpSubcommand(t *testing.T) {
+	th := testTheme()
+	r := help.NewRenderer(th)
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Aliases", Content: []help.Content{
+			help.AliasGroup{{Name: "publish", Target: "tool release"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	require.Equal(t,
+		th.HelpSection.Render("Aliases")+"\n\n"+
+			"  "+th.HelpSubcommand.Render("publish")+"  Alias for "+
+			th.HelpCommand.Render("tool release")+"\n",
+		buf.String(),
+	)
+}
+
 func TestRender_DescNote(t *testing.T) {
 	th := testTheme()
 	r := help.NewRenderer(th)
@@ -2441,7 +2488,7 @@ func TestRender_Flags_LongOnlyIndentedWhenSectionHasShort(t *testing.T) {
 	sections := []help.Section{
 		{Title: "Options", Content: []help.Content{
 			help.FlagGroup{
-				{Long: "init", Desc: "Initialize config"},
+				{Long: "init", Desc: "Publish config"},
 			},
 			help.FlagGroup{
 				{Long: "color", Placeholder: "color", Desc: "When to use color"},

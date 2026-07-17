@@ -193,6 +193,8 @@ func (r *Renderer) renderContent(
 		return r.renderArgs(w, c, descCol, ind)
 	case CommandGroup:
 		return r.renderCommands(w, c, cmdDescCol, ind)
+	case AliasGroup:
+		return r.renderAliases(w, c, cmdDescCol, ind)
 	case Usage:
 		return r.renderUsage(w, c, ind)
 	case Text:
@@ -277,7 +279,7 @@ func (r *Renderer) renderCommands(
 	globalCmdDescCol, ind int,
 ) error {
 	descCol := globalCmdDescCol
-	if r.cmdAlignMode == AlignModeSection {
+	if descCol == 0 {
 		// Compute description column from this section's commands only.
 		descCol = 0
 		for _, c := range cmds {
@@ -330,6 +332,41 @@ func (r *Renderer) formatCommand(c Command, descCol, ind int) string {
 	}
 
 	return sb.String()
+}
+
+func (r *Renderer) renderAliases(
+	w io.Writer, aliases AliasGroup, sharedDescCol, ind int,
+) error {
+	descCol := sharedDescCol
+	style := r.Theme.HelpAlias
+	if style == nil {
+		style = r.Theme.HelpSubcommand
+	}
+	if descCol == 0 {
+		for _, alias := range aliases {
+			width := ind + visibleWidth(style.Render(alias.Name))
+			if width > descCol {
+				descCol = width
+			}
+		}
+		descCol += r.cmdPad
+	}
+
+	for _, alias := range aliases {
+		name := style.Render(alias.Name)
+		currentWidth := ind + visibleWidth(name)
+		line := strings.Repeat(" ", ind) + name
+		if currentWidth < descCol {
+			line += strings.Repeat(" ", descCol-currentWidth)
+		} else {
+			line += strings.Repeat(" ", overflowPad)
+		}
+		line += "Alias for " + r.Theme.HelpCommand.Render(alias.Target)
+		if _, err := fmt.Fprintln(w, line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Renderer) renderUsage(w io.Writer, u Usage, ind int) error {
@@ -1620,10 +1657,27 @@ func (r *Renderer) computeDescCol(sections []Section) int {
 	return descCol + r.flagPad
 }
 
-// computeCmdDescCol computes the global description column across all
-// CommandGroup content in sections. Only used when cmdAlignMode is AlignModeGlobal.
+// computeCmdDescCol computes a shared description column across commands and
+// command aliases. Alias sections always share the command column so adjacent
+// Commands and Aliases sections form one consistent vertical column. Without
+// aliases, command sections retain their configured per-section/global mode.
 func (r *Renderer) computeCmdDescCol(sections []Section) int {
-	if r.cmdAlignMode != AlignModeGlobal {
+	hasAliases := false
+	var findAliases func([]Section)
+	findAliases = func(sections []Section) {
+		for _, sec := range sections {
+			for _, content := range sec.Content {
+				switch c := content.(type) {
+				case AliasGroup:
+					hasAliases = hasAliases || len(c) > 0
+				case *Section:
+					findAliases([]Section{*c})
+				}
+			}
+		}
+	}
+	findAliases(sections)
+	if r.cmdAlignMode != AlignModeGlobal && !hasAliases {
 		return 0
 	}
 	col := 0
@@ -1633,6 +1687,30 @@ func (r *Renderer) computeCmdDescCol(sections []Section) int {
 			col = w
 		}
 	})
+	aliasStyle := r.Theme.HelpAlias
+	if aliasStyle == nil {
+		aliasStyle = r.Theme.HelpSubcommand
+	}
+	var walkAliases func([]Section, int)
+	walkAliases = func(sections []Section, depth int) {
+		ind := nestIndent*depth + indent
+		for _, sec := range sections {
+			for _, content := range sec.Content {
+				switch c := content.(type) {
+				case AliasGroup:
+					for _, alias := range c {
+						w := ind + visibleWidth(aliasStyle.Render(alias.Name))
+						if w > col {
+							col = w
+						}
+					}
+				case *Section:
+					walkAliases([]Section{*c}, depth+1)
+				}
+			}
+		}
+	}
+	walkAliases(sections, 0)
 	return col + r.cmdPad
 }
 

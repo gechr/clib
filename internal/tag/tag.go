@@ -7,6 +7,7 @@ import (
 
 // Clib tag keys.
 const (
+	Alias          = "alias"
 	Complete       = "complete"
 	CompleteHidden = "complete-hidden"
 	Default        = "default"

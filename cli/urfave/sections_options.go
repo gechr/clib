@@ -1,6 +1,8 @@
 package urfave
 
 type sectionsConfig struct {
+	hideCommandAliases    bool
+	inlineCommandAliases  bool
 	lowercasePlaceholders bool
 	rawUsage              bool
 	optionsTitle          string
@@ -9,6 +11,17 @@ type sectionsConfig struct {
 
 // SectionsOption configures urfave help-section generation.
 type SectionsOption func(*sectionsConfig)
+
+// WithHideCommandAliases omits command aliases from help output.
+func WithHideCommandAliases() SectionsOption {
+	return func(c *sectionsConfig) { c.hideCommandAliases = true }
+}
+
+// WithInlineCommandAliases keeps alias commands in the Commands section instead of
+// placing them in a separate Aliases section.
+func WithInlineCommandAliases() SectionsOption {
+	return func(c *sectionsConfig) { c.inlineCommandAliases = true }
+}
 
 // WithRawUsage passes cmd.ArgsUsage through to the usage line verbatim instead
 // of parsing it into structured Args. Use this for urfave commands whose

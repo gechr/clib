@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/gechr/clib/complete"
+	cobralib "github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -32,7 +33,45 @@ type FlagExtra struct {
 	Terse          string         `json:"terse"`          // very short description for completions
 }
 
-const extraAnnotationKey = "clib.extra"
+const (
+	extraAnnotationKey        = "clib.extra"
+	commandExtraAnnotationKey = "clib.command-extra"
+)
+
+// CommandExtra holds clib-specific metadata for a cobra command.
+type CommandExtra struct {
+	Alias string `json:"alias"` // command invoked by this alias command
+}
+
+// ExtendCommand attaches clib metadata to a cobra command.
+func ExtendCommand(cmd *cobralib.Command, extra CommandExtra) {
+	if cmd == nil {
+		return
+	}
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	data, err := json.Marshal(extra)
+	if err != nil {
+		return
+	}
+	cmd.Annotations[commandExtraAnnotationKey] = string(data)
+}
+
+func getCommandExtra(cmd *cobralib.Command) *CommandExtra {
+	if cmd == nil || cmd.Annotations == nil {
+		return nil
+	}
+	data := cmd.Annotations[commandExtraAnnotationKey]
+	if data == "" {
+		return nil
+	}
+	var extra CommandExtra
+	if err := json.Unmarshal([]byte(data), &extra); err != nil {
+		return nil
+	}
+	return &extra
+}
 
 // Extend attaches clib metadata to a pflag.Flag.
 //

@@ -88,7 +88,7 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 		sections = append(sections, examplesSection(cmd))
 	}
 
-	sections = append(sections, subcommandSections(cmd)...)
+	sections = append(sections, subcommandSections(cmd, cfg)...)
 	sections = append(sections, flagSections...)
 
 	return sections
@@ -142,25 +142,31 @@ func examplesSection(cmd *cobralib.Command) help.Section {
 	}
 }
 
-func subcommandSections(cmd *cobralib.Command) []help.Section {
+func subcommandSections(cmd *cobralib.Command, cfg sectionsConfig) []help.Section {
 	available := availableCommands(cmd)
 	if len(available) == 0 {
 		return nil
 	}
+	commands, aliases := splitCommandAliases(
+		available, cfg.inlineCommandAliases, cfg.hideCommandAliases,
+	)
 
 	groups := cmd.Groups()
 	if len(groups) == 0 {
-		return []help.Section{{
-			Title:   "Commands",
-			Content: []help.Content{formatCommandList(available)},
-		}}
+		var sections []help.Section
+		if len(commands) > 0 {
+			sections = append(sections, help.Section{
+				Title: "Commands", Content: []help.Content{formatCommandList(commands)},
+			})
+		}
+		return appendAliasSection(sections, aliases)
 	}
 
 	var sections []help.Section
 	grouped := make(map[string][]*cobralib.Command)
 	var ungrouped []*cobralib.Command
 
-	for _, c := range available {
+	for _, c := range commands {
 		if c.GroupID != "" {
 			grouped[c.GroupID] = append(grouped[c.GroupID], c)
 		} else {
@@ -186,7 +192,34 @@ func subcommandSections(cmd *cobralib.Command) []help.Section {
 		})
 	}
 
-	return sections
+	return appendAliasSection(sections, aliases)
+}
+
+func splitCommandAliases(
+	cmds []*cobralib.Command, inline, hide bool,
+) ([]*cobralib.Command, help.AliasGroup) {
+	var commands []*cobralib.Command
+	var aliases help.AliasGroup
+	for _, cmd := range cmds {
+		if extra := getCommandExtra(cmd); extra != nil && extra.Alias != "" {
+			if hide {
+				continue
+			}
+			if !inline {
+				aliases = append(aliases, help.Alias{Name: cmd.Name(), Target: extra.Alias})
+				continue
+			}
+		}
+		commands = append(commands, cmd)
+	}
+	return commands, aliases
+}
+
+func appendAliasSection(sections []help.Section, aliases help.AliasGroup) []help.Section {
+	if len(aliases) == 0 {
+		return sections
+	}
+	return append(sections, help.Section{Title: "Aliases", Content: []help.Content{aliases}})
 }
 
 func availableCommands(cmd *cobralib.Command) []*cobralib.Command {
@@ -202,7 +235,11 @@ func availableCommands(cmd *cobralib.Command) []*cobralib.Command {
 func formatCommandList(cmds []*cobralib.Command) help.CommandGroup {
 	var group help.CommandGroup
 	for _, c := range cmds {
-		group = append(group, help.Command{Name: c.Name(), Desc: c.Short})
+		desc := c.Short
+		if extra := getCommandExtra(c); extra != nil && extra.Alias != "" {
+			desc = "Alias for `" + extra.Alias + "`"
+		}
+		group = append(group, help.Command{Name: c.Name(), Desc: desc})
 	}
 	return group
 }

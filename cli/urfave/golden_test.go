@@ -147,10 +147,23 @@ func sectionsNegatable() []help.Section {
 	return urfavecli.Sections(cmd)
 }
 
+func sectionsAliases() []help.Section {
+	publish := &clilib.Command{Name: "publish"}
+	urfavecli.ExtendCommand(publish, urfavecli.CommandExtra{Alias: "tool release"})
+	return urfavecli.Sections(&clilib.Command{
+		Name: "app",
+		Commands: []*clilib.Command{
+			{Name: "run", Usage: "Run the app"},
+			publish,
+		},
+	})
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
+		"aliases":               sectionsAliases(),
 		"basic":                 sectionsBasic(),
 		"grouped":               sectionsGrouped(),
 		"preserve_placeholders": sectionsPreservePlaceholders(),

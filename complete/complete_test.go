@@ -193,6 +193,12 @@ func TestParseClibTag_NegatableDescs(t *testing.T) {
 	require.Equal(t, "Hide output", f.NegativeDesc)
 }
 
+func TestParseClibTag_Alias(t *testing.T) {
+	var f complete.FlagMeta
+	require.NoError(t, f.ParseClibTag("alias='tool release'"))
+	require.Equal(t, "tool release", f.Alias)
+}
+
 func TestParseClibTag_Order(t *testing.T) {
 	var f complete.FlagMeta
 	require.NoError(t, f.ParseClibTag("order=keep"))

@@ -9,6 +9,7 @@ import (
 	"github.com/gechr/clib/cli/cobra"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
+	xslices "github.com/gechr/x/slices"
 	cobralib "github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -390,6 +391,60 @@ func TestSections_Subcommands(t *testing.T) {
 	require.Len(t, cmds, 2)
 	require.Equal(t, "build", cmds[0].Name)
 	require.Equal(t, "run", cmds[1].Name)
+}
+
+func TestSections_SubcommandAliases(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+	root := &cobralib.Command{Use: "app"}
+	run := &cobralib.Command{Use: "run", Short: "Run the app", RunE: noop}
+	publishAlias := &cobralib.Command{Use: "init", RunE: noop}
+	cobra.ExtendCommand(publishAlias, cobra.CommandExtra{Alias: "tool release"})
+	root.AddCommand(run, publishAlias)
+
+	sections := cobra.Sections(root)
+	titles := xslices.Map(sections, func(section help.Section) string { return section.Title })
+	require.Equal(t, []string{"Usage", "Commands", "Aliases"}, titles)
+
+	commands, ok := sections[1].Content[0].(help.CommandGroup)
+	require.True(t, ok)
+	require.Equal(t, help.CommandGroup{{Name: "run", Desc: "Run the app"}}, commands)
+	aliases, ok := sections[2].Content[0].(help.AliasGroup)
+	require.True(t, ok)
+	require.Equal(t, help.AliasGroup{{Name: "init", Target: "tool release"}}, aliases)
+}
+
+func TestSections_SubcommandAliasesInline(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+	root := &cobralib.Command{Use: "app"}
+	publishAlias := &cobralib.Command{Use: "init", RunE: noop}
+	cobra.ExtendCommand(publishAlias, cobra.CommandExtra{Alias: "tool release"})
+	root.AddCommand(publishAlias)
+
+	sections := cobra.SectionsWithOptions(cobra.WithInlineCommandAliases())(root)
+	titles := xslices.Map(sections, func(section help.Section) string { return section.Title })
+	require.Equal(t, []string{"Usage", "Commands"}, titles)
+	require.Equal(t,
+		help.CommandGroup{{Name: "init", Desc: "Alias for `tool release`"}},
+		sections[1].Content[0],
+	)
+}
+
+func TestSections_SubcommandAliasesHidden(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+	root := &cobralib.Command{Use: "app"}
+	run := &cobralib.Command{Use: "run", Short: "Run the app", RunE: noop}
+	publishAlias := &cobralib.Command{Use: "init", RunE: noop}
+	cobra.ExtendCommand(publishAlias, cobra.CommandExtra{Alias: "tool release"})
+	root.AddCommand(run, publishAlias)
+
+	sections := cobra.SectionsWithOptions(cobra.WithHideCommandAliases())(root)
+	require.Equal(t, []string{"Usage", "Commands"}, xslices.Map(
+		sections, func(section help.Section) string { return section.Title },
+	))
+	require.Equal(t,
+		help.CommandGroup{{Name: "run", Desc: "Run the app"}},
+		sections[1].Content[0],
+	)
 }
 
 func TestSections_SubcommandGroups(t *testing.T) {

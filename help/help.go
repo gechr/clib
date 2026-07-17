@@ -63,6 +63,17 @@ type CommandGroup []Command
 
 func (CommandGroup) helpContent() {}
 
+// Alias describes a subcommand that delegates to another command.
+type Alias struct {
+	Name   string // alias subcommand name
+	Target string // command invoked by the alias
+}
+
+// AliasGroup is a group of subcommand alias entries.
+type AliasGroup []Alias
+
+func (AliasGroup) helpContent() {}
+
 // Usage is an auto-styled usage line.
 //
 // When Raw is non-empty, it is appended verbatim after the styled Command and

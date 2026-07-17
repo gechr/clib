@@ -102,6 +102,28 @@ Each adapter provides the same core capabilities for its framework:
 `Extend` (or struct tags for Kong), `FlagMeta`, `Sections`/`HelpFunc`, `NewCompletion`,
 and `CSVFlag`.
 
+Commands that forward to another command can be marked as aliases. They are removed from the `Commands` section and shown immediately below it in an `Aliases` section, aligned to the same description column:
+
+```text
+Commands
+
+  serve    Serve requests
+
+Aliases
+
+  publish  Alias for tool release
+```
+
+Declare an alias using the adapter's command metadata:
+
+- Kong: `` Publish CmdPublish `cmd:"" clib:"alias='tool release'"` ``
+- Cobra: `cobracli.ExtendCommand(publishCmd, cobracli.CommandExtra{Alias: "tool release"})`
+- urfave/cli: `cliurfave.ExtendCommand(publishCmd, cliurfave.CommandExtra{Alias: "tool release"})`
+
+The forwarding behavior remains the application's responsibility; this metadata only controls how the command appears in generated help.
+
+Pass `WithInlineCommandAliases()` to the adapter's section builder to keep alias commands in `Commands` instead of creating a separate `Aliases` section, or `WithHideCommandAliases()` to omit them from help.
+
 #### [Kong](https://github.com/alecthomas/kong)
 
 Annotate your CLI struct with Kong-style tags and a `clib:"..."` tag for
@@ -234,12 +256,6 @@ Render short markdown strings for inline display with themed code spans:
 
 ```go
 th.RenderMarkdown("Use `--verbose` for debug output")
-```
-
-### Shell Detection
-
-```go
-shell := shell.Detect() // COMPLETE_SHELL env -> parent process -> SHELL env
 ```
 
 ## Examples

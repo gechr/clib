@@ -18,9 +18,9 @@ var update = flag.Bool("update", false, "update golden files")
 
 func sectionsBasic() []help.Section {
 	type CLI struct {
-		Channel string `name:"channel"   help:"Channel ID, name, or alias" short:"c" placeholder:"CHANNEL"`
-		Max     int    `name:"max-items" help:"Maximum messages to return" short:"M" placeholder:"N"`
-		Verbose bool   `                 help:"Verbose output"             short:"v"`
+		Channel string `name:"channel"        help:"Channel ID, name, or alias" short:"c" placeholder:"CHANNEL"`
+		Max     int    `name:"max-items"      help:"Maximum messages to return" short:"M" placeholder:"N"`
+		Verbose bool   `help:"Verbose output" short:"v"`
 	}
 
 	ctx := parseGoldenForHelp(&CLI{}, []string{"--help"}, konglib.Name("catalog"))
@@ -33,9 +33,9 @@ func sectionsBasic() []help.Section {
 
 func sectionsGrouped() []help.Section {
 	type CLI struct {
-		Query  string       `name:"query"  help:"Filter results by query" short:"q" clib:"group='Filters'" placeholder:"text"`
-		Tags   kong.CSVFlag `name:"tags"   help:"Filter by tags"                    clib:"group='Filters'" placeholder:"<tag>"`
-		Format string       `name:"format" help:"Output format"           short:"f" clib:"group='Output'"  placeholder:"format" default:"table" enum:"table,json"`
+		Query  string       `name:"query"  help:"Filter results by query" short:"q"              clib:"group='Filters'" placeholder:"text"`
+		Tags   kong.CSVFlag `name:"tags"   help:"Filter by tags"          clib:"group='Filters'" placeholder:"<tag>"`
+		Format string       `name:"format" help:"Output format"           short:"f"              clib:"group='Output'"  default:"table"    enum:"table,json" placeholder:"format"`
 	}
 
 	ctx := parseGoldenForHelp(&CLI{}, []string{"--help"}, konglib.Name("catalog"))
@@ -50,8 +50,8 @@ func sectionsGrouped() []help.Section {
 // populated from Help() and we can exercise the smart backtick styling
 // against the command's own args.
 type inspectCmd struct {
-	Name    string `help:"Widget name to inspect" arg:"" optional:""`
-	Verbose bool   `help:"Show all fields"                           short:"v"`
+	Name    string `help:"Widget name to inspect" arg:""    optional:""`
+	Verbose bool   `help:"Show all fields"        short:"v"`
 }
 
 func (inspectCmd) Help() string {
@@ -87,8 +87,8 @@ func sectionsDescription() []help.Section {
 // enum value `github` styled in the positional-arg color. The reference lives
 // in Help() rather than a struct tag because a tag cannot embed a backtick.
 type loginCmd struct {
-	Provider string `help:"Provider to authenticate with" arg:"" optional:"" default:"github" enum:"github,gitlab,gitea"`
-	Host     string `help:"Forge host override"                                                                          placeholder:"host"`
+	Provider string `help:"Provider to authenticate with" arg:""             optional:"" default:"github" enum:"github,gitlab,gitea"`
+	Host     string `help:"Forge host override"           placeholder:"host"`
 }
 
 func (loginCmd) Help() string {
@@ -120,11 +120,25 @@ func sectionsLogin() []help.Section {
 func sectionsNegatable() []help.Section {
 	type CLI struct {
 		Downgrade  *bool `help:"Allow selecting versions older than the current one" negatable:""`
-		Prerelease *bool `help:"Allow selecting prerelease versions"                 negatable:"" clib:"positive"`
-		Cache      *bool `help:"Reuse cached HTTP responses across runs"             negatable:"" clib:"negative"`
+		Prerelease *bool `help:"Allow selecting prerelease versions"                 clib:"positive" negatable:""`
+		Cache      *bool `help:"Reuse cached HTTP responses across runs"             clib:"negative" negatable:""`
 	}
 
 	ctx := parseGoldenForHelp(&CLI{}, []string{"--help"}, konglib.Name("clover"))
+	sections, err := kong.NodeSections(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return sections
+}
+
+func sectionsAliases() []help.Section {
+	type CLI struct {
+		Run     struct{} `help:"Run the app"          cmd:""`
+		Publish struct{} `clib:"alias='tool release'" cmd:""`
+	}
+
+	ctx := parseGoldenForHelp(&CLI{}, []string{"--help"}, konglib.Name("app"))
 	sections, err := kong.NodeSections(ctx)
 	if err != nil {
 		panic(err)
@@ -161,6 +175,7 @@ func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
+		"aliases":     sectionsAliases(),
 		"basic":       sectionsBasic(),
 		"grouped":     sectionsGrouped(),
 		"description": sectionsDescription(),

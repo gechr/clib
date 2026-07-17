@@ -621,6 +621,56 @@ func TestNodeSections_AliasesHiddenByDefault(t *testing.T) {
 	require.Nil(t, findSection(sections, "Aliases"))
 }
 
+func TestNodeSections_SubcommandAliasClibTag(t *testing.T) {
+	type CLI struct {
+		Run  struct{} `help:"Run the app"          cmd:""`
+		Init struct{} `clib:"alias='tool release'" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Usage", "Commands", "Aliases"}, sectionTitles(sections))
+
+	commands, ok := sections[1].Content[0].(help.CommandGroup)
+	require.True(t, ok)
+	require.Equal(t, help.CommandGroup{{Name: "run", Desc: "Run the app"}}, commands)
+	aliases, ok := sections[2].Content[0].(help.AliasGroup)
+	require.True(t, ok)
+	require.Equal(t, help.AliasGroup{{Name: "init", Target: "tool release"}}, aliases)
+}
+
+func TestNodeSections_SubcommandAliasInline(t *testing.T) {
+	type CLI struct {
+		Init struct{} `clib:"alias='tool release'" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx, kong.WithInlineCommandAliases())
+	require.NoError(t, err)
+	require.Equal(t, []string{"Usage", "Commands"}, sectionTitles(sections))
+	require.Equal(t,
+		help.CommandGroup{{Name: "init", Desc: "Alias for `tool release`"}},
+		sections[1].Content[0],
+	)
+}
+
+func TestNodeSections_SubcommandAliasesHidden(t *testing.T) {
+	type CLI struct {
+		Run  struct{} `help:"Run the app"          cmd:""`
+		Init struct{} `clib:"alias='tool release'" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx, kong.WithHideCommandAliases())
+	require.NoError(t, err)
+	require.Equal(t, []string{"Usage", "Commands"}, sectionTitles(sections))
+	require.Equal(t,
+		help.CommandGroup{{Name: "run", Desc: "Run the app"}},
+		sections[1].Content[0],
+	)
+}
+
 func TestNodeSections_ShowAliasesOption(t *testing.T) {
 	type CLI struct {
 		Format struct{} `help:"Format code" aliases:"fmt" cmd:""`

@@ -12,6 +12,7 @@ func TestHelpContentMarkers(_ *testing.T) {
 	FlagGroup{}.helpContent()
 	Args{}.helpContent()
 	CommandGroup{}.helpContent()
+	AliasGroup{}.helpContent()
 	Usage{}.helpContent()
 	Text("").helpContent()
 	Examples{}.helpContent()

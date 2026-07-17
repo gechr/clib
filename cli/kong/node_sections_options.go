@@ -4,12 +4,25 @@ package kong
 type NodeSectionsOption func(*nodeSectionsConfig)
 
 type nodeSectionsConfig struct {
-	hideArguments  bool
-	showAliases    bool
-	separateGlobal bool
-	globalTitle    string
-	optionsTitle   string
-	argsCLI        any // when set, use reflected args instead of kong's
+	hideCommandAliases   bool
+	inlineCommandAliases bool
+	hideArguments        bool
+	showAliases          bool
+	separateGlobal       bool
+	globalTitle          string
+	optionsTitle         string
+	argsCLI              any // when set, use reflected args instead of kong's
+}
+
+// WithHideCommandAliases omits command aliases from help output.
+func WithHideCommandAliases() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.hideCommandAliases = true }
+}
+
+// WithInlineCommandAliases keeps alias commands in the Commands section instead of
+// placing them in a separate Aliases section.
+func WithInlineCommandAliases() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.inlineCommandAliases = true }
 }
 
 // WithSeparateGlobalOptions splits inherited (ancestor) flags into their own

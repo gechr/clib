@@ -37,6 +37,12 @@ func TestExtendStoresExtras(t *testing.T) {
 	require.NotNil(t, getCommandExtra(cmd))
 }
 
+func TestExtendCommandStoresAliasTarget(t *testing.T) {
+	cmd := &clilib.Command{Name: "init"}
+	ExtendCommand(cmd, CommandExtra{Alias: "tool release"})
+	require.Equal(t, "tool release", getCommandExtra(cmd).Alias)
+}
+
 type valueFlag struct {
 	name  string
 	names []string

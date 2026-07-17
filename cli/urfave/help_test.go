@@ -9,6 +9,7 @@ import (
 	urfavecli "github.com/gechr/clib/cli/urfave"
 	"github.com/gechr/clib/help"
 	"github.com/gechr/clib/theme"
+	xslices "github.com/gechr/x/slices"
 	"github.com/stretchr/testify/require"
 	clilib "github.com/urfave/cli/v3"
 )
@@ -172,6 +173,54 @@ func TestSections_Commands(t *testing.T) {
 	cmds, ok := cmdSection.Content[0].(help.CommandGroup)
 	require.True(t, ok)
 	require.Len(t, cmds, 2)
+}
+
+func TestSections_SubcommandAliases(t *testing.T) {
+	run := &clilib.Command{Name: "run", Usage: "Run the app"}
+	publishAlias := &clilib.Command{Name: "init"}
+	urfavecli.ExtendCommand(publishAlias, urfavecli.CommandExtra{Alias: "tool release"})
+	cmd := &clilib.Command{Name: "app", Commands: []*clilib.Command{run, publishAlias}}
+
+	sections := urfavecli.Sections(cmd)
+	titles := xslices.Map(sections, func(section help.Section) string { return section.Title })
+	require.Equal(t, []string{"Usage", "Commands", "Aliases"}, titles)
+
+	commands, ok := sections[1].Content[0].(help.CommandGroup)
+	require.True(t, ok)
+	require.Equal(t, help.CommandGroup{{Name: "run", Desc: "Run the app"}}, commands)
+	aliases, ok := sections[2].Content[0].(help.AliasGroup)
+	require.True(t, ok)
+	require.Equal(t, help.AliasGroup{{Name: "init", Target: "tool release"}}, aliases)
+}
+
+func TestSections_SubcommandAliasesInline(t *testing.T) {
+	publishAlias := &clilib.Command{Name: "init"}
+	urfavecli.ExtendCommand(publishAlias, urfavecli.CommandExtra{Alias: "tool release"})
+	cmd := &clilib.Command{Name: "app", Commands: []*clilib.Command{publishAlias}}
+
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithInlineCommandAliases())(cmd)
+	titles := xslices.Map(sections, func(section help.Section) string { return section.Title })
+	require.Equal(t, []string{"Usage", "Commands"}, titles)
+	require.Equal(t,
+		help.CommandGroup{{Name: "init", Desc: "Alias for `tool release`"}},
+		sections[1].Content[0],
+	)
+}
+
+func TestSections_SubcommandAliasesHidden(t *testing.T) {
+	run := &clilib.Command{Name: "run", Usage: "Run the app"}
+	publishAlias := &clilib.Command{Name: "init"}
+	urfavecli.ExtendCommand(publishAlias, urfavecli.CommandExtra{Alias: "tool release"})
+	cmd := &clilib.Command{Name: "app", Commands: []*clilib.Command{run, publishAlias}}
+
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithHideCommandAliases())(cmd)
+	require.Equal(t, []string{"Usage", "Commands"}, xslices.Map(
+		sections, func(section help.Section) string { return section.Title },
+	))
+	require.Equal(t,
+		help.CommandGroup{{Name: "run", Desc: "Run the app"}},
+		sections[1].Content[0],
+	)
 }
 
 func TestSections_Flags(t *testing.T) {

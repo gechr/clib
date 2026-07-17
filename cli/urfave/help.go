@@ -83,12 +83,42 @@ func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
 	}
 
 	if cmds := cmd.VisibleCommands(); len(cmds) > 0 {
-		sections = append(sections, commandSection(cmds))
+		commands, aliases := splitCommandAliases(
+			cmds, cfg.inlineCommandAliases, cfg.hideCommandAliases,
+		)
+		if len(commands) > 0 {
+			sections = append(sections, commandSection(commands))
+		}
+		if len(aliases) > 0 {
+			sections = append(sections, help.Section{
+				Title: "Aliases", Content: []help.Content{aliases},
+			})
+		}
 	}
 
 	sections = append(sections, flagSections...)
 
 	return sections
+}
+
+func splitCommandAliases(
+	cmds []*clilib.Command, inline, hide bool,
+) ([]*clilib.Command, help.AliasGroup) {
+	var commands []*clilib.Command
+	var aliases help.AliasGroup
+	for _, cmd := range cmds {
+		if extra := getCommandExtra(cmd); extra != nil && extra.Alias != "" {
+			if hide {
+				continue
+			}
+			if !inline {
+				aliases = append(aliases, help.Alias{Name: cmd.Name, Target: extra.Alias})
+				continue
+			}
+		}
+		commands = append(commands, cmd)
+	}
+	return commands, aliases
 }
 
 func usageSection(cmd *clilib.Command, hasFlags bool, cfg sectionsConfig) help.Section {
@@ -132,7 +162,11 @@ func aliasSection(cmd *clilib.Command) help.Section {
 func commandSection(cmds []*clilib.Command) help.Section {
 	var group help.CommandGroup
 	for _, c := range cmds {
-		group = append(group, help.Command{Name: c.Name, Desc: c.Usage})
+		desc := c.Usage
+		if extra := getCommandExtra(c); extra != nil && extra.Alias != "" {
+			desc = "Alias for `" + extra.Alias + "`"
+		}
+		group = append(group, help.Command{Name: c.Name, Desc: desc})
 	}
 	return help.Section{
 		Title:   "Commands",
