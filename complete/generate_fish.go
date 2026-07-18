@@ -158,19 +158,23 @@ func fishTokensHelperName(g *Generator) string {
 	return fmt.Sprintf("__%s_tokens", fishFuncName(g.AppName))
 }
 
+const fishTokensHelper = `
+function %s
+    set -l major (string split . -- $version)[1]
+    set -l tokens
+    if test $major -ge 4
+        set tokens (commandline -xpc)
+    else
+        set tokens (commandline -opc)
+    end
+    if set -q tokens[1]
+        printf '%%s\n' $tokens
+    end
+end
+`
+
 func fishWriteTokensHelper(sb *strings.Builder, helperName string) {
-	fmt.Fprintf(sb, "\nfunction %s\n", helperName)
-	fmt.Fprint(sb, "    set -l major (string split . -- $version)[1]\n")
-	fmt.Fprint(sb, "    set -l tokens\n")
-	fmt.Fprint(sb, "    if test $major -ge 4\n")
-	fmt.Fprint(sb, "        set tokens (commandline -xpc)\n")
-	fmt.Fprint(sb, "    else\n")
-	fmt.Fprint(sb, "        set tokens (commandline -opc)\n")
-	fmt.Fprint(sb, "    end\n")
-	fmt.Fprint(sb, "    if set -q tokens[1]\n")
-	fmt.Fprintf(sb, "        printf '%%s\\n' $tokens\n")
-	fmt.Fprint(sb, "    end\n")
-	fmt.Fprint(sb, "end\n")
+	fmt.Fprintf(sb, fishTokensHelper, helperName)
 }
 
 // fishDynamicCall returns the command that produces dynamic completions for a

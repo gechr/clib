@@ -36,7 +36,7 @@ func GenerateElvish(g *Generator) (string, error) {
 	}
 
 	contexts := elvCollect(g)
-	hasValueFlag := hasAnyValueFlag(g)
+	hasValueFlag := hasValueFlag(g.Specs, g.Subs)
 
 	fmt.Fprintf(&sb, "\nset edit:completion:arg-completer[%s] = {|@words|\n", elvQuote(g.AppName))
 	sb.WriteString("    var n = (count $words)\n")
@@ -552,21 +552,25 @@ func elvWriteForwardedHelper(sb *strings.Builder, id string, fwd []forwardSpec) 
 // elvWritePositionalsHelper emits a helper that extracts the real positional
 // arguments from the tokens, skipping flags, their values, the leading
 // subcommand tokens (cmdskip), and honoring the "--" terminator.
+const elvPositionalsHelper = `
+fn _%s_positionals {|cmdskip valueflags @tokens|
+    var positional = []
+    var skipnext = $false
+    var dashdash = $false
+    var skip = $cmdskip
+    for t $tokens {
+        if $dashdash { set positional = [$@positional $t]; continue }
+        if $skipnext { set skipnext = $false; continue }
+        if (eq $t '--') { set dashdash = $true; continue }
+        if (has-value $valueflags $t) { set skipnext = $true; continue }
+        if (str:has-prefix $t '-') { continue }
+        if (> $skip 0) { set skip = (- $skip 1); continue }
+        set positional = [$@positional $t]
+    }
+    put $@positional
+}
+`
+
 func elvWritePositionalsHelper(sb *strings.Builder, id string) {
-	fmt.Fprintf(sb, "\nfn _%s_positionals {|cmdskip valueflags @tokens|\n", id)
-	sb.WriteString("    var positional = []\n")
-	sb.WriteString("    var skipnext = $false\n")
-	sb.WriteString("    var dashdash = $false\n")
-	sb.WriteString("    var skip = $cmdskip\n")
-	sb.WriteString("    for t $tokens {\n")
-	sb.WriteString("        if $dashdash { set positional = [$@positional $t]; continue }\n")
-	sb.WriteString("        if $skipnext { set skipnext = $false; continue }\n")
-	sb.WriteString("        if (eq $t '--') { set dashdash = $true; continue }\n")
-	sb.WriteString("        if (has-value $valueflags $t) { set skipnext = $true; continue }\n")
-	sb.WriteString("        if (str:has-prefix $t '-') { continue }\n")
-	sb.WriteString("        if (> $skip 0) { set skip = (- $skip 1); continue }\n")
-	sb.WriteString("        set positional = [$@positional $t]\n")
-	sb.WriteString("    }\n")
-	sb.WriteString("    put $@positional\n")
-	sb.WriteString("}\n")
+	fmt.Fprintf(sb, elvPositionalsHelper, id)
 }

@@ -21,7 +21,7 @@ func GenerateBash(g *Generator) (string, error) {
 	fwdFn := bashForwardHelperName(g)
 	dynFn := bashDynamicHelperName(g)
 
-	needsPrev := bashNeedsPrev(g.Specs, g.Subs)
+	needsPrev := hasValueFlag(g.Specs, g.Subs)
 
 	localVars := "local i cur opts cmd"
 	if needsPrev {
@@ -130,25 +130,9 @@ func bashDynamicHelperName(g *Generator) string {
 }
 
 func bashNeedsDynamicHelper(g *Generator) bool {
-	if len(g.DynamicArgs) > 0 {
-		return true
-	}
-
-	var walk func([]Spec, []SubSpec) bool
-	walk = func(specs []Spec, subs []SubSpec) bool {
-		for _, spec := range specs {
-			if spec.Dynamic != "" && !spec.CommaList {
-				return true
-			}
-		}
-		for _, sub := range subs {
-			if len(sub.DynamicArgs) > 0 || walk(sub.Specs, sub.Subs) {
-				return true
-			}
-		}
-		return false
-	}
-	return walk(g.Specs, g.Subs)
+	return len(g.DynamicArgs) > 0 || anySpecInTree(g.Specs, g.Subs,
+		func(s Spec) bool { return s.Dynamic != "" && !s.CommaList },
+		func(sub SubSpec) bool { return len(sub.DynamicArgs) > 0 })
 }
 
 // bashDynamicCmd returns the command and arguments that produce dynamic flag
@@ -200,18 +184,22 @@ func bashDynamicArgsCmd(g *Generator, da string, first bool) string {
 // bashWriteDynamicHelper emits a bash 3-compatible helper that reads dynamic
 // completion output as a newline-delimited list. The local IFS protects
 // multi-word values when bash splits compgen's command-substitution output.
+const bashDynamicHelper = `
+%s() {
+    local cur="$1"
+    shift
+    local line
+    local -a vals=()
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        vals+=("${line}")
+    done < <("$@" 2>/dev/null)
+    local IFS=$'\n'
+    COMPREPLY+=($(compgen -W "${vals[*]}" -- "${cur}"))
+}
+`
+
 func bashWriteDynamicHelper(sb *strings.Builder, helperName string) {
-	fmt.Fprintf(sb, "\n%s() {\n", helperName)
-	fmt.Fprint(sb, "    local cur=\"$1\"\n")
-	fmt.Fprint(sb, "    shift\n")
-	fmt.Fprint(sb, "    local line\n")
-	fmt.Fprint(sb, "    local -a vals=()\n")
-	fmt.Fprint(sb, "    while IFS= read -r line || [[ -n \"${line}\" ]]; do\n")
-	fmt.Fprint(sb, "        vals+=(\"${line}\")\n")
-	fmt.Fprint(sb, "    done < <(\"$@\" 2>/dev/null)\n")
-	fmt.Fprint(sb, "    local IFS=$'\\n'\n")
-	fmt.Fprint(sb, "    COMPREPLY+=($(compgen -W \"${vals[*]}\" -- \"${cur}\"))\n")
-	fmt.Fprint(sb, "}\n")
+	fmt.Fprintf(sb, bashDynamicHelper, helperName)
 }
 
 // bashWriteForwardedFlagsHelper emits a function that scans the command line and
@@ -270,20 +258,6 @@ func bashWriteForwardedFlagsHelper(sb *strings.Builder, helperName string, fwd [
 		}
 	}
 	fmt.Fprint(sb, "            *)\n                ;;\n        esac\n    done\n}\n")
-}
-
-func bashNeedsPrev(specs []Spec, subs []SubSpec) bool {
-	for _, spec := range specs {
-		if spec.HasArg {
-			return true
-		}
-	}
-	for _, sub := range subs {
-		if bashNeedsPrev(sub.Specs, sub.Subs) {
-			return true
-		}
-	}
-	return false
 }
 
 func bashCmdNameFromApp(name string) string {
@@ -379,27 +353,13 @@ func bashWriteCmdCase(
 	case pathArgs:
 		if hasMaxPositionalArgs {
 			bashWriteDynamicArgsParser(sb, specs, depth)
-			fmt.Fprintf(
-				sb,
-				"            if [[ ${#__dyn_pos[@]} -ge %d ]]; then\n",
-				maxPositionalArgs,
-			)
-			fmt.Fprint(sb, "                COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
-			fmt.Fprint(sb, "                return 0\n")
-			fmt.Fprint(sb, "            fi\n")
+			bashWriteMaxPosGuard(sb, maxPositionalArgs)
 		}
 		WriteIndented(sb, "            ", bashFileCompletionBlock)
 	case len(dynamicArgs) > 0:
 		bashWriteDynamicArgsParser(sb, specs, depth)
 		if hasMaxPositionalArgs {
-			fmt.Fprintf(
-				sb,
-				"            if [[ ${#__dyn_pos[@]} -ge %d ]]; then\n",
-				maxPositionalArgs,
-			)
-			fmt.Fprint(sb, "                COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
-			fmt.Fprint(sb, "                return 0\n")
-			fmt.Fprint(sb, "            fi\n")
+			bashWriteMaxPosGuard(sb, maxPositionalArgs)
 		}
 		fmt.Fprint(sb, "            case ${#__dyn_pos[@]} in\n")
 		for i, da := range dynamicArgs {
@@ -433,6 +393,15 @@ func bashWriteCmdCase(
 		fmt.Fprint(sb, "            COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
 	}
 	fmt.Fprint(sb, "            return 0\n            ;;\n")
+}
+
+// bashWriteMaxPosGuard emits an early return that falls back to plain flag
+// completion once the positional limit has been reached.
+func bashWriteMaxPosGuard(sb *strings.Builder, maxPositionalArgs int) {
+	fmt.Fprintf(sb, "            if [[ ${#__dyn_pos[@]} -ge %d ]]; then\n", maxPositionalArgs)
+	fmt.Fprint(sb, "                COMPREPLY=($(compgen -W \"${opts}\" -- \"${cur}\"))\n")
+	fmt.Fprint(sb, "                return 0\n")
+	fmt.Fprint(sb, "            fi\n")
 }
 
 func bashWriteDynamicArgsParser(sb *strings.Builder, specs []Spec, depth int) {

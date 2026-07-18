@@ -552,32 +552,31 @@ func nuWriteForwardedHelper(sb *strings.Builder, id string, fwd []forwardSpec) {
 // arguments from the line, skipping flags, their values, the leading subcommand
 // tokens (cmdskip), and the in-progress token, while honoring the "--"
 // terminator.
+// nuPositionalsHelper materializes tokens with [ ...(...) ]: see
+// nuWriteForwardedHelper - a lazy `where`-closure stream trips nu 0.114 type
+// inference in the `for` loop.
+const nuPositionalsHelper = `
+def %s [context: string, cmdskip: int, valueflags: list<string>] {
+    let trailing = ($context | str ends-with " ")
+    let toks0 = [ ...($context | split row " " | where {|x| $x != "" } | skip 1) ]
+    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })
+    mut pos = []
+    mut skipnext = false
+    mut dashdash = false
+    mut skip = $cmdskip
+    for t in $toks {
+        if $dashdash { $pos = ($pos | append $t); continue }
+        if $skipnext { $skipnext = false; continue }
+        if $t == "--" { $dashdash = true; continue }
+        if ($t in $valueflags) { $skipnext = true; continue }
+        if ($t | str starts-with "-") { continue }
+        if $skip > 0 { $skip = ($skip - 1); continue }
+        $pos = ($pos | append $t)
+    }
+    $pos
+}
+`
+
 func nuWritePositionalsHelper(sb *strings.Builder, id string) {
-	fmt.Fprintf(
-		sb,
-		"\ndef %s [context: string, cmdskip: int, valueflags: list<string>] {\n",
-		nuName(nuPositionalsName(id)),
-	)
-	sb.WriteString("    let trailing = ($context | str ends-with \" \")\n")
-	// Materialize with [ ...(...) ]: see nuWriteForwardedHelper - a lazy
-	// `where`-closure stream trips nu 0.114 type inference in the `for` below.
-	sb.WriteString(
-		"    let toks0 = [ ...($context | split row \" \" | where {|x| $x != \"\" } | skip 1) ]\n",
-	)
-	sb.WriteString("    let toks = (if $trailing { $toks0 } else { $toks0 | drop 1 })\n")
-	sb.WriteString("    mut pos = []\n")
-	sb.WriteString("    mut skipnext = false\n")
-	sb.WriteString("    mut dashdash = false\n")
-	sb.WriteString("    mut skip = $cmdskip\n")
-	sb.WriteString("    for t in $toks {\n")
-	sb.WriteString("        if $dashdash { $pos = ($pos | append $t); continue }\n")
-	sb.WriteString("        if $skipnext { $skipnext = false; continue }\n")
-	sb.WriteString("        if $t == \"--\" { $dashdash = true; continue }\n")
-	sb.WriteString("        if ($t in $valueflags) { $skipnext = true; continue }\n")
-	sb.WriteString("        if ($t | str starts-with \"-\") { continue }\n")
-	sb.WriteString("        if $skip > 0 { $skip = ($skip - 1); continue }\n")
-	sb.WriteString("        $pos = ($pos | append $t)\n")
-	sb.WriteString("    }\n")
-	sb.WriteString("    $pos\n")
-	sb.WriteString("}\n")
+	fmt.Fprintf(sb, nuPositionalsHelper, nuName(nuPositionalsName(id)))
 }

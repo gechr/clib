@@ -480,39 +480,44 @@ func allForwardableSpecs(g *Generator) []forwardSpec {
 	return result
 }
 
-// hasDynamicFlagValue reports whether any flag in the tree completes its value
-// dynamically (spec.Dynamic). Used to decide whether a forwarded-flags helper
-// is worth emitting.
-func hasDynamicFlagValue(specs []Spec, subs []SubSpec) bool {
-	for _, spec := range specs {
-		if spec.Dynamic != "" {
-			return true
-		}
+// anySpecInTree reports whether pred matches any flag spec, or subPred any
+// subcommand, anywhere in the (specs, subs) tree. Either predicate may be nil.
+func anySpecInTree(
+	specs []Spec, subs []SubSpec,
+	pred func(Spec) bool, subPred func(SubSpec) bool,
+) bool {
+	if pred != nil && slices.ContainsFunc(specs, pred) {
+		return true
 	}
 	for _, sub := range subs {
-		if hasDynamicFlagValue(sub.Specs, sub.Subs) {
+		if subPred != nil && subPred(sub) {
+			return true
+		}
+		if anySpecInTree(sub.Specs, sub.Subs, pred, subPred) {
 			return true
 		}
 	}
 	return false
 }
 
+// hasValueFlag reports whether any flag in the tree takes a value, i.e.
+// whether the script needs a prev-token value-completion switch.
+func hasValueFlag(specs []Spec, subs []SubSpec) bool {
+	return anySpecInTree(specs, subs, func(s Spec) bool { return s.HasArg }, nil)
+}
+
+// hasDynamicFlagValue reports whether any flag in the tree completes its value
+// dynamically (spec.Dynamic). Used to decide whether a forwarded-flags helper
+// is worth emitting.
+func hasDynamicFlagValue(specs []Spec, subs []SubSpec) bool {
+	return anySpecInTree(specs, subs, func(s Spec) bool { return s.Dynamic != "" }, nil)
+}
+
 // hasDynamicArgs reports whether the tree has any positional dynamic-args
 // completion that forwards context to the handler.
 func hasDynamicArgs(g *Generator) bool {
-	if len(g.DynamicArgs) > 0 {
-		return true
-	}
-	var walk func(subs []SubSpec) bool
-	walk = func(subs []SubSpec) bool {
-		for _, sub := range subs {
-			if len(sub.DynamicArgs) > 0 || walk(sub.Subs) {
-				return true
-			}
-		}
-		return false
-	}
-	return walk(g.Subs)
+	return len(g.DynamicArgs) > 0 || anySpecInTree(nil, g.Subs, nil,
+		func(sub SubSpec) bool { return len(sub.DynamicArgs) > 0 })
 }
 
 // forwardingActive reports whether g should emit a shared forwarded-flags

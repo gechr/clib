@@ -2,7 +2,6 @@ package complete
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	xstrings "github.com/gechr/x/strings"
@@ -50,7 +49,7 @@ func GeneratePwsh(g *Generator) (string, error) {
 	if len(g.Subs) > 0 {
 		pwshWriteResolution(&sb, g)
 	}
-	if hasAnyValueFlag(g) {
+	if hasValueFlag(g.Specs, g.Subs) {
 		pwshWritePrev(&sb)
 	}
 
@@ -137,26 +136,6 @@ func pwshResult(sb *strings.Builder, indent, completion, listItem, resultType, t
 	)
 }
 
-// hasAnyValueFlag reports whether any flag in the tree takes a value, i.e.
-// whether the script needs a $prev-based value-completion switch.
-func hasAnyValueFlag(g *Generator) bool {
-	var walk func([]Spec, []SubSpec) bool
-	walk = func(specs []Spec, subs []SubSpec) bool {
-		for _, spec := range specs {
-			if spec.HasArg {
-				return true
-			}
-		}
-		for _, sub := range subs {
-			if walk(sub.Specs, sub.Subs) {
-				return true
-			}
-		}
-		return false
-	}
-	return walk(g.Specs, g.Subs)
-}
-
 // hasFileCompletion reports whether any flag value or positional uses
 // PowerShell's built-in filesystem/command completers (extension filters, file,
 // dir, or command hints, or PathArgs). These results are routed through the
@@ -168,19 +147,8 @@ func hasFileCompletion(g *Generator) bool {
 			(spec.Extension != "" || spec.ValueHint == HintFile ||
 				spec.ValueHint == HintDir || spec.ValueHint == HintCommand)
 	}
-	var walk func([]Spec, []SubSpec) bool
-	walk = func(specs []Spec, subs []SubSpec) bool {
-		if slices.ContainsFunc(specs, specHasFile) {
-			return true
-		}
-		for _, sub := range subs {
-			if sub.PathArgs || walk(sub.Specs, sub.Subs) {
-				return true
-			}
-		}
-		return false
-	}
-	return walk(g.Specs, g.Subs)
+	return anySpecInTree(g.Specs, g.Subs, specHasFile,
+		func(sub SubSpec) bool { return sub.PathArgs })
 }
 
 // pwshWriteResolution emits the command-path resolution loop. It walks bareword
@@ -710,22 +678,25 @@ func pwshExtRegex(ext string) string {
 	return `\.(` + strings.Join(parts, "|") + `)$`
 }
 
+//nolint:gosec // G101: shell helper source ("Tokens"), not a credential
+const pwshTokensHelper = `
+function __%s_Tokens {
+    param($CommandAst, $WordToComplete)
+    $elements = $CommandAst.CommandElements
+    $tokens = @()
+    for ($i = 1; $i -lt $elements.Count; $i++) {
+        $text = $elements[$i].Extent.Text
+        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {
+            continue
+        }
+        $tokens += $text
+    }
+    , $tokens
+}
+`
+
 func pwshWriteTokensHelper(sb *strings.Builder, id string) {
-	fmt.Fprintf(sb, "\nfunction __%s_Tokens {\n", id)
-	sb.WriteString("    param($CommandAst, $WordToComplete)\n")
-	sb.WriteString("    $elements = $CommandAst.CommandElements\n")
-	sb.WriteString("    $tokens = @()\n")
-	sb.WriteString("    for ($i = 1; $i -lt $elements.Count; $i++) {\n")
-	sb.WriteString("        $text = $elements[$i].Extent.Text\n")
-	sb.WriteString(
-		"        if ($WordToComplete -ne '' -and $i -eq ($elements.Count - 1) -and $text -eq $WordToComplete) {\n",
-	)
-	sb.WriteString("            continue\n")
-	sb.WriteString("        }\n")
-	sb.WriteString("        $tokens += $text\n")
-	sb.WriteString("    }\n")
-	sb.WriteString("    , $tokens\n")
-	sb.WriteString("}\n")
+	fmt.Fprintf(sb, pwshTokensHelper, id)
 }
 
 // pwshWriteForwardedHelper emits a helper that scans the tokens for forwardable
@@ -782,23 +753,29 @@ func pwshWriteForwardedHelper(sb *strings.Builder, id string, fwd []forwardSpec)
 // pwshWritePositionalsHelper emits a helper that extracts real positional
 // arguments from the tokens, skipping flags, their values, leading subcommand
 // tokens (CmdSkip), and honoring the "--" terminator.
+//
+//nolint:gosec // G101: shell helper source ("$Tokens"), not a credential
+const pwshPositionalsHelper = `
+function __%s_Positionals {
+    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)
+    $positional = @()
+    $skipNext = $false
+    $afterDoubleDash = $false
+    $skip = $CmdSkip
+    foreach ($t in $Tokens) {
+        if ($afterDoubleDash) { $positional += $t; continue }
+        if ($skipNext) { $skipNext = $false; continue }
+        if ($t -eq '--') { $afterDoubleDash = $true; continue }
+        if ($ValueFlags -contains $t) { $skipNext = $true; continue }
+        if ($t -match '^-.+=') { continue }
+        if ($t -like '-*') { continue }
+        if ($skip -gt 0) { $skip--; continue }
+        $positional += $t
+    }
+    , $positional
+}
+`
+
 func pwshWritePositionalsHelper(sb *strings.Builder, id string) {
-	fmt.Fprintf(sb, "\nfunction __%s_Positionals {\n", id)
-	sb.WriteString("    param([string[]]$Tokens, [int]$CmdSkip, [string[]]$ValueFlags)\n")
-	sb.WriteString("    $positional = @()\n")
-	sb.WriteString("    $skipNext = $false\n")
-	sb.WriteString("    $afterDoubleDash = $false\n")
-	sb.WriteString("    $skip = $CmdSkip\n")
-	sb.WriteString("    foreach ($t in $Tokens) {\n")
-	sb.WriteString("        if ($afterDoubleDash) { $positional += $t; continue }\n")
-	sb.WriteString("        if ($skipNext) { $skipNext = $false; continue }\n")
-	sb.WriteString("        if ($t -eq '--') { $afterDoubleDash = $true; continue }\n")
-	sb.WriteString("        if ($ValueFlags -contains $t) { $skipNext = $true; continue }\n")
-	sb.WriteString("        if ($t -match '^-.+=') { continue }\n")
-	sb.WriteString("        if ($t -like '-*') { continue }\n")
-	sb.WriteString("        if ($skip -gt 0) { $skip--; continue }\n")
-	sb.WriteString("        $positional += $t\n")
-	sb.WriteString("    }\n")
-	sb.WriteString("    , $positional\n")
-	sb.WriteString("}\n")
+	fmt.Fprintf(sb, pwshPositionalsHelper, id)
 }
