@@ -240,18 +240,19 @@ func (r *Renderer) renderFlags(
 	return nil
 }
 
+// argStyleFor picks the style for an arg: HelpArgOptional only when an
+// optional arg coexists with required args, so they are visually distinct.
+// Otherwise HelpArg.
+func argStyleFor(a Arg, anyRequired bool, th *theme.Theme) *lipgloss.Style {
+	if !a.Required && anyRequired {
+		return th.HelpArgOptional
+	}
+	return th.HelpArg
+}
+
 func (r *Renderer) argStyle(a Arg, all Args) *lipgloss.Style {
-	if a.Required {
-		return r.Theme.HelpArg
-	}
-	// Use HelpArgOptional only when optional args coexist with required args,
-	// so they are visually distinct. Otherwise fall back to HelpArg.
-	for _, o := range all {
-		if o.Required {
-			return r.Theme.HelpArgOptional
-		}
-	}
-	return r.Theme.HelpArg
+	anyRequired := slices.ContainsFunc(all, func(o Arg) bool { return o.Required })
+	return argStyleFor(a, anyRequired, r.Theme)
 }
 
 func (r *Renderer) renderArgs(w io.Writer, args Args, _, ind int) error {
@@ -299,6 +300,18 @@ func (r *Renderer) renderCommands(
 	return nil
 }
 
+// padToDescCol pads sb from currentWidth out to descCol, or by overflowPad
+// when the name part overruns the column, and returns the column where the
+// description actually starts.
+func padToDescCol(sb *strings.Builder, currentWidth, descCol int) int {
+	if currentWidth < descCol {
+		sb.WriteString(strings.Repeat(" ", descCol-currentWidth))
+		return descCol
+	}
+	sb.WriteString(strings.Repeat(" ", overflowPad))
+	return currentWidth + overflowPad
+}
+
 func (r *Renderer) formatCommand(c Command, descCol, ind int) string {
 	var sb strings.Builder
 
@@ -321,13 +334,7 @@ func (r *Renderer) formatCommand(c Command, descCol, ind int) string {
 		if r.cmdAlign == AlignRight {
 			currentWidth = descCol - r.cmdPad
 		}
-		actualDescCol := descCol
-		if currentWidth < descCol {
-			sb.WriteString(strings.Repeat(" ", descCol-currentWidth))
-		} else {
-			sb.WriteString("  ")
-			actualDescCol = currentWidth + overflowPad
-		}
+		actualDescCol := padToDescCol(&sb, currentWidth, descCol)
 		sb.WriteString(r.wrapDesc(r.renderDesc(c.Desc), actualDescCol))
 	}
 
@@ -353,16 +360,13 @@ func (r *Renderer) renderAliases(
 	}
 
 	for _, alias := range aliases {
+		var sb strings.Builder
 		name := style.Render(alias.Name)
-		currentWidth := ind + visibleWidth(name)
-		line := strings.Repeat(" ", ind) + name
-		if currentWidth < descCol {
-			line += strings.Repeat(" ", descCol-currentWidth)
-		} else {
-			line += strings.Repeat(" ", overflowPad)
-		}
-		line += "Alias for " + r.Theme.HelpCommand.Render(alias.Target)
-		if _, err := fmt.Fprintln(w, line); err != nil {
+		sb.WriteString(strings.Repeat(" ", ind))
+		sb.WriteString(name)
+		padToDescCol(&sb, ind+visibleWidth(name), descCol)
+		sb.WriteString("Alias for " + r.Theme.HelpCommand.Render(alias.Target))
+		if _, err := fmt.Fprintln(w, sb.String()); err != nil {
 			return err
 		}
 	}
@@ -892,13 +896,7 @@ func (r *Renderer) formatFlag(f Flag, hasShort bool, descCol, ind int) (string, 
 		if r.flagAlign == AlignRight {
 			currentWidth = descCol - r.flagPad
 		}
-		actualDescCol := descCol
-		if currentWidth < descCol {
-			sb.WriteString(strings.Repeat(" ", descCol-currentWidth))
-		} else {
-			sb.WriteString("  ")
-			actualDescCol = currentWidth + overflowPad
-		}
+		actualDescCol := padToDescCol(&sb, currentWidth, descCol)
 		sb.WriteString(r.wrapDesc(descPart, actualDescCol))
 	}
 
@@ -1008,14 +1006,7 @@ func (r *Renderer) formatArg(a Arg, all Args, descCol, ind int) string {
 
 	descPart := r.buildArgDescPart(a)
 	if descPart != "" {
-		argWidth := ind + visibleWidth(argPart)
-		actualDescCol := descCol
-		if argWidth < descCol {
-			sb.WriteString(strings.Repeat(" ", descCol-argWidth))
-		} else {
-			sb.WriteString("  ")
-			actualDescCol = argWidth + overflowPad
-		}
+		actualDescCol := padToDescCol(&sb, ind+visibleWidth(argPart), descCol)
 		sb.WriteString(r.wrapDesc(descPart, actualDescCol))
 	}
 
@@ -1090,13 +1081,7 @@ func (r *Renderer) renderDesc(desc string) string {
 		if openTok != "" {
 			rendered = openTok + inner + closeTok
 		}
-		return r.renderBackticks(
-			strings.TrimRight(prefix, " "),
-			nil,
-		) + " " + r.renderBackticks(
-			rendered,
-			style,
-		)
+		return r.renderPrefixedNote(prefix, rendered, style)
 	}
 
 	return r.renderBackticks(desc, nil)
@@ -1382,43 +1367,35 @@ func collectDescRefs(sections []Section) descRefs {
 			}
 		}
 	}
-	var walkSections func([]Section)
-	walkSections = func(sections []Section) {
-		for _, sec := range sections {
-			for _, c := range sec.Content {
-				switch v := c.(type) {
-				case Usage:
-					for _, a := range v.Args {
-						indexArg(a)
-					}
-					// Capture the binary name (first token of the Usage command)
-					// so multi-segment command references like "mycli sub cmd" in
-					// Description backticks can be styled consistently with how
-					// the Usage line renders the same name.
-					if refs.binary == "" && v.Command != "" {
-						if first, _, _ := strings.Cut(v.Command, " "); first != "" {
-							refs.binary = first
-						}
-					}
-				case Args:
-					for _, a := range v {
-						indexArg(a)
-					}
-				case FlagGroup:
-					for _, f := range v {
-						indexFlag(f)
-					}
-				case CommandGroup:
-					for _, cmd := range v {
-						refs.commands[cmd.Name] = struct{}{}
-					}
-				case *Section:
-					walkSections([]Section{*v})
+	walkContent(sections, func(c Content, _ int, _ *Section) {
+		switch v := c.(type) {
+		case Usage:
+			for _, a := range v.Args {
+				indexArg(a)
+			}
+			// Capture the binary name (first token of the Usage command)
+			// so multi-segment command references like "mycli sub cmd" in
+			// Description backticks can be styled consistently with how
+			// the Usage line renders the same name.
+			if refs.binary == "" && v.Command != "" {
+				if first, _, _ := strings.Cut(v.Command, " "); first != "" {
+					refs.binary = first
 				}
 			}
+		case Args:
+			for _, a := range v {
+				indexArg(a)
+			}
+		case FlagGroup:
+			for _, f := range v {
+				indexFlag(f)
+			}
+		case CommandGroup:
+			for _, cmd := range v {
+				refs.commands[cmd.Name] = struct{}{}
+			}
 		}
-	}
-	walkSections(sections)
+	})
 	return refs
 }
 
@@ -1506,19 +1483,18 @@ func (d descRefs) lookup(text string, th *theme.Theme) (lipgloss.Style, bool) {
 	return lipgloss.Style{}, false
 }
 
-// argStyleForRef mirrors Renderer.argStyle but operates on the args map
-// from descRefs, so backtick styling in descriptions picks the same
-// optional/required treatment as the Arguments section.
+// argStyleForRef applies the argStyleFor rule to the args map from descRefs,
+// so backtick styling in descriptions picks the same optional/required
+// treatment as the Arguments section.
 func argStyleForRef(a Arg, all map[string]Arg, th *theme.Theme) *lipgloss.Style {
-	if a.Required {
-		return th.HelpArg
-	}
+	anyRequired := false
 	for _, o := range all {
 		if o.Required {
-			return th.HelpArgOptional
+			anyRequired = true
+			break
 		}
 	}
-	return th.HelpArg
+	return argStyleFor(a, anyRequired, th)
 }
 
 func (r *Renderer) flagBacktickBaseStyle() (lipgloss.Style, bool) {
@@ -1558,14 +1534,15 @@ func (r *Renderer) styledSuffix(
 	if prefix[len(prefix)-1] != ' ' {
 		return "", false
 	}
-	note := desc[idx:]
-	return r.renderBackticks(
-		strings.TrimRight(prefix, " "),
-		nil,
-	) + " " + r.renderBackticks(
-		note,
-		&style,
-	), true
+	return r.renderPrefixedNote(prefix, desc[idx:], &style), true
+}
+
+// renderPrefixedNote renders a description followed by its trailing note: the
+// prefix with plain inline-Markdown styling, the note with the given base
+// style, joined by a single space.
+func (r *Renderer) renderPrefixedNote(prefix, note string, style *lipgloss.Style) string {
+	return r.renderBackticks(strings.TrimRight(prefix, " "), nil) +
+		" " + r.renderBackticks(note, style)
 }
 
 func trailingBalancedSuffixStart(s, openTok, closeTok string) (int, bool) {
@@ -1648,10 +1625,15 @@ func (r *Renderer) buildFlagPart(f Flag, hasShort bool) string {
 
 func (r *Renderer) computeDescCol(sections []Section) int {
 	descCol := 0
-	r.walkFlags(sections, 0, func(f Flag, hasShort bool, ind int) {
-		w := ind + visibleWidth(r.buildFlagPart(f, hasShort))
-		if w > descCol {
-			descCol = w
+	walkContent(sections, func(c Content, depth int, sec *Section) {
+		fg, ok := c.(FlagGroup)
+		if !ok {
+			return
+		}
+		ind := nestIndent*depth + indent
+		hasShort := sectionHasShort(sec)
+		for _, f := range fg {
+			descCol = max(descCol, ind+visibleWidth(r.buildFlagPart(f, hasShort)))
 		}
 	})
 	return descCol + r.flagPad
@@ -1662,55 +1644,29 @@ func (r *Renderer) computeDescCol(sections []Section) int {
 // Commands and Aliases sections form one consistent vertical column. Without
 // aliases, command sections retain their configured per-section/global mode.
 func (r *Renderer) computeCmdDescCol(sections []Section) int {
-	hasAliases := false
-	var findAliases func([]Section)
-	findAliases = func(sections []Section) {
-		for _, sec := range sections {
-			for _, content := range sec.Content {
-				switch c := content.(type) {
-				case AliasGroup:
-					hasAliases = hasAliases || len(c) > 0
-				case *Section:
-					findAliases([]Section{*c})
-				}
-			}
-		}
-	}
-	findAliases(sections)
-	if r.cmdAlignMode != AlignModeGlobal && !hasAliases {
-		return 0
-	}
-	col := 0
-	r.walkCommands(sections, 0, func(c Command, ind int) {
-		w := ind + visibleWidth(r.Theme.HelpSubcommand.Render(c.Name))
-		if w > col {
-			col = w
-		}
-	})
 	aliasStyle := r.Theme.HelpAlias
 	if aliasStyle == nil {
 		aliasStyle = r.Theme.HelpSubcommand
 	}
-	var walkAliases func([]Section, int)
-	walkAliases = func(sections []Section, depth int) {
+	hasAliases := false
+	col := 0
+	walkContent(sections, func(content Content, depth int, _ *Section) {
 		ind := nestIndent*depth + indent
-		for _, sec := range sections {
-			for _, content := range sec.Content {
-				switch c := content.(type) {
-				case AliasGroup:
-					for _, alias := range c {
-						w := ind + visibleWidth(aliasStyle.Render(alias.Name))
-						if w > col {
-							col = w
-						}
-					}
-				case *Section:
-					walkAliases([]Section{*c}, depth+1)
-				}
+		switch c := content.(type) {
+		case CommandGroup:
+			for _, cmd := range c {
+				col = max(col, ind+visibleWidth(r.Theme.HelpSubcommand.Render(cmd.Name)))
+			}
+		case AliasGroup:
+			hasAliases = hasAliases || len(c) > 0
+			for _, alias := range c {
+				col = max(col, ind+visibleWidth(aliasStyle.Render(alias.Name)))
 			}
 		}
+	})
+	if r.cmdAlignMode != AlignModeGlobal && !hasAliases {
+		return 0
 	}
-	walkAliases(sections, 0)
 	return col + r.cmdPad
 }
 
@@ -1730,25 +1686,6 @@ func sectionHasShort(sec *Section) bool {
 		}
 	}
 	return false
-}
-
-func (r *Renderer) walkCommands(
-	sections []Section, depth int,
-	fn func(Command, int),
-) {
-	ind := nestIndent*depth + indent
-	for _, sec := range sections {
-		for _, content := range sec.Content {
-			switch c := content.(type) {
-			case CommandGroup:
-				for _, cmd := range c {
-					fn(cmd, ind)
-				}
-			case *Section:
-				r.walkCommands([]Section{*c}, depth+1, fn)
-			}
-		}
-	}
 }
 
 // wrapDesc wraps a styled description string to fit within maxWidth,
@@ -1944,22 +1881,21 @@ func writerIsPlain(w io.Writer) bool {
 	return cw.Profile == colorprofile.NoTTY || cw.Profile == colorprofile.Ascii
 }
 
-func (r *Renderer) walkFlags(
-	sections []Section, depth int,
-	fn func(Flag, bool, int),
-) {
-	ind := nestIndent*depth + indent
-	for _, sec := range sections {
-		hasShort := sectionHasShort(&sec)
-		for _, content := range sec.Content {
-			switch c := content.(type) {
-			case FlagGroup:
-				for _, f := range c {
-					fn(f, hasShort, ind)
+// walkContent visits every content item in the section tree in document
+// order, recursing into nested sections. fn receives each item along with its
+// nesting depth and enclosing section.
+func walkContent(sections []Section, fn func(c Content, depth int, sec *Section)) {
+	var walk func([]Section, int)
+	walk = func(sections []Section, depth int) {
+		for i := range sections {
+			sec := &sections[i]
+			for _, c := range sec.Content {
+				fn(c, depth, sec)
+				if sub, ok := c.(*Section); ok {
+					walk([]Section{*sub}, depth+1)
 				}
-			case *Section:
-				r.walkFlags([]Section{*c}, depth+1, fn)
 			}
 		}
 	}
+	walk(sections, 0)
 }
