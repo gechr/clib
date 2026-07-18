@@ -57,11 +57,15 @@ linters:
         - switch
         - map
     gocritic:
+      enabled-checks:
+        - ruleguard
       settings:
         captLocal:
           paramsOnly: false
         underef:
           skipRecvDeref: false
+        ruleguard:
+          rules: gorules/rules.go
     govet:
       disable:
         - fieldalignment

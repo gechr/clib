@@ -731,6 +731,7 @@ func TestCompletionCommand_Fish(t *testing.T) {
 	root.SetOut(&buf)
 	root.SetArgs([]string{"completion", "fish"})
 	require.NoError(t, root.Execute())
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "complete -c myapp")
 }
 
@@ -744,6 +745,7 @@ func TestCompletionCommand_Bash(t *testing.T) {
 	root.SetOut(&buf)
 	root.SetArgs([]string{"completion", "bash"})
 	require.NoError(t, root.Execute())
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "_myapp()")
 }
 
@@ -757,6 +759,7 @@ func TestCompletionCommand_Zsh(t *testing.T) {
 	root.SetOut(&buf)
 	root.SetArgs([]string{"completion", "zsh"})
 	require.NoError(t, root.Execute())
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "#compdef myapp")
 }
 

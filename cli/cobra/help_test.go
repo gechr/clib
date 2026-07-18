@@ -85,6 +85,7 @@ func TestSections_WithRawUsage(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 	var buf bytes.Buffer
 	require.NoError(t, r.Render(&buf, sections))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, ansi.Strip(buf.String()), use)
 }
 
@@ -619,7 +620,9 @@ func TestSections_Placeholder_PflagUsageLowercasedByDefault(t *testing.T) {
 	require.Equal(t, "Channel CHANNEL, name, or alias", flags[0].Desc)
 
 	rendered := renderCobraTestSections(t, sections)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, rendered, "-c, --channel <channel>")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, rendered, "<CHANNEL>")
 }
 
@@ -635,6 +638,7 @@ func TestSections_Placeholder_WithPreservePlaceholders(t *testing.T) {
 	require.Equal(t, "Channel CHANNEL, name, or alias", flags[0].Desc)
 
 	rendered := renderCobraTestSections(t, sections)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, rendered, "-c, --channel <CHANNEL>")
 }
 
@@ -853,7 +857,9 @@ func TestHelpFunc_UsageReflectsPostProcessedFlags(t *testing.T) {
 	)
 	helpFn(cmd, nil)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "app [options]")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "Miscellaneous")
 }
 

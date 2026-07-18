@@ -123,6 +123,7 @@ func TestCompletionFlags_Handle_PrintCompletion(t *testing.T) {
 
 	require.NoError(t, hErr)
 	require.True(t, handled)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "complete -c clibapp")
 }
 

@@ -449,7 +449,9 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 func TestGenerate_LimitedDynamicArgs(t *testing.T) {
 	out, err := Generate(limitedDynamicArgsGen())
 	require.NoError(t, err)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "function __myapp_accepts_positional")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "test (count $positional) -lt 1")
 }
 

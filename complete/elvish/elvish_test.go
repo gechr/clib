@@ -81,11 +81,15 @@ func TestGenerate_Structure(t *testing.T) {
 	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "set edit:completion:arg-completer['testapp'] = {|@words|")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "use str")
 	// Aliases canonicalize to the primary subcommand path alongside the name.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "(or (eq $w 'test') (eq $w 't'))) { set next = 'testapp;test' }")
 	// Value-flag completion routes through the previous token.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "if (or (eq $prev '--output') (eq $prev '-o')) {")
 }
 
@@ -93,8 +97,10 @@ func TestGenerate_Values(t *testing.T) {
 	out, err := Generate(valuesGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "put 'json'")
 	// Empty terse falls back to a bare put; descriptions use complex-candidate.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "edit:complex-candidate 'info' &display='info  Information'")
 }
 
@@ -102,8 +108,11 @@ func TestGenerate_Hints(t *testing.T) {
 	out, err := Generate(hintsGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "edit:complete-filename $cur")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "edit:complete-dirname $cur")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "str:has-suffix $s '.yaml'")
 }
 
@@ -111,8 +120,11 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 	out, err := Generate(dynamicArgsGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "fn _testapp_positionals {|cmdskip valueflags @tokens|")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "var callargs = ['--@complete='$kind]")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "(external 'testapp') $@callargs 2>/dev/null | from-lines")
 }
 
@@ -125,8 +137,11 @@ func TestGenerate_Hyphenated(t *testing.T) {
 
 	// Hyphens are munged out of Elvish function names but kept in the command
 	// name and arg-completer key.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "fn _my_app_positionals {|cmdskip valueflags @tokens|")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "set edit:completion:arg-completer['my-app'] = {|@words|")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "(external 'my-app') $@callargs")
 }
 

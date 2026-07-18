@@ -100,6 +100,7 @@ func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
 	// token exercises the binary-prefix path: it isn't a known subcommand but
 	// matches the Usage command's first token, so it's styled as a command.
 	out := ansi.Strip(buf.String())
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(
 		t,
 		out,
@@ -109,6 +110,7 @@ func TestRender_Description_BacktickReferencesArgsAndCommands(t *testing.T) {
 	// a plain backticked string. Looking for the literal substring before the
 	// ANSI strip would match either; instead require that the raw output does
 	// NOT contain the un-styled backticked form.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, buf.String(), "`mycli other cmd`")
 }
 
@@ -137,6 +139,7 @@ func TestRender_Description_BackticksPreservedWhenWriterIsPlain(t *testing.T) {
 			var buf bytes.Buffer
 			cw := &colorprofile.Writer{Forward: &buf, Profile: tc.profile}
 			require.NoError(t, r.Render(cw, sections))
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, ansi.Strip(buf.String()), tc.want)
 		})
 	}
@@ -427,9 +430,6 @@ func TestRender_Aliases_UsesHelpAliasWhenSet(t *testing.T) {
 			th.HelpAlias.Render("f")+"\n",
 		buf.String(),
 	)
-	// The ", " separator must be unstyled - verify by reconstructing without
-	// the separator being passed through any Render call.
-	require.Contains(t, buf.String(), ", ")
 }
 
 func TestRender_Args(t *testing.T) {
@@ -482,6 +482,7 @@ func TestRender_Args_RequiredUsesHelpArg(t *testing.T) {
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), th.HelpArg.Render("<file>"))
 }
 
@@ -498,6 +499,7 @@ func TestRender_Args_OptionalOnlyUsesHelpArg(t *testing.T) {
 
 	// When all args are optional (no required args present), optional args
 	// use HelpArg style since there is no need to distinguish.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), th.HelpArg.Render("[<query>]"))
 }
 
@@ -517,8 +519,11 @@ func TestRender_Usage_RequiredAndOptionalArgStyles(t *testing.T) {
 	require.NoError(t, r.Render(&buf, sections))
 
 	out := buf.String()
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpArg.Render("<find>"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpArg.Render("<replace>"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpArgOptional.Render("[<path>…]"))
 }
 
@@ -673,6 +678,7 @@ func TestRender_Text_Backticks(t *testing.T) {
 			var buf bytes.Buffer
 			cw := &colorprofile.Writer{Forward: &buf, Profile: tc.profile}
 			require.NoError(t, r.Render(cw, sections))
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, ansi.Strip(buf.String()), tc.want)
 		})
 	}
@@ -2239,8 +2245,10 @@ func TestWrapStyle_BracketBelow(t *testing.T) {
 	require.GreaterOrEqual(t, len(contentLines), 3, "should have desc + bracket + continuation")
 
 	// First line should have description but NOT '['.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, contentLines[0], "[",
 		"first line should not contain bracket")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, contentLines[0], "Include relationships")
 
 	// Second line should start with '[' at descCol.
@@ -2557,6 +2565,7 @@ func TestRender_Flags_ShortOnlyGroupTriggersIndent(t *testing.T) {
 	got := ansi.Strip(buf.String())
 
 	// --verbose should be indented because -h exists in the section.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, got, "      --verbose")
 }
 
@@ -3449,7 +3458,9 @@ func TestRender_Args_DescBackticksStyled(t *testing.T) {
 
 	// Backticks are consumed (not rendered literally) and the token carries the
 	// arg style.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, buf.String(), "`provider`")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), th.HelpArg.Render("provider"))
 }
 
@@ -3481,8 +3492,11 @@ func TestRender_Description_BacktickEnumValueUsesArgStyle(t *testing.T) {
 	out := buf.String()
 	// The enum value inherits the arg color (HelpArg), matching how <provider>
 	// renders - not the purple HelpDescBacktick fallback.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpArg.Render("github"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, out, th.HelpDescBacktick.Render("github"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, out, "`github`")
 }
 
@@ -3505,7 +3519,9 @@ func TestRender_Description_BacktickFlagEnumValueUsesFlagStyle(t *testing.T) {
 	require.NoError(t, r.Render(&buf, sections))
 
 	out := buf.String()
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpFlag.Render("debug"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, out, th.HelpDescBacktick.Render("debug"))
 }
 
@@ -3530,7 +3546,9 @@ func TestRender_Description_ArgEnumBeatsFlagEnum(t *testing.T) {
 	require.NoError(t, r.Render(&buf, sections))
 
 	out := buf.String()
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, th.HelpArg.Render("github"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, out, th.HelpFlag.Render("github"))
 }
 
@@ -3553,5 +3571,6 @@ func TestRender_Description_BacktickUnknownEnumValueFallsBack(t *testing.T) {
 	}
 	require.NoError(t, r.Render(&buf, sections))
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), th.HelpDescBacktick.Render("bitbucket"))
 }

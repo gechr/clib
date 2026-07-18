@@ -742,6 +742,7 @@ func runCompletionCommand(t *testing.T, sh, contains string) {
 	_, _ = buf.ReadFrom(r)
 
 	require.NoError(t, err)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), contains)
 }
 

@@ -238,6 +238,7 @@ func TestRender_List_BlockSpacing(t *testing.T) {
 
 func TestRender_List_NoBlankBetweenItems(t *testing.T) {
 	out := renderDesc(t, "1. one\n2. two\n3. three", help.WithDescriptionWidth(0))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, out, "\n\n")
 }
 

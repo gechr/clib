@@ -267,7 +267,9 @@ fi
 func TestGenerate_LimitedDynamicArgs(t *testing.T) {
 	out, err := Generate(limitedDynamicArgsGen())
 	require.NoError(t, err)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "if [[ ${#__dyn_pos[@]} -ge 1 ]]; then")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--@complete=email")
 }
 

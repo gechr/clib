@@ -813,6 +813,7 @@ func TestCompletionCommand_Fish(t *testing.T) {
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "complete -c myapp")
 }
 
@@ -842,6 +843,7 @@ func TestCompletionCommand_Bash(t *testing.T) {
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "_myapp()")
 }
 
@@ -871,6 +873,7 @@ func TestCompletionCommand_Zsh(t *testing.T) {
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, buf.String(), "#compdef myapp")
 }
 

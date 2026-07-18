@@ -81,11 +81,15 @@ func TestGenerate_Structure(t *testing.T) {
 	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "Register-ArgumentCompleter -Native -CommandName 'testapp'")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "using namespace System.Management.Automation")
 	// Aliases canonicalize to the primary subcommand path.
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "'testapp;t' { 'testapp;test'; break }")
 	// Value-flag completion routes through the previous token.
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "switch ($prev)")
 }
 
@@ -93,6 +97,7 @@ func TestGenerate_Values(t *testing.T) {
 	out, err := Generate(valuesGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(
 		t,
 		out,
@@ -100,6 +105,7 @@ func TestGenerate_Values(t *testing.T) {
 	)
 	// Empty terse falls back to the value so CompletionResult never gets an
 	// empty tooltip.
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(
 		t,
 		out,
@@ -111,8 +117,11 @@ func TestGenerate_Hints(t *testing.T) {
 	out, err := Generate(hintsGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "[CompletionCompleters]::CompleteFilename($wordToComplete)")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, `$_.ListItemText -match '\.(yaml|yml)$'`)
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "$_.ResultType -eq [CompletionResultType]::ProviderContainer")
 }
 
@@ -120,8 +129,11 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 	out, err := Generate(dynamicArgsGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "function __testapp_Tokens {")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "function __testapp_Positionals {")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, `$callArgs = @("--@complete=$kind")`)
 }
 
@@ -134,8 +146,11 @@ func TestGenerate_Hyphenated(t *testing.T) {
 
 	// Hyphens are stripped from PowerShell function names but kept in the
 	// command name and call operator.
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "function __my_app_Tokens {")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "Register-ArgumentCompleter -Native -CommandName 'my-app'")
+	//nolint:gocritic // fragment check against a large generated script; full text is pinned by the package-level golden tests
 	require.Contains(t, out, "& 'my-app' @callArgs")
 }
 

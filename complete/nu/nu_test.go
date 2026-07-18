@@ -81,11 +81,16 @@ func TestGenerate_Structure(t *testing.T) {
 	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp" [`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--verbose(-v)  # Verbose")
 	// Each subcommand is its own extern; aliases get a duplicate extern.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp build" [`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp test" [`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp t" [`)
 }
 
@@ -93,9 +98,12 @@ func TestGenerate_Values(t *testing.T) {
 	out, err := Generate(valuesGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `def "nu-complete testapp format" [] {`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "['json' 'yaml' 'text']")
 	// Value descriptions render as records consumed by Nushell's menu.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "{value: 'info', description: 'Information'}")
 }
 
@@ -104,8 +112,11 @@ func TestGenerate_Hints(t *testing.T) {
 	require.NoError(t, err)
 
 	// File/extension hints map to the native `path` shape; dirs to `directory`.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--config: path")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--output: path")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--dir: directory")
 }
 
@@ -113,12 +124,15 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 	out, err := Generate(dynamicArgsGen())
 	require.NoError(t, err)
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(
 		t,
 		out,
 		`def "_testapp_positionals" [context: string, cmdskip: int, valueflags: list<string>] {`,
 	)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `...rest: string@"nu-complete testapp args"`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `^testapp $"--@complete=($kind)"`)
 }
 
@@ -131,12 +145,15 @@ func TestGenerate_Hyphenated(t *testing.T) {
 
 	// Hyphens are munged out of Nushell helper names but kept in the command
 	// name, the extern name, and the external invocation.
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(
 		t,
 		out,
 		`def "_my_app_positionals" [context: string, cmdskip: int, valueflags: list<string>] {`,
 	)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "my-app" [`)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "^my-app $\"--@complete=($kind)\"")
 }
 

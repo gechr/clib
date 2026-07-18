@@ -409,16 +409,22 @@ func TestGenerator_HiddenFlagCompletions(t *testing.T) {
 	// opt-in, which is still offered.
 	var def strings.Builder
 	require.NoError(t, complete.NewGenerator("hid").FromFlags(flags).Print(&def, "fish"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, def.String(), "-l visible")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, def.String(), "-l debug")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.NotContains(t, def.String(), "-l secret")
 
 	// WithIncludeHidden: every hidden flag is offered.
 	var all strings.Builder
 	require.NoError(t, complete.NewGenerator("hid", complete.WithIncludeHidden()).
 		FromFlags(flags).Print(&all, "fish"))
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, all.String(), "-l visible")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, all.String(), "-l debug")
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, all.String(), "-l secret")
 }
 
@@ -944,8 +950,11 @@ func TestForwardFlagValue_ForwardsContext(t *testing.T) {
 			var buf strings.Builder
 			require.NoError(t, genForwardFlagValue().Print(&buf, sh))
 			got := buf.String()
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, got, want.helper, "forwarded-flags helper should be defined")
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, got, want.plainCall, "dynamic flag value should forward context")
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(
 				t,
 				got,
@@ -970,6 +979,7 @@ func TestForwardFlagValue_StopsAtTerminator(t *testing.T) {
 		t.Run(sh, func(t *testing.T) {
 			var buf strings.Builder
 			require.NoError(t, genForwardFlagValue().Print(&buf, sh))
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, buf.String(), want,
 				"forwarded-flags helper must break on the -- terminator")
 		})
@@ -1004,8 +1014,10 @@ func TestForwardDynamicArgs_NotCountedAsPositional(t *testing.T) {
 			var buf strings.Builder
 			require.NoError(t, genForwardDynamicArgs().Print(&buf, sh))
 			got := buf.String()
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, got, want.firstSlotForwards,
 				"first slot must forward context, proving the forwarded flag is not counted")
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.NotContains(t, got, want.positionalAppend,
 				"forwarded flag value must not be appended to the positional array")
 		})
@@ -1025,6 +1037,7 @@ func TestForwardDynamicArgs_StopsAtTerminator(t *testing.T) {
 		t.Run(sh, func(t *testing.T) {
 			var buf strings.Builder
 			require.NoError(t, genForwardDynamicArgs().Print(&buf, sh))
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.Contains(t, buf.String(), want,
 				"positional forwarded-flags helper must break on the -- terminator")
 		})
@@ -1046,7 +1059,9 @@ func TestForwardFlagValue_NoForwardSpecs(t *testing.T) {
 			var buf strings.Builder
 			require.NoError(t, gen.Print(&buf, sh))
 			got := buf.String()
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.NotContains(t, got, "forwarded_flags")
+			//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 			require.NotContains(t, got, "--@complete=target --")
 		})
 	}
@@ -1065,11 +1080,13 @@ func TestZshDynamicValuesSplitOnNewlines(t *testing.T) {
 	require.NoError(t, gen.Print(&buf, "zsh"))
 	got := buf.String()
 
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(
 		t,
 		got,
 		`'--labels=[Labels]:labels:{ local -a items; items=(${(f)"$(myapp --@complete=labels)"}); _sequence compadd - "${(@)items}" }'`,
 	)
+	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(
 		t,
 		got,
