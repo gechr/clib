@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/help"
+	"github.com/gechr/clib/internal/adapter"
 	placeholders "github.com/gechr/clib/internal/placeholder"
 	xslices "github.com/gechr/x/slices"
 	clilib "github.com/urfave/cli/v3"
@@ -22,20 +23,13 @@ func HelpPrinter(
 	sections func(cmd *clilib.Command) []help.Section,
 	opts ...help.Option,
 ) func(io.Writer, string, any) {
-	behavior := help.ResolvePolicy(opts...)
 	return func(w io.Writer, _ string, data any) {
 		cmd, ok := data.(*clilib.Command)
 		if !ok {
 			// Non-*Command data is silently ignored; urfave calls HelpPrinter with various types.
 			return
 		}
-		s := help.Apply(sections(cmd), opts...)
-		if !behavior.AlwaysShowDescription {
-			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
-		}
-		if !behavior.AlwaysShowExamples {
-			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
-		}
+		s := adapter.ApplyLongHelp(sections(cmd), os.Args, opts...)
 		cw := colorprofile.NewWriter(w, os.Environ())
 		_ = r.Render(cw, s)
 	}
@@ -260,17 +254,9 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 		if prefix == "" {
 			prefix = clilib.DefaultInverseBoolPrefix
 		}
-		// A PositiveOnly/NegativeOnly extra advertises just that variant; the
-		// flag stays negatable, so the hidden spelling still parses and
-		// completes.
-		switch {
-		case extra != nil && extra.PositiveOnly:
-			long = bif.Name
-		case extra != nil && extra.NegativeOnly:
-			long = prefix + bif.Name
-		default:
-			long = "[" + prefix + "]" + bif.Name
-		}
+		long = adapter.NegatableLong(bif.Name, prefix,
+			extra != nil && extra.PositiveOnly,
+			extra != nil && extra.NegativeOnly)
 		for _, n := range bif.Aliases {
 			if len(n) == 1 && short == "" {
 				short = n
@@ -314,7 +300,7 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 	}
 
 	if extra != nil && extra.Placeholder != "" {
-		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
+		hf.Placeholder = adapter.NormalizePlaceholder(extra.Placeholder, cfg.lowercasePlaceholders)
 		hf.Repeatable = isMultiValue
 	} else if hasArg {
 		switch {
@@ -354,15 +340,7 @@ func flagToHelp(cfg sectionsConfig, cmd *clilib.Command, f clilib.Flag) help.Fla
 	}
 
 	if extra != nil {
-		if extra.HideLong {
-			hf.Long = ""
-		}
-		if extra.HideShort {
-			hf.Short = ""
-		}
-		if extra.NoIndent {
-			hf.NoIndent = true
-		}
+		adapter.ApplyFlagVisibility(&hf, extra.HideLong, extra.HideShort, extra.NoIndent)
 	}
 
 	return hf
@@ -389,13 +367,6 @@ func takesInteger(f clilib.Flag) bool {
 		return false
 	}
 	return docFlag.TypeName() == "int" || docFlag.TypeName() == "uint"
-}
-
-func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
-	if !cfg.lowercasePlaceholders {
-		return placeholder
-	}
-	return strings.ToLower(placeholder)
 }
 
 // parseArgsUsage parses an ArgsUsage string into help.Arg entries.

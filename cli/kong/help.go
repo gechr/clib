@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/complete"
 	"github.com/gechr/clib/help"
+	"github.com/gechr/clib/internal/adapter"
 	placeholders "github.com/gechr/clib/internal/placeholder"
 	"github.com/gechr/clib/internal/tag"
 	xslices "github.com/gechr/x/slices"
@@ -28,22 +29,9 @@ func HelpPrinter(
 	sections func() ([]help.Section, error),
 	opts ...help.Option,
 ) konglib.HelpPrinter {
-	return func(_ konglib.HelpOptions, ctx *konglib.Context) error {
-		s, err := sections()
-		if err != nil {
-			return err
-		}
-		behavior := help.ResolvePolicy(opts...)
-		s = help.Apply(s, opts...)
-		if !behavior.AlwaysShowDescription {
-			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
-		}
-		if !behavior.AlwaysShowExamples {
-			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
-		}
-		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
-		return r.Render(w, s)
-	}
+	return HelpPrinterFunc(r, func(*konglib.Context) ([]help.Section, error) {
+		return sections()
+	}, opts...)
 }
 
 // HelpPrinterFunc returns a context-aware kong.HelpPrinter.
@@ -62,14 +50,7 @@ func HelpPrinterFunc(
 		if err != nil {
 			return err
 		}
-		behavior := help.ResolvePolicy(opts...)
-		s = help.Apply(s, opts...)
-		if !behavior.AlwaysShowDescription {
-			s = help.Apply(s, help.WithDescriptionOnLongHelp(os.Args))
-		}
-		if !behavior.AlwaysShowExamples {
-			s = help.Apply(s, help.WithExamplesOnLongHelp(os.Args))
-		}
+		s = adapter.ApplyLongHelp(s, os.Args, opts...)
 		w := colorprofile.NewWriter(ctx.Stdout, os.Environ())
 		return r.Render(w, s)
 	}
@@ -704,16 +685,7 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		if prefix == "" {
 			prefix = "no-"
 		}
-		// A bare positive/negative tag advertises just that variant; the flag
-		// stays negatable, so the hidden spelling still parses and completes.
-		switch {
-		case f.PositiveOnly:
-			break
-		case f.NegativeOnly:
-			long = prefix + long
-		default:
-			long = "[" + prefix + "]" + long
-		}
+		long = adapter.NegatableLong(long, prefix, f.PositiveOnly, f.NegativeOnly)
 	}
 	placeholder := f.Placeholder
 	if placeholder == "" && f.HasArg {
@@ -725,18 +697,10 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		desc = f.Terse
 	}
 	repeatable := placeholder != "" && (f.IsCSV || (f.IsSlice && !f.PlaceholderOverride))
-	short := f.Short
-	if f.HideShort {
-		short = ""
-	}
-	if f.HideLong {
-		long = ""
-	}
 
-	return help.Flag{
-		Short:         short,
+	hf := help.Flag{
+		Short:         f.Short,
 		Long:          long,
-		NoIndent:      f.NoIndent,
 		Default:       f.Default,
 		Desc:          desc,
 		Enum:          f.Enum,
@@ -746,4 +710,6 @@ func helpFlagFromMeta(f complete.FlagMeta) help.Flag {
 		Placeholder:   placeholder,
 		Repeatable:    repeatable,
 	}
+	adapter.ApplyFlagVisibility(&hf, f.HideLong, f.HideShort, f.NoIndent)
+	return hf
 }

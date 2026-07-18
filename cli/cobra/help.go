@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 	"github.com/gechr/clib/help"
+	"github.com/gechr/clib/internal/adapter"
 	placeholders "github.com/gechr/clib/internal/placeholder"
 	xslices "github.com/gechr/x/slices"
 	xstrings "github.com/gechr/x/strings"
@@ -25,14 +26,7 @@ func HelpFunc(
 ) func(*cobralib.Command, []string) {
 	return func(cmd *cobralib.Command, _ []string) {
 		w := colorprofile.NewWriter(cmd.OutOrStdout(), os.Environ())
-		behavior := help.ResolvePolicy(opts...)
-		renderSections := help.Apply(sections(cmd), opts...)
-		if !behavior.AlwaysShowDescription {
-			renderSections = help.Apply(renderSections, help.WithDescriptionOnLongHelp(os.Args))
-		}
-		if !behavior.AlwaysShowExamples {
-			renderSections = help.Apply(renderSections, help.WithExamplesOnLongHelp(os.Args))
-		}
+		renderSections := adapter.ApplyLongHelp(sections(cmd), os.Args, opts...)
 		setUsageShowOptions(renderSections)
 		_ = r.Render(w, renderSections)
 	}
@@ -320,12 +314,15 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 	// usage are inline-code markers that must survive to the renderer.
 	switch {
 	case extra != nil && extra.Placeholder != "":
-		hf.Placeholder = normalizePlaceholder(extra.Placeholder, cfg)
+		hf.Placeholder = adapter.NormalizePlaceholder(extra.Placeholder, cfg.lowercasePlaceholders)
 		hf.Repeatable = isRepeatable
 	case typeName != pflagTypeBool:
 		usagePlaceholder, usage, hasUsagePlaceholder := splitPflagUsagePlaceholder(f.Usage)
 		if hasUsagePlaceholder {
-			hf.Placeholder = normalizePlaceholder(usagePlaceholder, cfg)
+			hf.Placeholder = adapter.NormalizePlaceholder(
+				usagePlaceholder,
+				cfg.lowercasePlaceholders,
+			)
 			hf.Desc = usage
 		} else if placeholder := completionPlaceholder(f); placeholder != "" {
 			hf.Placeholder = placeholder
@@ -356,31 +353,13 @@ func pflagToHelpFlag(cfg sectionsConfig, f *pflag.Flag) help.Flag {
 		hf.EnumDefault = f.DefValue
 	}
 
-	// Mirror the kong/urfave rendering of negatable flags: the bracketed
-	// [no-] form by default, or just the variant a PositiveOnly/NegativeOnly
-	// extra advertises. The flag stays negatable either way, so the hidden
-	// spelling still parses and completes.
 	if extra != nil && extra.Negatable {
-		switch {
-		case extra.PositiveOnly:
-			break
-		case extra.NegativeOnly:
-			hf.Long = "no-" + f.Name
-		default:
-			hf.Long = "[no-]" + f.Name
-		}
+		// pflag has no inverse-prefix concept, so the prefix is always "no-".
+		hf.Long = adapter.NegatableLong(f.Name, "no-", extra.PositiveOnly, extra.NegativeOnly)
 	}
 
 	if extra != nil {
-		if extra.HideLong {
-			hf.Long = ""
-		}
-		if extra.HideShort {
-			hf.Short = ""
-		}
-		if extra.NoIndent {
-			hf.NoIndent = true
-		}
+		adapter.ApplyFlagVisibility(&hf, extra.HideLong, extra.HideShort, extra.NoIndent)
 	}
 
 	return hf
@@ -408,13 +387,6 @@ func isIntegerPflagType(typeName string) bool {
 	default:
 		return false
 	}
-}
-
-func normalizePlaceholder(placeholder string, cfg sectionsConfig) string {
-	if !cfg.lowercasePlaceholders {
-		return placeholder
-	}
-	return strings.ToLower(placeholder)
 }
 
 // splitPflagUsagePlaceholder extracts the first backquoted token from a

@@ -10,7 +10,6 @@ type sectionsConfig struct {
 	lowercasePlaceholders           bool
 	optionsTitle                    string
 	rawUsage                        bool
-	showInheritedFlagsOnSubcommands bool
 	sortGroupOrder                  bool
 	subcommandOptional              bool
 }
@@ -37,7 +36,6 @@ func WithHideInheritedFlags() SectionsOption {
 func WithHideInheritedFlagsOnSubcommands() SectionsOption {
 	return func(c *sectionsConfig) {
 		c.hideInheritedFlagsOnSubcommands = true
-		c.showInheritedFlagsOnSubcommands = false
 	}
 }
 
@@ -87,7 +85,6 @@ func WithRawUsage() SectionsOption {
 func WithShowInheritedFlagsOnSubcommands() SectionsOption {
 	return func(c *sectionsConfig) {
 		c.hideInheritedFlagsOnSubcommands = false
-		c.showInheritedFlagsOnSubcommands = true
 	}
 }
 
