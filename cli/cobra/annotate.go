@@ -105,6 +105,3 @@ func getExtra(f *pflag.Flag) *FlagExtra {
 	}
 	return &extra
 }
-
-// resetExtras is a no-op now that extras are stored on flags directly.
-func resetExtras() {}
