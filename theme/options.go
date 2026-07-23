@@ -30,7 +30,7 @@ func WithDim(s lipgloss.Style) Option {
 }
 
 // WithEntityColors sets the color palette for entity colorization.
-func WithEntityColors(c []color.Color) Option {
+func WithEntityColors(c ...color.Color) Option {
 	return func(t *Theme) { t.EntityColors = c }
 }
 
@@ -228,6 +228,18 @@ func WithRed(s lipgloss.Style) Option {
 // WithTimeAgoThresholds sets the time-ago color thresholds.
 func WithTimeAgoThresholds(th []TimeAgoThreshold) Option {
 	return func(t *Theme) { t.TimeAgoThresholds = th }
+}
+
+// WithTrueColor replaces the entity color palette with 256 curated 24-bit
+// colors (colorcet's Glasbey palettes), every pair visually distinct - use
+// when entities outnumber the default ANSI-256 palette. The palette adapts to
+// the theme's Background, so apply this option to a preset (which sets
+// Background first). The caller is responsible for ensuring the terminal
+// supports true color.
+func WithTrueColor() Option {
+	return func(t *Theme) {
+		t.EntityColors = trueColorEntityColors(t.Background)
+	}
 }
 
 // WithYellow sets the yellow color style.

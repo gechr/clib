@@ -1,7 +1,6 @@
 package theme_test
 
 import (
-	"image/color"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -466,7 +465,7 @@ func TestWith_AllOptions(t *testing.T) {
 		},
 		{
 			name: "WithEntityColors",
-			opt:  theme.WithEntityColors([]color.Color{lipgloss.Color("1"), lipgloss.Color("2")}),
+			opt:  theme.WithEntityColors(lipgloss.Color("1"), lipgloss.Color("2")),
 			check: func(t *testing.T, th *theme.Theme) {
 				t.Helper()
 				require.Len(t, th.EntityColors, 2)

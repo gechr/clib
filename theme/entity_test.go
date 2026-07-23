@@ -40,16 +40,36 @@ func TestEntityColorAllInputsResolve(t *testing.T) {
 
 func TestEntityColorUsesThemePalette(t *testing.T) {
 	palette := []color.Color{lipgloss.Color("#112233")}
-	th := theme.Dark().With(theme.WithEntityColors(palette))
+	th := theme.Dark().With(theme.WithEntityColors(palette...))
 
 	require.Equal(t, palette[0], th.EntityColor("anything"))
 }
 
 func TestEntityColorEmptyPalette(t *testing.T) {
-	th := theme.Dark().With(theme.WithEntityColors(nil))
+	th := theme.Dark().With(theme.WithEntityColors())
 
 	require.Nil(t, th.EntityColor("anything"))
 	require.Equal(t, "anything", th.RenderEntity("anything"))
+}
+
+func TestWithTrueColorGeneratesDistinctPalette(t *testing.T) {
+	th := theme.Dark().With(theme.WithTrueColor())
+
+	require.Len(t, th.EntityColors, 256)
+
+	seen := map[color.Color]bool{}
+	for _, c := range th.EntityColors {
+		require.False(t, seen[c], c)
+		seen[c] = true
+	}
+}
+
+func TestWithTrueColorAdaptsToBackground(t *testing.T) {
+	dark := theme.Dark().With(theme.WithTrueColor())
+	light := theme.Light().With(theme.WithTrueColor())
+
+	require.Len(t, light.EntityColors, len(dark.EntityColors))
+	require.NotEqual(t, dark.EntityColors, light.EntityColors)
 }
 
 func TestMonochromeEntityColorEmpty(t *testing.T) {
