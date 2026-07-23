@@ -64,7 +64,7 @@ func TestDefaultTheme_StyleValues(t *testing.T) {
 	)
 
 	// Verify entity colors count.
-	require.Len(t, th.EntityColors, 20)
+	require.Len(t, th.EntityColors, 30)
 	require.Equal(t, lipgloss.Color("208"), th.EntityColors[0])
 
 	// Verify time-ago thresholds count.

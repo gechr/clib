@@ -101,34 +101,36 @@ func fromPalette(name string, background Background, p palette) *Theme {
 
 func defaultEntityColors(background Background) []color.Color {
 	colors := []color.Color{
-		lipgloss.Color(
-			"208",
-		),
-		lipgloss.Color("51"),
-		lipgloss.Color("226"),
-		lipgloss.Color("207"),
-		lipgloss.Color("82"),
-		lipgloss.Color(
-			"75",
-		),
-		lipgloss.Color("214"),
-		lipgloss.Color("177"),
-		lipgloss.Color("48"),
-		lipgloss.Color("87"),
-		lipgloss.Color(
-			"220",
-		),
-		lipgloss.Color("141"),
-		lipgloss.Color("118"),
-		lipgloss.Color("50"),
-		lipgloss.Color("213"),
-		lipgloss.Color(
-			"111",
-		),
-		lipgloss.Color("156"),
-		lipgloss.Color("183"),
-		lipgloss.Color("229"),
-		lipgloss.Color("123"),
+		lipgloss.Color("208"), // orange
+		lipgloss.Color("51"),  // cyan
+		lipgloss.Color("226"), // yellow
+		lipgloss.Color("207"), // magenta
+		lipgloss.Color("82"),  // green
+		lipgloss.Color("75"),  // blue
+		lipgloss.Color("214"), // orange (light)
+		lipgloss.Color("177"), // purple
+		lipgloss.Color("48"),  // spring green
+		lipgloss.Color("87"),  // turquoise
+		lipgloss.Color("220"), // gold
+		lipgloss.Color("141"), // purple (light)
+		lipgloss.Color("118"), // green (light)
+		lipgloss.Color("50"),  // spring green (light)
+		lipgloss.Color("213"), // pink
+		lipgloss.Color("111"), // sky blue
+		lipgloss.Color("156"), // pale green
+		lipgloss.Color("183"), // plum
+		lipgloss.Color("229"), // pale yellow
+		lipgloss.Color("123"), // pale cyan
+		lipgloss.Color("203"), // red
+		lipgloss.Color("63"),  // blue
+		lipgloss.Color("173"), // brown
+		lipgloss.Color("250"), // grey
+		lipgloss.Color("37"),  // teal
+		lipgloss.Color("57"),  // indigo
+		lipgloss.Color("124"), // maroon
+		lipgloss.Color("100"), // olive
+		lipgloss.Color("209"), // coral
+		lipgloss.Color("103"), // slate
 	}
 	if background != BackgroundLight {
 		return colors

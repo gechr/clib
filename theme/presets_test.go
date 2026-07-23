@@ -85,7 +85,7 @@ func TestPresets(t *testing.T) {
 			require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
 			require.Nil(t, th.HelpFlagBacktick)
 			if preset.entityColors {
-				require.Len(t, th.EntityColors, 20)
+				require.Len(t, th.EntityColors, 30)
 			} else {
 				require.Empty(t, th.EntityColors)
 			}
