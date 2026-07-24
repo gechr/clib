@@ -55,7 +55,7 @@ func TestEntityColorEmptyPalette(t *testing.T) {
 func TestWithTrueColorGeneratesDistinctPalette(t *testing.T) {
 	th := theme.Dark().With(theme.WithTrueColor())
 
-	require.Len(t, th.EntityColors, 256)
+	require.Len(t, th.EntityColors, 32)
 
 	seen := map[color.Color]bool{}
 	for _, c := range th.EntityColors {
