@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	xpalette "github.com/gechr/x/palette"
 )
 
 // Option configures a Theme.
@@ -238,7 +239,11 @@ func WithTimeAgoThresholds(th []TimeAgoThreshold) Option {
 // supports true color.
 func WithTrueColor() Option {
 	return func(t *Theme) {
-		t.EntityColors = trueColorEntityColors(t.Background)
+		if t.Background == BackgroundLight {
+			t.EntityColors = xpalette.TrueColorLight()
+		} else {
+			t.EntityColors = xpalette.TrueColorDark()
+		}
 	}
 }
 
