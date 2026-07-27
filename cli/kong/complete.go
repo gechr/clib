@@ -27,6 +27,7 @@ type CompletionFlags struct {
 	InstallCompletion   bool   `name:"install-completion"   help:"Install shell completions"   hidden:""`
 	UninstallCompletion bool   `name:"uninstall-completion" help:"Uninstall shell completions" hidden:""`
 	PrintCompletion     bool   `name:"print-completion"     help:"Print completion script"     hidden:""`
+	unknownFlags        []string
 }
 
 // Handle checks whether a completion action was requested and executes it.
@@ -42,6 +43,7 @@ func (f *CompletionFlags) Handle(
 		Complete:            f.Complete,
 		Shell:               f.Shell,
 		InstallCompletion:   f.InstallCompletion,
+		UnknownFlags:        f.unknownFlags,
 		UninstallCompletion: f.UninstallCompletion,
 		PrintCompletion:     f.PrintCompletion,
 	}
@@ -73,6 +75,7 @@ func Preflight() (CompletionFlags, []string, bool) {
 		Complete:            cf.Complete,
 		Shell:               cf.Shell,
 		InstallCompletion:   cf.InstallCompletion,
+		unknownFlags:        cf.UnknownFlags,
 		UninstallCompletion: cf.UninstallCompletion,
 		PrintCompletion:     cf.PrintCompletion,
 	}, positional, true

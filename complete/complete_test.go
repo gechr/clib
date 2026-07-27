@@ -876,6 +876,22 @@ func TestHandleAction_Complete_NilHandler(t *testing.T) {
 	require.True(t, handled)
 }
 
+func TestHandleAction_CompleteAllowsForwardedFlags(t *testing.T) {
+	var called bool
+	a := complete.Action{
+		Complete:     "author",
+		Shell:        "fish",
+		UnknownFlags: []string{"--repo"},
+	}
+	handled, err := complete.HandleAction(a, nil, func(_, _ string, _ []string) {
+		called = true
+	}, false)
+
+	require.NoError(t, err)
+	require.True(t, handled)
+	require.True(t, called)
+}
+
 func TestHandleAction_NoAction(t *testing.T) {
 	a := complete.Action{}
 	handled, err := complete.HandleAction(a, nil, nil, false)

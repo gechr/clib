@@ -43,6 +43,8 @@ func ApplyActionArgs(action *Action, args []string) {
 			if parsed, ok := parseBoolArg(value, hasValue); ok {
 				action.PrintCompletion = parsed
 			}
+		default:
+			action.UnknownFlags = append(action.UnknownFlags, "--"+name)
 		}
 	}
 }

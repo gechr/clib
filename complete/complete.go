@@ -27,6 +27,7 @@ type Action struct {
 	InstallCompletion   bool
 	PrintCompletion     bool
 	Shell               string // resolved shell name
+	UnknownFlags        []string
 	UninstallCompletion bool
 }
 
@@ -38,6 +39,13 @@ func HandleAction(a Action, gen *Generator, handler Handler, quiet bool) (bool, 
 			handler(a.Shell, a.Complete, a.Args)
 		}
 		return true, nil
+	}
+	if len(a.UnknownFlags) > 0 &&
+		(a.InstallCompletion || a.UninstallCompletion || a.PrintCompletion) {
+		if len(a.UnknownFlags) == 1 {
+			return true, fmt.Errorf("unknown flag: %s", a.UnknownFlags[0])
+		}
+		return true, fmt.Errorf("unknown flags: %s", strings.Join(a.UnknownFlags, ", "))
 	}
 	if a.InstallCompletion {
 		return true, gen.Install(a.Shell, quiet)

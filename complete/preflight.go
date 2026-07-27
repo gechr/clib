@@ -12,6 +12,7 @@ type CompletionFlags struct {
 	Complete            string
 	Shell               string
 	InstallCompletion   bool
+	UnknownFlags        []string
 	UninstallCompletion bool
 	PrintCompletion     bool
 }
@@ -47,6 +48,7 @@ func Preflight() (CompletionFlags, []string, bool) {
 		Complete:            action.Complete,
 		Shell:               action.Shell,
 		InstallCompletion:   action.InstallCompletion,
+		UnknownFlags:        action.UnknownFlags,
 		UninstallCompletion: action.UninstallCompletion,
 		PrintCompletion:     action.PrintCompletion,
 	}
@@ -77,6 +79,7 @@ func (f *CompletionFlags) Handle(
 		Complete:            f.Complete,
 		Args:                cfg.args,
 		InstallCompletion:   f.InstallCompletion,
+		UnknownFlags:        f.UnknownFlags,
 		UninstallCompletion: f.UninstallCompletion,
 		PrintCompletion:     f.PrintCompletion,
 	}, gen, handler, cfg.quiet)

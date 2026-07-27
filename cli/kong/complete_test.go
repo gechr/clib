@@ -56,6 +56,19 @@ func TestPreflight_InstallCompletion(t *testing.T) {
 	require.Nil(t, args)
 }
 
+func TestPreflight_InstallCompletionRejectsUnknownFlag(t *testing.T) {
+	t.Setenv("_TEST_ARGS", "1")
+	os.Args = []string{"myapp", "--install-completion", "--shell=nu"}
+
+	f, args, ok := kong.Preflight()
+	require.True(t, ok)
+	require.Nil(t, args)
+
+	handled, err := f.Handle(testGenerator(), nil)
+	require.True(t, handled)
+	require.EqualError(t, err, "unknown flag: --shell")
+}
+
 func TestPreflight_PrintCompletion(t *testing.T) {
 	t.Setenv("_TEST_ARGS", "1")
 	os.Args = []string{"myapp", "--print-completion"}
