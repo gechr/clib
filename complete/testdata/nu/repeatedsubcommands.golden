@@ -8,32 +8,39 @@ extern "tool" [
     ...rest: string@"_tool_no_args"
 ]
 
+# Manage containers
 extern "tool container" [
     ...rest: string@"_tool_no_args"
 ]
 
+# Log in to a container registry
 extern "tool container login" [
     --registry: string  # Registry URL
     ...rest: string@"_tool_no_args"
 ]
 
+# Manage foo
 extern "tool foo" [
     ...rest: string@"_tool_no_args"
 ]
 
+# Log in to foo
 extern "tool foo login" [
     ...rest: string@"_tool_no_args"
 ]
 
+# Manage bars
 extern "tool foo login bar" [
     ...rest: string@"_tool_no_args"
 ]
 
+# Log in to a bar
 extern "tool foo login bar login" [
     --bar-token: string  # Bar token
     ...rest: string@"_tool_no_args"
 ]
 
+# Log in
 extern "tool login" [
     --user(-u): string  # User name
     ...rest: string@"_tool_no_args"

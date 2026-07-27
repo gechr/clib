@@ -9,20 +9,24 @@ extern "myapp" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# Manage authentication
 extern "myapp auth" [
     --token: string  # Auth token
     ...rest: string@"_myapp_no_args"
 ]
 
+# Log in
 extern "myapp auth login" [
     --browser  # Open browser
     ...rest: string@"_myapp_no_args"
 ]
 
+# Log out
 extern "myapp auth logout" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# Run command
 extern "myapp run" [
     ...rest: string@"_myapp_no_args"
 ]

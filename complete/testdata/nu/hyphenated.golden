@@ -9,11 +9,13 @@ extern "my-app" [
     ...rest: string@"_my_app_no_args"
 ]
 
+# Build the project
 extern "my-app build" [
     --output(-o): string  # Output path
     ...rest: string@"_my_app_no_args"
 ]
 
+# Run tests
 extern "my-app test" [
     ...rest: string@"_my_app_no_args"
 ]

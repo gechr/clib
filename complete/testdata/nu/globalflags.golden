@@ -23,12 +23,14 @@ def "nu-complete myapp run output" [] {
     ['text' 'json']
 }
 
+# Run command
 extern "myapp run" [
     --dry-run(-n)  # Dry run
     --output(-o): string@"nu-complete myapp run output"  # Output format
     ...rest: string@"_myapp_no_args"
 ]
 
+# Show version
 extern "myapp version" [
     ...rest: string@"_myapp_no_args"
 ]

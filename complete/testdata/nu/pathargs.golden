@@ -9,11 +9,13 @@ extern "myapp" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# Edit files
 extern "myapp edit" [
     --editor: string  # Editor command
     ...rest: path
 ]
 
+# List items
 extern "myapp list" [
     ...rest: string@"_myapp_no_args"
 ]

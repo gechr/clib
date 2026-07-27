@@ -42,6 +42,7 @@ def "nu-complete acme-plugin complete args" [context: string] {
     }
 }
 
+# Tab completions
 extern "acme-plugin complete" [
     ...rest: string@"nu-complete acme-plugin complete args"
 ]
@@ -59,10 +60,12 @@ def "nu-complete acme-plugin resolve args" [context: string] {
     }
 }
 
+# Resolve values
 extern "acme-plugin resolve" [
     ...rest: string@"nu-complete acme-plugin resolve args"
 ]
 
+# Send notifications
 extern "acme-plugin send" [
     --to: string  # Recipient
     ...rest: string@"_acme_plugin_no_args"

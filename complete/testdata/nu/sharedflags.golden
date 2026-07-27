@@ -22,6 +22,7 @@ def "nu-complete myapp get status" [context: string] {
     ['draft' 'published'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
 }
 
+# Get item
 extern "myapp get" [
     --include: string@"nu-complete myapp get include"  # Fields to include
     --status: string@"nu-complete myapp get status"  # Filter by status
@@ -42,6 +43,7 @@ def "nu-complete myapp list status" [context: string] {
     ['active' 'inactive'] | where {|v| $v not-in $selected } | each {|v| $"($prefix)($v)" }
 }
 
+# List items
 extern "myapp list" [
     --include: string@"nu-complete myapp list include"  # Fields to include
     --status: string@"nu-complete myapp list status"  # Filter by status

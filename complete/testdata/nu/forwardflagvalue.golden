@@ -40,6 +40,7 @@ def "nu-complete myapp deploy target" [context: string] {
     try { ^myapp "--@complete=target" -- ...(_myapp_forwarded_flags $context) | lines } catch { [] }
 }
 
+# Deploy a target
 extern "myapp deploy" [
     --profile(-p): string  # Active profile
     --tags: string@"nu-complete myapp deploy tags"  # Tags to apply

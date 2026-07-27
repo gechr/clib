@@ -9,6 +9,7 @@ extern "myapp" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# Get item
 extern "myapp get" [
     ...rest: string@"_myapp_no_args"
 ]
@@ -24,6 +25,7 @@ def "nu-complete myapp list include" [context: string] {
     ] | where {|r| $r.value not-in $selected } | each {|r| {value: $"($prefix)($r.value)", description: $r.description} }
 }
 
+# List items
 extern "myapp list" [
     --include: string@"nu-complete myapp list include"  # Fields to include
     --limit: string  # Max results

@@ -44,6 +44,7 @@ func GenerateNu(g *Generator) (string, error) {
 		g,
 		[]string{g.AppName},
 		nil,
+		"",
 		combineVisibleSpecs(g.Specs),
 		false,
 		g.DynamicArgs,
@@ -191,6 +192,7 @@ func nuEmitSubs(
 			g,
 			names,
 			aliasPaths,
+			sub.Terse,
 			combineVisibleSpecs(inherited, sub.Specs),
 			sub.PathArgs,
 			sub.DynamicArgs,
@@ -216,6 +218,7 @@ func nuEmitCommand(
 	g *Generator,
 	names []string,
 	aliasPaths [][]string,
+	terse string,
 	specs []Spec,
 	pathArgs bool,
 	dynamicArgs []string,
@@ -232,24 +235,33 @@ func nuEmitCommand(
 		nuWriteArgsCompleter(sb, g, names, specs, dynamicArgs, hasMax, maxPos, depth)
 	}
 
-	nuWriteExtern(sb, names, names, specs, pathArgs, dynamicArgs)
+	nuWriteExtern(sb, names, names, terse, specs, pathArgs, dynamicArgs)
 	for _, ap := range aliasPaths {
-		nuWriteExtern(sb, ap, names, specs, pathArgs, dynamicArgs)
+		nuWriteExtern(sb, ap, names, terse, specs, pathArgs, dynamicArgs)
 	}
 }
 
 // nuWriteExtern emits a single `extern` signature. externNames is the command
 // path the signature is declared under; completerNames is the primary path whose
 // scoped completer names the flags reference (the two differ only for aliases).
+// A non-empty terse becomes the command's description via the doc comment
+// directly above the `extern`, which Nushell shows in the completion menu; the
+// comment must abut the `extern` line, as a blank line between the two detaches
+// it.
 func nuWriteExtern(
 	sb *strings.Builder,
 	externNames []string,
 	completerNames []string,
+	terse string,
 	specs []Spec,
 	pathArgs bool,
 	dynamicArgs []string,
 ) {
-	fmt.Fprintf(sb, "\nextern %s [\n", nuExternName(externNames))
+	sb.WriteString("\n")
+	if terse != "" {
+		fmt.Fprintf(sb, "# %s\n", nuComment(terse))
+	}
+	fmt.Fprintf(sb, "extern %s [\n", nuExternName(externNames))
 	for _, spec := range specs {
 		fmt.Fprintf(sb, "    %s\n", nuFlagLine(completerNames, spec))
 	}

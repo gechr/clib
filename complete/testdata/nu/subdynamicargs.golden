@@ -29,6 +29,7 @@ extern "myapp" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# List items
 extern "myapp list" [
     ...rest: string@"_myapp_no_args"
 ]
@@ -45,6 +46,7 @@ def "nu-complete myapp resolve args" [context: string] {
     }
 }
 
+# Resolve alerts
 extern "myapp resolve" [
     --force(-f)  # Force resolution
     ...rest: string@"nu-complete myapp resolve args"

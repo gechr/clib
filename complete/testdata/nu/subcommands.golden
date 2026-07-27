@@ -14,18 +14,21 @@ extern "myapp" [
     ...rest: string@"_myapp_no_args"
 ]
 
+# Build the project
 extern "myapp build" [
     --output(-o): string  # Output path
     --release  # Release build
     ...rest: string@"_myapp_no_args"
 ]
 
+# Run tests
 extern "myapp test" [
     --coverage  # Enable coverage
     --run(-r): string  # Test pattern
     ...rest: string@"_myapp_no_args"
 ]
 
+# Run tests
 extern "myapp t" [
     --coverage  # Enable coverage
     --run(-r): string  # Test pattern

@@ -28,6 +28,7 @@ extern "pdc" [
     ...rest: string@"_pdc_no_args"
 ]
 
+# Manage incidents
 extern "pdc incident" [
     ...rest: string@"_pdc_no_args"
 ]
@@ -44,10 +45,12 @@ def "nu-complete pdc incident show args" [context: string] {
     }
 }
 
+# Show an incident
 extern "pdc incident show" [
     ...rest: string@"nu-complete pdc incident show args"
 ]
 
+# Manage users
 extern "pdc user" [
     ...rest: string@"_pdc_no_args"
 ]
@@ -64,6 +67,7 @@ def "nu-complete pdc user show args" [context: string] {
     }
 }
 
+# Show a user
 extern "pdc user show" [
     ...rest: string@"nu-complete pdc user show args"
 ]
