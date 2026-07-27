@@ -1,19 +1,28 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --verbose  # Verbose
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp auth" [
     --token: string  # Auth token
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp auth login" [
     --browser  # Open browser
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp auth logout" [
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp run" [
+    ...rest: string@"_myapp_no_args"
 ]

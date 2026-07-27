@@ -1,5 +1,9 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --config(-c): path  # Config file
     --dir(-d): directory  # Directory
@@ -8,4 +12,5 @@ extern "myapp" [
     --shell: string  # Shell command
     --user: string  # User name
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]

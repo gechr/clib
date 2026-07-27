@@ -1,7 +1,12 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp edit" [
@@ -10,4 +15,5 @@ extern "myapp edit" [
 ]
 
 extern "myapp list" [
+    ...rest: string@"_myapp_no_args"
 ]

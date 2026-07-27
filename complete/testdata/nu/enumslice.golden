@@ -1,10 +1,16 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp get" [
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp list include" [context: string] {
@@ -21,4 +27,5 @@ def "nu-complete myapp list include" [context: string] {
 extern "myapp list" [
     --include: string@"nu-complete myapp list include"  # Fields to include
     --limit: string  # Max results
+    ...rest: string@"_myapp_no_args"
 ]

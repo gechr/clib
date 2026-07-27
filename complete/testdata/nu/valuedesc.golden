@@ -1,5 +1,9 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 def "nu-complete myapp format" [] {
     [
         {value: 'json', description: 'JSON output'}
@@ -19,4 +23,5 @@ extern "myapp" [
     --format(-f): string@"nu-complete myapp format"  # Output format
     --tags(-t): string@"nu-complete myapp tags"  # Filter tags
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]

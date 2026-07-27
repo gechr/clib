@@ -19,9 +19,14 @@ def "_myapp_forwarded_flags" [context: string] {
     $out
 }
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --profile(-p): string  # Active profile
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp deploy tags" [context: string] {
@@ -39,4 +44,5 @@ extern "myapp deploy" [
     --profile(-p): string  # Active profile
     --tags: string@"nu-complete myapp deploy tags"  # Tags to apply
     --target: string@"nu-complete myapp deploy target"  # Target name
+    ...rest: string@"_myapp_no_args"
 ]

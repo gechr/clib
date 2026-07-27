@@ -20,8 +20,13 @@ def "_acme_plugin_positionals" [context: string, cmdskip: int, valueflags: list<
     $pos
 }
 
+def "_acme_plugin_no_args" [] {
+    []
+}
+
 extern "acme-plugin" [
     --verbose(-v)  # Verbose output
+    ...rest: string@"_acme_plugin_no_args"
 ]
 
 def "nu-complete acme-plugin complete args" [context: string] {
@@ -60,4 +65,5 @@ extern "acme-plugin resolve" [
 
 extern "acme-plugin send" [
     --to: string  # Recipient
+    ...rest: string@"_acme_plugin_no_args"
 ]

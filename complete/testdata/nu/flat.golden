@@ -1,5 +1,9 @@
 # clibapp Nushell completion
 
+def "_clibapp_no_args" [] {
+    []
+}
+
 def "nu-complete clibapp author" [] {
     try { ^clibapp "--@complete=author" | lines } catch { [] }
 }
@@ -28,4 +32,5 @@ extern "clibapp" [
     --no-merge  # Disable auto-merge
     --state(-s): string@"nu-complete clibapp state"  # State
     --verbose(-v)  # Verbose
+    ...rest: string@"_clibapp_no_args"
 ]

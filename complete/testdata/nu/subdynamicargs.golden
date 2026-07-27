@@ -20,11 +20,17 @@ def "_myapp_positionals" [context: string, cmdskip: int, valueflags: list<string
     $pos
 }
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp list" [
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp resolve args" [context: string] {

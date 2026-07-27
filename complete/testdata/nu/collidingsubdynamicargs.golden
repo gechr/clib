@@ -20,10 +20,16 @@ def "_pdc_positionals" [context: string, cmdskip: int, valueflags: list<string>]
     $pos
 }
 
+def "_pdc_no_args" [] {
+    []
+}
+
 extern "pdc" [
+    ...rest: string@"_pdc_no_args"
 ]
 
 extern "pdc incident" [
+    ...rest: string@"_pdc_no_args"
 ]
 
 def "nu-complete pdc incident show args" [context: string] {
@@ -43,6 +49,7 @@ extern "pdc incident show" [
 ]
 
 extern "pdc user" [
+    ...rest: string@"_pdc_no_args"
 ]
 
 def "nu-complete pdc user show args" [context: string] {

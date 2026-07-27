@@ -1,5 +1,9 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 def "nu-complete myapp color" [] {
     ['auto' 'always' 'never']
 }
@@ -7,19 +11,23 @@ def "nu-complete myapp color" [] {
 extern "myapp" [
     --color: string@"nu-complete myapp color"  # Color mode
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp build" [
     --output(-o): string  # Output path
     --release  # Release build
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp test" [
     --coverage  # Enable coverage
     --run(-r): string  # Test pattern
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp t" [
     --coverage  # Enable coverage
     --run(-r): string  # Test pattern
+    ...rest: string@"_myapp_no_args"
 ]

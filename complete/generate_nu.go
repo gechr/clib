@@ -33,6 +33,9 @@ func GenerateNu(g *Generator) (string, error) {
 	if hasDynamicArgs(g) {
 		nuWritePositionalsHelper(&sb, id)
 	}
+	if nuHasArglessCommand(g) {
+		nuWriteNoArgsHelper(&sb, id)
+	}
 
 	// Root command, then every subcommand depth-first. Inherited persistent
 	// flags are merged into each subcommand's signature via combineVisibleSpecs.
@@ -113,6 +116,21 @@ func nuQuotedList(values []string) string {
 func nuForwardedName(id string) string { return "_" + id + "_forwarded_flags" }
 func nuPositionalsName(id string) string {
 	return "_" + id + "_positionals"
+}
+func nuNoArgsName(id string) string { return "_" + id + "_no_args" }
+
+// nuHasArglessCommand reports whether any command in the tree takes no
+// completable positionals, and so needs the no-op rest completer that
+// suppresses Nushell's file-completion fallback.
+func nuHasArglessCommand(g *Generator) bool {
+	// The root never declares path args (see GenerateNu), so it is argless
+	// whenever it has no positional dynamic args.
+	if len(g.DynamicArgs) == 0 {
+		return true
+	}
+	return anySpecInTree(nil, g.Subs, nil, func(sub SubSpec) bool {
+		return !sub.PathArgs && len(sub.DynamicArgs) == 0
+	})
 }
 
 // nuFlagKey returns the stable per-flag suffix used in completer names: the long
@@ -240,6 +258,13 @@ func nuWriteExtern(
 		fmt.Fprintf(sb, "    ...rest: string@%s\n", nuName(nuCompleterName(completerNames, "args")))
 	case pathArgs:
 		sb.WriteString("    ...rest: path\n")
+	default:
+		// Without a rest positional Nushell falls back to completing file
+		// names, so a command that takes no positionals would offer the
+		// working directory alongside its subcommands and flags. Binding rest
+		// to a completer that returns nothing suppresses that fallback while
+		// leaving subcommand and flag completion intact.
+		fmt.Fprintf(sb, "    ...rest: string@%s\n", nuName(nuNoArgsName(nuID(externNames[0]))))
 	}
 	sb.WriteString("]\n")
 }
@@ -576,6 +601,13 @@ def %s [context: string, cmdskip: int, valueflags: list<string>] {
     $pos
 }
 `
+
+// nuWriteNoArgsHelper emits the no-op completer bound to the rest positional of
+// commands that take no positionals, which stops Nushell falling back to file
+// completion for them.
+func nuWriteNoArgsHelper(sb *strings.Builder, id string) {
+	fmt.Fprintf(sb, "\ndef %s [] {\n    []\n}\n", nuName(nuNoArgsName(id)))
+}
 
 func nuWritePositionalsHelper(sb *strings.Builder, id string) {
 	fmt.Fprintf(sb, nuPositionalsHelper, nuName(nuPositionalsName(id)))

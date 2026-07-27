@@ -1,6 +1,11 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 extern "myapp" [
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp get include" [context: string] {
@@ -20,6 +25,7 @@ def "nu-complete myapp get status" [context: string] {
 extern "myapp get" [
     --include: string@"nu-complete myapp get include"  # Fields to include
     --status: string@"nu-complete myapp get status"  # Filter by status
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp list include" [context: string] {
@@ -40,4 +46,5 @@ extern "myapp list" [
     --include: string@"nu-complete myapp list include"  # Fields to include
     --status: string@"nu-complete myapp list status"  # Filter by status
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]

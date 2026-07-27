@@ -1,6 +1,7 @@
 package complete_test
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -233,6 +234,72 @@ func driveNu(t *testing.T, gen *complete.Generator, line string) string {
 	cmd.Env = shellEnv(dir, logPath)
 	_ = cmd.Run()
 	return readHandlerLog(t, logPath)
+}
+
+// driveNuCandidates drives the Nushell completion like driveNu, but returns the
+// candidate list rather than the handler log. It runs Nushell inside the temp
+// directory so that any fallback to Nushell's built-in file completion shows up
+// as the directory's own file names.
+func driveNuCandidates(t *testing.T, gen *complete.Generator, line string) []string {
+	t.Helper()
+	nu := lookShell(t, "nu")
+	dir, scriptPath, logPath := completionEnv(t, gen, "nu")
+
+	script, err := os.ReadFile(scriptPath)
+	require.NoError(t, err)
+	probe := string(script) + "\n" + line
+	probePath := filepath.Join(dir, "probe.nu")
+	require.NoError(t, os.WriteFile(probePath, []byte(probe), 0o644))
+
+	cmd := exec.Command(nu, "--ide-complete", strconv.Itoa(len(probe)), probePath)
+	cmd.Env = shellEnv(dir, logPath)
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	require.NoError(t, err)
+
+	var result struct {
+		Completions []string `json:"completions"`
+	}
+	require.NoError(t, json.Unmarshal(out, &result))
+	return result.Completions
+}
+
+// TestNuFileFallback locks the fix for Nushell offering the working directory's
+// files alongside subcommands: an `extern` without a rest positional falls back
+// to Nushell's built-in file completion, so commands that take no positionals
+// bind rest to a completer returning nothing. Commands that do take path args
+// must still complete files.
+func TestNuFileFallback(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		line string
+		want []string
+	}{
+		{
+			name: "root offers only subcommands",
+			line: "myapp ",
+			want: []string{"myapp edit", "myapp list"},
+		},
+		{
+			name: "argless subcommand offers nothing",
+			line: "myapp list ",
+			want: []string{},
+		},
+		{
+			name: "path args still complete files",
+			line: "myapp edit ",
+			want: []string{"completion.nu", "myapp", "probe.nu"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, driveNuCandidates(t, genPathArgs(), tt.line))
+		})
+	}
 }
 
 // driveZshForwarded sources the zsh completion and runs its forwarded-flags

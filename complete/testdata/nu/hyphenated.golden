@@ -1,12 +1,19 @@
 # my-app Nushell completion
 
+def "_my_app_no_args" [] {
+    []
+}
+
 extern "my-app" [
     --verbose(-v)  # Verbose output
+    ...rest: string@"_my_app_no_args"
 ]
 
 extern "my-app build" [
     --output(-o): string  # Output path
+    ...rest: string@"_my_app_no_args"
 ]
 
 extern "my-app test" [
+    ...rest: string@"_my_app_no_args"
 ]

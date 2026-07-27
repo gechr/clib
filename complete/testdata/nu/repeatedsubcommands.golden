@@ -1,28 +1,40 @@
 # tool Nushell completion
 
+def "_tool_no_args" [] {
+    []
+}
+
 extern "tool" [
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool container" [
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool container login" [
     --registry: string  # Registry URL
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool foo" [
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool foo login" [
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool foo login bar" [
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool foo login bar login" [
     --bar-token: string  # Bar token
+    ...rest: string@"_tool_no_args"
 ]
 
 extern "tool login" [
     --user(-u): string  # User name
+    ...rest: string@"_tool_no_args"
 ]

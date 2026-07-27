@@ -1,5 +1,9 @@
 # myapp Nushell completion
 
+def "_myapp_no_args" [] {
+    []
+}
+
 def "nu-complete myapp color" [] {
     ['auto' 'always' 'never']
 }
@@ -12,6 +16,7 @@ extern "myapp" [
     --no-config  # Disable config
     --no-proxy  # Ignore proxies
     --verbose(-v)  # Verbose output
+    ...rest: string@"_myapp_no_args"
 ]
 
 def "nu-complete myapp run output" [] {
@@ -21,7 +26,9 @@ def "nu-complete myapp run output" [] {
 extern "myapp run" [
     --dry-run(-n)  # Dry run
     --output(-o): string@"nu-complete myapp run output"  # Output format
+    ...rest: string@"_myapp_no_args"
 ]
 
 extern "myapp version" [
+    ...rest: string@"_myapp_no_args"
 ]
