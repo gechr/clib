@@ -85,13 +85,14 @@ func TestGenerate_Structure(t *testing.T) {
 	require.Contains(t, out, `extern "testapp" [`)
 	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--verbose(-v)  # Verbose")
-	// Each subcommand is its own extern; aliases get a duplicate extern.
+	// Each canonical subcommand is its own extern; aliases are omitted so
+	// Nushell does not offer duplicate completion candidates.
 	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp build" [`)
 	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, `extern "testapp test" [`)
 	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
-	require.Contains(t, out, `extern "testapp t" [`)
+	require.NotContains(t, out, `extern "testapp t" [`)
 }
 
 func TestGenerate_Values(t *testing.T) {
@@ -118,6 +119,39 @@ func TestGenerate_Hints(t *testing.T) {
 	require.Contains(t, out, "--output: path")
 	//nolint:gocritic // fragment check against generated/styled output; not worth pinning as an exact literal
 	require.Contains(t, out, "--dir: directory")
+}
+
+func TestGenerate_OmitsHiddenFlags(t *testing.T) {
+	out, err := Generate(&complete.Generator{
+		AppName: "testapp",
+		Specs: []complete.Spec{
+			{LongFlag: "visible", Terse: "Visible"},
+			{LongFlag: "root-secret", Terse: "Root secret", Hidden: true, Persistent: true},
+		},
+		Subs: []complete.SubSpec{{
+			Name: "child",
+			Specs: []complete.Spec{
+				{LongFlag: "child-secret", Terse: "Child secret", Hidden: true},
+			},
+		}},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, `# testapp Nushell completion
+
+def "_testapp_no_args" [] {
+    []
+}
+
+extern "testapp" [
+    --visible  # Visible
+    ...rest: string@"_testapp_no_args"
+]
+
+extern "testapp child" [
+    ...rest: string@"_testapp_no_args"
+]
+`, out)
 }
 
 func TestGenerate_DynamicArgs(t *testing.T) {
