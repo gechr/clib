@@ -7,6 +7,21 @@ import (
 	"github.com/gechr/clib/help"
 )
 
+// FlagRefs flattens rendered flag sections into non-rendering reference
+// metadata. Adapters use this when a dispatcher command intentionally hides
+// its option sections but descriptions may still refer to those flags.
+func FlagRefs(sections []help.Section) help.FlagRefs {
+	var refs help.FlagRefs
+	for _, section := range sections {
+		for _, content := range section.Content {
+			if flags, ok := content.(help.FlagGroup); ok {
+				refs = append(refs, flags...)
+			}
+		}
+	}
+	return refs
+}
+
 // ApplyLongHelp applies opts to sections along with the default long-help
 // policy: unless overridden via [help.WithAlwaysShowDescription] or
 // [help.WithAlwaysShowExamples], the description blurb and examples are hidden

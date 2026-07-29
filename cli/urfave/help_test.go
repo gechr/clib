@@ -175,6 +175,35 @@ func TestSections_Commands(t *testing.T) {
 	require.Len(t, cmds, 2)
 }
 
+func TestSections_DispatcherRetainsFlagRefs(t *testing.T) {
+	cmd := &clilib.Command{
+		Name:        "app",
+		Description: "Pass `-q` to configure the command.",
+		Flags: []clilib.Flag{
+			&clilib.StringFlag{
+				Name:    "option",
+				Aliases: []string{"q"},
+				Usage:   "Generic option",
+			},
+		},
+		Commands: []*clilib.Command{{Name: "run", Usage: "Run the app"}},
+	}
+
+	sections := urfavecli.Sections(cmd)
+
+	var titles []string
+	for _, section := range sections {
+		titles = append(titles, section.Title)
+	}
+	require.Equal(t, []string{"Usage", "Commands"}, titles)
+	require.Len(t, sections[0].Content, 3)
+	refs, ok := sections[0].Content[2].(help.FlagRefs)
+	require.True(t, ok)
+	require.Contains(t, refs, help.Flag{
+		Short: "q", Long: "option", Placeholder: "option", Desc: "Generic option",
+	})
+}
+
 func TestSections_SubcommandAliases(t *testing.T) {
 	run := &clilib.Command{Name: "run", Usage: "Run the app"}
 	publishAlias := &clilib.Command{Name: "init"}

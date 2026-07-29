@@ -62,15 +62,20 @@ func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
 	var sections []help.Section
 
 	flagSections, hasFlags := buildFlagSections(cmd, cfg)
+	var flagRefs help.FlagRefs
 
 	// Commands that only dispatch to subcommands have their flags suppressed -
 	// they cannot take effect without picking a subcommand.
 	if len(cmd.VisibleCommands()) > 0 {
+		flagRefs = adapter.FlagRefs(flagSections)
 		flagSections = nil
 		hasFlags = false
 	}
 
 	sections = append(sections, usageSection(cmd, hasFlags, cfg))
+	if len(flagRefs) > 0 {
+		sections[0].Content = append(sections[0].Content, flagRefs)
+	}
 
 	if len(cmd.Aliases) > 0 {
 		sections = append(sections, aliasSection(cmd))

@@ -3,6 +3,7 @@ package kong_test
 import (
 	"bytes"
 	"io"
+	"slices"
 	"testing"
 	"time"
 
@@ -1201,6 +1202,29 @@ func TestNodeSections_RootGrouperHidesOptions(t *testing.T) {
 
 	titles := sectionTitles(sections)
 	require.NotContains(t, titles, "Options")
+}
+
+func TestNodeSections_DispatcherRetainsFlagRefs(t *testing.T) {
+	type Sub struct{}
+	type CLI struct {
+		Option string `name:"option"  help:"Generic option" short:"q"`
+		Sub    Sub    `help:"Run sub" cmd:""`
+	}
+
+	ctx := parseForHelp(t, &CLI{}, []string{"--help"}, konglib.Name("app"))
+	sections, err := kong.NodeSections(ctx)
+	require.NoError(t, err)
+
+	require.Equal(t, []string{"Usage", "Commands"}, sectionTitles(sections))
+	require.Len(t, sections[0].Content, 2)
+	refs, ok := sections[0].Content[1].(help.FlagRefs)
+	require.True(t, ok)
+	require.True(t, slices.ContainsFunc(refs, func(flag help.Flag) bool {
+		return flag.Short == "q" &&
+			flag.Long == "option" &&
+			flag.Placeholder == "option" &&
+			flag.Desc == "Generic option"
+	}))
 }
 
 func TestNodeSections_PerLevelAncestorDepth(t *testing.T) {

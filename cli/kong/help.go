@@ -144,17 +144,21 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		}
 	}
 
-	// Flag sections - omitted for non-root commands that only dispatch to
+	// Flag sections are omitted for commands that only dispatch to
 	// subcommands, since flags at this level can't take effect without
-	// picking a subcommand. The root still shows its options for
-	// top-level discoverability of global flags.
-	if !isSubcommandOnlyGrouper(node) {
-		flagSections, err := buildNodeFlagSections(
-			node, cfg.separateGlobal, cfg.optionsTitle, cfg.globalTitle,
-		)
-		if err != nil {
-			return nil, err
+	// picking a subcommand. Preserve them as non-rendering metadata so
+	// descriptions can still resolve backticked flag references.
+	flagSections, err := buildNodeFlagSections(
+		node, cfg.separateGlobal, cfg.optionsTitle, cfg.globalTitle,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if isSubcommandOnlyGrouper(node) {
+		if refs := adapter.FlagRefs(flagSections); len(refs) > 0 {
+			sections[0].Content = append(sections[0].Content, refs)
 		}
+	} else {
 		sections = append(sections, flagSections...)
 	}
 

@@ -774,6 +774,36 @@ func TestSectionsWithOptions_ShowInheritedFlagsOnSubcommands(t *testing.T) {
 	require.Len(t, opts.Content, 2, "local + inherited sub-groups")
 }
 
+func TestSectionsWithOptions_DispatcherRetainsInheritedFlagRefs(t *testing.T) {
+	noop := func(*cobralib.Command, []string) error { return nil }
+
+	root := &cobralib.Command{Use: "app"}
+	root.PersistentFlags().StringP("option", "q", "", "Generic option")
+
+	group := &cobralib.Command{
+		Use:  "group",
+		Long: "Pass `-q` to configure the command.",
+	}
+	group.AddCommand(&cobralib.Command{Use: "run", RunE: noop})
+	root.AddCommand(group)
+
+	sections := cobra.SectionsWithOptions(
+		cobra.WithShowInheritedFlagsOnSubcommands(),
+	)(group)
+
+	var titles []string
+	for _, section := range sections {
+		titles = append(titles, section.Title)
+	}
+	require.Equal(t, []string{"Usage", "Commands"}, titles)
+	require.Len(t, sections[0].Content, 3)
+	refs, ok := sections[0].Content[2].(help.FlagRefs)
+	require.True(t, ok)
+	require.Contains(t, refs, help.Flag{
+		Short: "q", Long: "option", Placeholder: "option", Desc: "Generic option",
+	})
+}
+
 func TestSectionsWithOptions_CustomOptionTitles(t *testing.T) {
 	root := &cobralib.Command{Use: "app"}
 	root.PersistentFlags().Bool("debug", false, "Debug mode")

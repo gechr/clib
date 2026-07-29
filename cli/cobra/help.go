@@ -67,12 +67,17 @@ func buildSections(cmd *cobralib.Command, opts ...SectionsOption) []help.Section
 	subcommandOnlyGrouper := len(availableCommands(cmd)) > 0
 
 	flagSections, hasFlags := buildFlagSections(cmd, cfg)
+	var flagRefs help.FlagRefs
 	if subcommandOnlyGrouper {
+		flagRefs = adapter.FlagRefs(flagSections)
 		flagSections = nil
 		hasFlags = false
 	}
 
 	sections = append(sections, usageSection(cmd, hasFlags, cfg))
+	if len(flagRefs) > 0 {
+		sections[0].Content = append(sections[0].Content, flagRefs)
+	}
 
 	if len(cmd.Aliases) > 0 {
 		sections = append(sections, aliasSection(cmd))

@@ -47,6 +47,13 @@ type FlagGroup []Flag
 
 func (FlagGroup) helpContent() {}
 
+// FlagRefs is non-rendering flag metadata used to resolve backticked flag
+// references in descriptions when the corresponding flag group is
+// intentionally omitted from visible help.
+type FlagRefs []Flag
+
+func (FlagRefs) helpContent() {}
+
 // Args is a group of positional argument entries.
 type Args []Arg
 

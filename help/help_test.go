@@ -1484,6 +1484,33 @@ func TestRender_DescFlagBackticksOnlyUseCurrentHelpFlags(t *testing.T) {
 	)
 }
 
+func TestRender_DescFlagBackticksUseNonRenderingFlagRefs(t *testing.T) {
+	th := testTheme()
+	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	flagCode := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	th.HelpDescBacktick = &code
+	th.HelpFlagBacktick = &flagCode
+
+	r := help.NewRenderer(th, help.WithDescriptionWidth(0))
+	var buf bytes.Buffer
+	sections := []help.Section{
+		{Title: "Usage", Content: []help.Content{
+			help.Usage{Command: "app group"},
+			help.Description("Pass `-q` to configure the command."),
+			help.FlagRefs{{Short: "q", Long: "option"}},
+		}},
+	}
+	require.NoError(t, r.Render(&buf, sections))
+
+	flagStyle := flagCode.Inherit(code)
+	require.Equal(t,
+		th.HelpSection.Render("Usage")+"\n\n  "+
+			th.HelpCommand.Render("app group")+"\n\n    Pass "+
+			flagStyle.Render("-q")+" to configure the command.\n",
+		buf.String(),
+	)
+}
+
 func TestRender_DescFlagBacktickSpanWithConsecutiveFlags(t *testing.T) {
 	th := testTheme()
 	code := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))

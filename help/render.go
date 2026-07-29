@@ -162,8 +162,12 @@ func (r *Renderer) renderSection(
 	}
 
 	hasShort := sectionHasShort(sec)
-	for i, content := range sec.Content {
-		if i > 0 {
+	rendered := false
+	for _, content := range sec.Content {
+		if _, ok := content.(FlagRefs); ok {
+			continue
+		}
+		if rendered {
 			if _, err := io.WriteString(w, "\n"); err != nil {
 				return err
 			}
@@ -179,6 +183,7 @@ func (r *Renderer) renderSection(
 		); err != nil {
 			return err
 		}
+		rendered = true
 	}
 	return nil
 }
@@ -189,6 +194,8 @@ func (r *Renderer) renderContent(
 	switch c := content.(type) {
 	case FlagGroup:
 		return r.renderFlags(w, c, hasShort, descCol, ind)
+	case FlagRefs:
+		return nil
 	case Args:
 		return r.renderArgs(w, c, descCol, ind)
 	case CommandGroup:
@@ -1387,6 +1394,10 @@ func collectDescRefs(sections []Section) descRefs {
 				indexArg(a)
 			}
 		case FlagGroup:
+			for _, f := range v {
+				indexFlag(f)
+			}
+		case FlagRefs:
 			for _, f := range v {
 				indexFlag(f)
 			}
