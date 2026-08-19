@@ -92,14 +92,13 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		}
 
 		meta := complete.FlagMeta{
-			Origin:     field.Name,
-			Persistent: true,
+			Help:        field.Tag.Get(tagHelp),
+			Name:        field.Tag.Get(tagName),
+			Origin:      field.Name,
+			Persistent:  true,
+			Placeholder: field.Tag.Get(tagPlaceholder),
+			Short:       field.Tag.Get(tagShort),
 		}
-
-		meta.Name = field.Tag.Get(tagName)
-		meta.Short = field.Tag.Get(tagShort)
-		meta.Help = field.Tag.Get(tagHelp)
-		meta.Placeholder = field.Tag.Get(tagPlaceholder)
 		isCounter := field.Tag.Get(tagType) == kongTypeCounter
 
 		// clib-specific metadata: clib:"terse='...',complete='...',group='...'"
