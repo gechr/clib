@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/gechr/clib/theme"
+	xpalette "github.com/gechr/x/palette"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +56,7 @@ func TestEntityColorEmptyPalette(t *testing.T) {
 func TestWithTrueColorGeneratesDistinctPalette(t *testing.T) {
 	th := theme.Dark().With(theme.WithTrueColor())
 
-	require.Len(t, th.EntityColors, 32)
+	require.Len(t, th.EntityColors, len(xpalette.TrueColorDark()))
 
 	seen := map[color.Color]bool{}
 	for _, c := range th.EntityColors {

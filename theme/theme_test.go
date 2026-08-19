@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/gechr/clib/theme"
+	xpalette "github.com/gechr/x/palette"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,9 +63,10 @@ func TestDefaultTheme_StyleValues(t *testing.T) {
 		th.BoldGreen.Render("x"),
 	)
 
-	// Verify entity colors count.
-	require.Len(t, th.EntityColors, 30)
-	require.Equal(t, lipgloss.Color("208"), th.EntityColors[0])
+	// Verify entity colors come from x's default dark palette.
+	entities := xpalette.DefaultDark()
+	require.Len(t, th.EntityColors, len(entities))
+	require.Equal(t, entities[0], th.EntityColors[0])
 
 	// Verify time-ago thresholds count.
 	require.Len(t, th.TimeAgoThresholds, 5)

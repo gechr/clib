@@ -231,9 +231,9 @@ func WithTimeAgoThresholds(th []TimeAgoThreshold) Option {
 	return func(t *Theme) { t.TimeAgoThresholds = th }
 }
 
-// WithTrueColor replaces the entity color palette with 32 curated 24-bit
-// colors, every pair visually distinct - use when entities outnumber the
-// default ANSI-256 palette. The palette adapts to the theme's Background, so
+// WithTrueColor replaces the entity color palette with curated 24-bit colors,
+// every pair visually distinct - use when entities outnumber the default
+// ANSI-256 palette. The palette adapts to the theme's Background, so
 // apply this option to a preset (which sets Background first). The caller is
 // responsible for ensuring the terminal supports true color.
 func WithTrueColor() Option {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gechr/clib/theme"
+	xpalette "github.com/gechr/x/palette"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,7 +86,7 @@ func TestPresets(t *testing.T) {
 			require.Equal(t, theme.EnumStyleHighlightDefault, th.EnumStyle)
 			require.Nil(t, th.HelpFlagBacktick)
 			if preset.entityColors {
-				require.Len(t, th.EntityColors, 30)
+				require.Len(t, th.EntityColors, len(xpalette.DefaultDark()))
 			} else {
 				require.Empty(t, th.EntityColors)
 			}
