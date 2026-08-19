@@ -251,6 +251,7 @@ func TestFishWriteTokenClassifier(t *testing.T) {
 		1,
 		"    ",
 	)
+	//nolint:dupword // fish script naturally contains repeated "end" keywords
 	require.Equal(t, `    switch $t
     case --output -o
         set skip_next 1
