@@ -2,6 +2,7 @@ package theme
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/gechr/x/terminal"
 )
@@ -97,10 +98,17 @@ func MustPair(light, dark *Theme, opts ...PairOption) *Pair {
 }
 
 // Auto selects from the pair using the terminal background, falling back to
-// the pair's Fallback when detection is unavailable.
+// the pair's Fallback when stdout is redirected or detection is unavailable.
 func (p *Pair) Auto() *Theme {
 	if th := envOverride(); th != nil {
 		return th
+	}
+
+	// Help and completion output goes to stdout. Do not probe another stream
+	// when stdout is redirected: terminal replies can leak into the parent
+	// shell while tools such as Homebrew capture generated completions.
+	if !terminal.Is(os.Stdout) {
+		return p.ForBackground(p.Fallback)
 	}
 
 	bg, ok := DetectBackground()
