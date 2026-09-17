@@ -15,6 +15,7 @@ func GenerateBash(g *Generator) (string, error) {
 
 	command := g.AppName
 	funcName := "_" + strings.ReplaceAll(command, "-", "_")
+	bashWriteWordWrapper(&sb, funcName)
 	cmdName := bashCmdNameFromApp(command)
 	rootSpecs := SortVisibleSpecs(g.Specs)
 	inheritedSpecs := persistentSpecs(g.Specs)
@@ -28,7 +29,7 @@ func GenerateBash(g *Generator) (string, error) {
 		localVars = "local i cur prev opts cmd"
 	}
 	fmt.Fprintf(&sb, `# %s bash completion
-%s() {
+%s_complete() {
     %s
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -109,6 +110,62 @@ fi
 `, funcName, command, funcName, command)
 
 	return sb.String(), nil
+}
+
+// bashWriteWordWrapper reconstructs arguments split by Bash's word breaks and
+// converts whole-argument candidates to the fragment Readline will replace.
+func bashWriteWordWrapper(sb *strings.Builder, funcName string) {
+	fmt.Fprintf(sb, `%[1]s() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        %[1]s_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    %[1]s_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+`, funcName)
 }
 
 // bashForwardHelperName returns the name of the shared forwarded-flags helper
@@ -311,24 +368,7 @@ func bashWriteCmdCase(
 	depth int,
 ) {
 	opts := bashOptsString(specs, subs)
-
-	if len(dynamicArgs) > 0 {
-		fmt.Fprintf(sb, `        %s)
-            opts="%s"
-            if [[ ${cur} == -* ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
-`, cmdName, opts)
-	} else {
-		fmt.Fprintf(sb, `        %s)
-            opts="%s"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq %d ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
-`, cmdName, opts, depth)
-	}
+	fmt.Fprintf(sb, "        %s)\n            opts=\"%s\"\n", cmdName, opts)
 
 	var hasArgSpecs []Spec
 	for _, spec := range specs {
@@ -338,6 +378,16 @@ func bashWriteCmdCase(
 	}
 
 	if len(hasArgSpecs) > 0 {
+		_, equals := argValuePatterns(hasArgSpecs)
+		fmt.Fprintf(sb, `            local value_prefix=""
+            case "${cur}" in
+                %s)
+                    prev=${cur%%%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
+`, strings.Join(equals, "|"))
 		fmt.Fprint(sb, "            case \"${prev}\" in\n")
 		for _, spec := range hasArgSpecs {
 			bashWritePrevCase(g, sb, spec)
@@ -348,6 +398,15 @@ func bashWriteCmdCase(
             esac
 `)
 	}
+	condition := "${cur} == -*"
+	if len(dynamicArgs) == 0 {
+		condition += fmt.Sprintf(" || ${COMP_CWORD} -eq %d", depth)
+	}
+	fmt.Fprintf(sb, `            if [[ %s ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
+`, condition)
 
 	switch {
 	case pathArgs:
@@ -528,7 +587,12 @@ func bashWritePrevCase(g *Generator, sb *strings.Builder, spec Spec) {
 		fmt.Fprint(sb, "                    COMPREPLY=()\n")
 	}
 
-	fmt.Fprint(sb, "                    return 0\n                    ;;\n")
+	fmt.Fprint(sb, `                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
+                    return 0
+                    ;;
+`)
 }
 
 func bashWriteCommaCompletion(sb *strings.Builder, valuesExpr string, dynamic bool) {

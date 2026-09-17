@@ -1,5 +1,55 @@
-# tool bash completion
 _tool() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _tool_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _tool_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# tool bash completion
+_tool_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -63,19 +113,30 @@ _tool() {
             ;;
         tool__container__login)
             opts="--registry"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --registry=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --registry)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -108,37 +169,59 @@ _tool() {
             ;;
         tool__foo__login__bar__login)
             opts="--bar-token"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 5 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --bar-token=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --bar-token)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 5 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
         tool__login)
             opts="--user -u"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --user=*|-u=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --user|-u)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;

@@ -129,8 +129,58 @@ func hyphenatedGen() *complete.Generator {
 func TestGenerate_Flat(t *testing.T) {
 	out, err := Generate(flatGen())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -155,19 +205,30 @@ _testapp() {
     case "${cmd}" in
         testapp)
             opts="--output -o --verbose -v"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --output=*|-o=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --output|-o)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -186,8 +247,58 @@ fi
 func TestGenerate_Subcommands(t *testing.T) {
 	out, err := Generate(genSubcommands())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -227,19 +338,30 @@ _testapp() {
             ;;
         testapp__build)
             opts="--output -o --release"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --output=*|-o=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --output|-o)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -276,8 +398,58 @@ func TestGenerate_LimitedDynamicArgs(t *testing.T) {
 func TestGenerate_Nested(t *testing.T) {
 	out, err := Generate(genNested())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -323,19 +495,30 @@ _testapp() {
             ;;
         testapp__auth)
             opts="--token login logout"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --token=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --token)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -381,8 +564,58 @@ fi
 func TestGenerate_Hints(t *testing.T) {
 	out, err := Generate(hintsGen())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -407,10 +640,14 @@ _testapp() {
     case "${cmd}" in
         testapp)
             opts="--config --dir --host --output --shell --user"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --config=*|--dir=*|--host=*|--output=*|--shell=*|--user=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --config)
                     local oldifs
@@ -425,6 +662,9 @@ _testapp() {
                     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
                         compopt -o filenames
                     fi
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --dir)
@@ -432,10 +672,16 @@ _testapp() {
                     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
                         compopt -o plusdirs
                     fi
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --host)
                     COMPREPLY=($(compgen -A hostname -- "${cur}"))
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --output)
@@ -451,20 +697,33 @@ _testapp() {
                     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
                         compopt -o filenames
                     fi
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --shell)
                     COMPREPLY=($(compgen -c -- "${cur}"))
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --user)
                     COMPREPLY=($(compgen -u -- "${cur}"))
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -483,8 +742,58 @@ fi
 func TestGenerate_Values(t *testing.T) {
 	out, err := Generate(valuesGen())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -509,23 +818,37 @@ _testapp() {
     case "${cmd}" in
         testapp)
             opts="--format --level"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --format=*|--level=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --format)
                     COMPREPLY=($(compgen -W 'json yaml text' -- "${cur}"))
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 --level)
                     COMPREPLY=($(compgen -W 'info warn' -- "${cur}"))
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
             return 0
             ;;
@@ -552,8 +875,58 @@ func TestGenerate_CommaList(t *testing.T) {
 func TestGenerate_PathArgs(t *testing.T) {
 	out, err := Generate(pathArgsGen())
 	require.NoError(t, err)
-	expected := `# testapp bash completion
-_testapp() {
+	expected := `_testapp() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _testapp_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _testapp_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# testapp bash completion
+_testapp_complete() {
     local i cur prev opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
@@ -590,19 +963,30 @@ _testapp() {
             ;;
         testapp__edit)
             opts="--editor"
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
-                return 0
-            fi
+            local value_prefix=""
+            case "${cur}" in
+                --editor=*)
+                    prev=${cur%%=*}
+                    value_prefix="${prev}="
+                    cur=${cur#*=}
+                    ;;
+            esac
             case "${prev}" in
                 --editor)
                     COMPREPLY=()
+                    if [[ -n $value_prefix ]]; then
+                        COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
+                    fi
                     return 0
                     ;;
                 *)
                     COMPREPLY=()
                     ;;
             esac
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+                COMPREPLY=($(compgen -W "${opts}" -- "${cur}"))
+                return 0
+            fi
             local oldifs
             if [ -n "${IFS+x}" ]; then
                 oldifs="$IFS"
@@ -640,8 +1024,58 @@ func TestGenerate_DynamicArgs(t *testing.T) {
 func TestGenerate_Hyphenated(t *testing.T) {
 	out, err := Generate(hyphenatedGen())
 	require.NoError(t, err)
-	expected := `# my-app bash completion
-_my_app() {
+	expected := `_my_app() {
+    if [[ -z ${COMP_LINE+x} ]]; then
+        _my_app_complete "$@"
+        return
+    fi
+    local remaining="$COMP_LINE" fragment index joined=0 consumed suffix
+    local -a words=()
+    for ((index=0; index<=COMP_CWORD; index++)); do
+        fragment=${COMP_WORDS[index]}
+        if (( index > 0 )) && [[ $remaining == [[:space:]]* ]]; then
+            joined=$((joined + 1))
+        fi
+        words[joined]=${words[joined]-}$fragment
+        remaining=${remaining#*"$fragment"}
+        # Some Bash versions omit the surrounding quotes from COMP_WORDS.
+        remaining=${remaining#[\'\"]}
+    done
+    # Ignore text after the cursor, including the rest of the current word.
+    consumed=$((${#COMP_LINE} - ${#remaining}))
+    suffix=$((consumed - ${COMP_POINT:-$consumed}))
+    if (( suffix > 0 && suffix <= ${#words[joined]} )); then
+        words[joined]=${words[joined]:0:${#words[joined]}-suffix}
+    fi
+    local current=${words[joined]} keep="" previous=""
+    if [[ -z $2 ]]; then
+        keep=$current
+    elif [[ $current == *"$2" ]]; then
+        keep=${current%"$2"}
+    fi
+    if (( joined > 0 )); then
+        previous=${words[joined-1]}
+    fi
+    # Dynamic scope gives the helpers reconstructed words without changing
+    # the caller's completion state or the shell's word-break settings.
+    local -a COMP_WORDS=("${words[@]}")
+    local COMP_CWORD=$joined
+    _my_app_complete "$1" "$current" "$previous"
+    local candidate
+    local -a replies=()
+    for candidate in "${COMPREPLY[@]}"; do
+        if [[ -n $keep && $candidate == "$keep"* ]]; then
+            candidate=${candidate#"$keep"}
+        fi
+        if [[ -n $candidate ]]; then
+            replies+=("$candidate")
+        fi
+    done
+    COMPREPLY=("${replies[@]}")
+}
+
+# my-app bash completion
+_my_app_complete() {
     local i cur opts cmd
     COMPREPLY=()
     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then

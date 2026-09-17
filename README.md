@@ -221,6 +221,10 @@ controls completion behavior:
 - `comma` - comma-separated multi-value mode
 - `values=<space-separated>` - static completion values
 
+Bash completions handle values containing word-break characters such as `@`, `:`,
+and `=`, including `--flag=value`, without changing the shell's word-break settings.
+Regenerate installed completion scripts to pick up generator improvements.
+
 The `terse` key provides a very short description for completions (falls back to `help`).
 Use `order=keep` (Kong) or `Order: complete.OrderKeep` (Cobra/urfave) to preserve fish completion order for a flag by emitting `complete -k`.
 Use `order=shell` or `Order: complete.OrderShell` to force the shell's normal ordering for a flag.
