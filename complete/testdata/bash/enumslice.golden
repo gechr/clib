@@ -136,7 +136,9 @@ _myapp_complete() {
                     if [[ -n "${prefix}" ]]; then
                         COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
                     fi
-                    compopt -o nospace
+                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+                        compopt -o nospace
+                    fi
                     if [[ -n $value_prefix ]]; then
                         COMPREPLY=("${COMPREPLY[@]/#/${value_prefix}}")
                     fi

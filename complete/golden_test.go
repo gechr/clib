@@ -551,3 +551,23 @@ func TestGolden(t *testing.T) {
 		}
 	}
 }
+
+// Every compopt call must follow the Bash 4 version check: Bash 3.2 has no compopt.
+func TestGoldenBashCompoptGuarded(t *testing.T) {
+	const guard = `if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then`
+	files, err := filepath.Glob(filepath.Join("testdata", "bash", "*.golden"))
+	require.NoError(t, err)
+	require.NotEmpty(t, files)
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		lines := strings.Split(string(data), "\n")
+		for i, line := range lines {
+			if !strings.Contains(line, "compopt") {
+				continue
+			}
+			require.Truef(t, i > 0 && strings.TrimSpace(lines[i-1]) == guard,
+				"%s:%d: compopt must directly follow the Bash 4 version check", file, i+1)
+		}
+	}
+}
