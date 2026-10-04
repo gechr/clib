@@ -634,7 +634,9 @@ func bashWriteCommaCompletion(sb *strings.Builder, valuesExpr string, dynamic bo
                     if [[ -n "${prefix}" ]]; then
                         COMPREPLY=("${COMPREPLY[@]/#/${prefix}}")
                     fi
-                    compopt -o nospace
+                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+                        compopt -o nospace
+                    fi
 `)
 }
 
