@@ -12,12 +12,12 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/gechr/gorules v0.0.3
-	github.com/gechr/x v0.6.1
+	github.com/gechr/x v0.6.2
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.12.1
-	github.com/urfave/cli/v3 v3.13.0
+	github.com/urfave/cli/v3 v3.14.0
 )
 
 require (
