@@ -15,11 +15,11 @@ import (
 type CompletionOption func(*completionConfig)
 
 type completionConfig struct {
-	handler complete.ContextHandler
+	handler CompletionHandler
 }
 
 // WithCompletionHandler supplies predictors for flags and dynamic-args.
-func WithCompletionHandler(handler complete.ContextHandler) CompletionOption {
+func WithCompletionHandler(handler CompletionHandler) CompletionOption {
 	return func(cfg *completionConfig) { cfg.handler = handler }
 }
 
@@ -58,7 +58,7 @@ func RegisterCompletions(
 	return gen, nil
 }
 
-func registerNativeCommand(cmd *cobralib.Command, handler complete.ContextHandler) error {
+func registerNativeCommand(cmd *cobralib.Command, handler CompletionHandler) error {
 	for _, meta := range FlagMeta(cmd) {
 		if _, exists := cmd.GetFlagCompletionFunc(meta.Name); exists {
 			continue
@@ -99,7 +99,7 @@ func registerNativeCommand(cmd *cobralib.Command, handler complete.ContextHandle
 func nativeFlag(
 	flag *pflag.Flag,
 	spec complete.Spec,
-	handler complete.ContextHandler,
+	handler CompletionHandler,
 ) cobralib.CompletionFunc {
 	return func(cmd *cobralib.Command, args []string, word string) ([]string, cobralib.ShellCompDirective) {
 		directive := cobralib.ShellCompDirectiveNoFileComp
@@ -107,7 +107,7 @@ func nativeFlag(
 		switch {
 		case spec.Dynamic != "":
 			if handler != nil {
-				values, directive = handler(complete.Context{
+				values, directive = handler(CompletionContext{
 					Command: cmd, Args: args, Flag: flag, Kind: spec.Dynamic,
 					ToComplete: word, AfterDash: AfterDash(cmd),
 				})
@@ -161,7 +161,7 @@ func nativeCommaList(values []string, word string) []string {
 
 func nativePositionals(
 	cmd *cobralib.Command,
-	handler complete.ContextHandler,
+	handler CompletionHandler,
 ) cobralib.CompletionFunc {
 	meta := CommandMeta(cmd)
 	legacyArgs := cmd.Args == nil
@@ -176,7 +176,7 @@ func nativePositionals(
 				return nil, cobralib.ShellCompDirectiveNoFileComp
 			}
 			kind := meta.DynamicArgs[min(len(args), len(meta.DynamicArgs)-1)]
-			return handler(complete.Context{
+			return handler(CompletionContext{
 				Command: cmd, Args: args, Kind: kind, ToComplete: word, AfterDash: AfterDash(cmd),
 			})
 		}

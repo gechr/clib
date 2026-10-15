@@ -42,7 +42,7 @@ _nativeapp()
     setopt local_options BASH_REMATCH
     if [[ "${lastParam}" =~ '-.*=' ]]; then
         # We are dealing with a flag with an =
-        flagPrefix="-P ${BASH_REMATCH}"
+        flagPrefix="-P ${(q)BASH_REMATCH}"
     fi
 
     # Prepare the command to obtain completions

@@ -22,7 +22,12 @@ function __nativeapp_perform_completion
     set -l requestComp "NATIVEAPP_ACTIVE_HELP=0 $args[1] __complete $args[2..-1] $lastArg"
 
     __nativeapp_debug "Calling $requestComp"
-    set -l results (eval $requestComp 2> /dev/null)
+    set -l current (commandline -ct)
+    set -l program $args[1]
+    if string match -q -- '~/*' "$program"
+        set program "$HOME/"(string sub -s 3 -- "$program")
+    end
+    set -l results (env COBRA_ACTIVE_HELP=0 "$program" __complete $args[2..-1] "$current" 2> /dev/null)
 
     # Some programs may output extra empty lines after the directive.
     # Let's ignore them or else it will break completion.

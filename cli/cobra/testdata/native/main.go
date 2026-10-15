@@ -22,6 +22,11 @@ func main() {
 		clibcobra.FlagExtra{Enum: []string{"json", "yaml"}},
 	)
 	cmd.Flags().String("text", "", "Text")
+	cmd.Flags().String("echo-text", "", "Complete the parsed text value")
+	clibcobra.Extend(
+		cmd.Flags().Lookup("echo-text"),
+		clibcobra.FlagExtra{Complete: "predictor=echo-text"},
+	)
 	cmd.Flags().String("target", "", "Target")
 	clibcobra.Extend(cmd.Flags().Lookup("target"), clibcobra.FlagExtra{Complete: "predictor=item"})
 	cmd.Flags().String("config", "", "Config")
@@ -39,7 +44,12 @@ func main() {
 	other.Flags().Bool("sibling-only", false, "Sibling flag")
 	root.AddCommand(cmd, other)
 	gen, err := clibcobra.RegisterCompletions(root, clibcobra.WithCompletionHandler(
-		func(c complete.Context) ([]string, cobra.ShellCompDirective) {
+		func(c clibcobra.CompletionContext) ([]string, cobra.ShellCompDirective) {
+			if c.Kind == "echo-text" {
+				return []string{
+					c.Command.Flags().Lookup("text").Value.String(),
+				}, cobra.ShellCompDirectiveNoFileComp
+			}
 			if c.AfterDash {
 				return nil, cobra.ShellCompDirectiveDefault
 			}

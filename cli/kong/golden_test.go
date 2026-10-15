@@ -66,7 +66,7 @@ func sectionsDescription() []help.Section {
 		Inspect inspectCmd `help:"Inspect a widget" cmd:""`
 		Remove  struct {
 			Name string `help:"Widget name" arg:""`
-		} `help:"Remove a widget"  cmd:""`
+		} `help:"Remove a widget" cmd:""`
 	}
 
 	ctx := parseGoldenForHelp(

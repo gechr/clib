@@ -254,7 +254,7 @@ clibcobra.Extend(root.Flags().Lookup("profile"), clibcobra.FlagExtra{
     Complete: "predictor=profile",
 })
 gen, err := clibcobra.RegisterCompletions(root,
-    clibcobra.WithCompletionHandler(func(c complete.Context) ([]string, cobra.ShellCompDirective) {
+    clibcobra.WithCompletionHandler(func(c clibcobra.CompletionContext) ([]string, cobra.ShellCompDirective) {
         if c.AfterDash {
             return nil, cobra.ShellCompDirectiveDefault
         }
@@ -271,7 +271,7 @@ return root.Execute()
 
 Use `app completion bash`, `app completion fish`, or `app completion zsh` to print a script, or pass the returned generator to the existing install/preflight helpers. Bash supports 3.2 and newer without the bash-completion package. Regenerate installed scripts to switch to native completion. Keep your legacy `complete.Handler` and `--@complete` handling for users with older scripts.
 
-`complete.Context` carries `Command`, parsed positional `Args`, `Flag` (nil for positionals), predictor `Kind`, `ToComplete`, and `AfterDash`. Predictors return values with optional tab-separated descriptions and a Cobra directive. Comma lists retain the typed prefix and exclude already selected items. Their predictors receive the entire word in `ToComplete` and return next-item candidates without the comma prefix; the bridge keeps the cursor in the list by suppressing a trailing space. The final `dynamic-args` predictor repeats, subject to the command's positional limit; after `--`, the predictor decides what to complete.
+`clibcobra.CompletionContext` carries `Command`, parsed positional `Args`, `Flag` (nil for positionals), predictor `Kind`, `ToComplete`, and `AfterDash`. Predictors return values with optional tab-separated descriptions and a Cobra directive. Comma lists retain the typed prefix and exclude already selected items. Their predictors receive the entire word in `ToComplete` and return next-item candidates without the comma prefix; the bridge keeps the cursor in the list by suppressing a trailing space. The final `dynamic-args` predictor repeats, subject to the command's positional limit; after `--`, the predictor decides what to complete.
 
 `clibcobra.CommandMeta(cmd)` exposes `DynamicArgs` and `PathArgs` for any command, including the root. Native callbacks can use `clibcobra.AfterDash(cmd)` directly. The bridge preserves existing root pre-run hooks; install it after setting them, and use `complete.IsRequest(os.Args[1:])` to bypass application initialization during completion. `Preflight()` ignores both `__complete` and `__completeNoDesc` requests, including any install, uninstall, or print flags being completed.
 

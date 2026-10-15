@@ -128,7 +128,7 @@ func TestNativeContext(t *testing.T) {
 			_, err := clibcobra.RegisterCompletions(
 				root,
 				clibcobra.WithCompletionHandler(
-					func(c complete.Context) ([]string, cobralib.ShellCompDirective) {
+					func(c clibcobra.CompletionContext) ([]string, cobralib.ShellCompDirective) {
 						called = true
 						require.Equal(t, "app group login", c.Command.CommandPath())
 						require.Equal(t, tc.kind, c.Kind)
@@ -212,7 +212,7 @@ func TestNativeUnknownCommandDoesNotCompleteRootArgs(t *testing.T) {
 		root := &cobralib.Command{Use: "app", Annotations: map[string]string{"clib": annotation}}
 		root.AddCommand(&cobralib.Command{Use: "login", Run: noop})
 		_, err := clibcobra.RegisterCompletions(root, clibcobra.WithCompletionHandler(
-			func(complete.Context) ([]string, cobralib.ShellCompDirective) {
+			func(clibcobra.CompletionContext) ([]string, cobralib.ShellCompDirective) {
 				t.Fatal("unknown subcommand reached root predictor")
 				return nil, cobralib.ShellCompDirectiveDefault
 			}))
@@ -315,7 +315,7 @@ func TestNativeDynamicCommaDescriptions(t *testing.T) {
 	root.Flags().StringSlice("items", nil, "Items")
 	clibcobra.Extend(root.Flags().Lookup("items"), clibcobra.FlagExtra{Complete: "predictor=item"})
 	_, err := clibcobra.RegisterCompletions(root, clibcobra.WithCompletionHandler(
-		func(c complete.Context) ([]string, cobralib.ShellCompDirective) {
+		func(c clibcobra.CompletionContext) ([]string, cobralib.ShellCompDirective) {
 			require.Equal(t, "a,b", c.ToComplete)
 			return []string{"a\tFirst", "b\tSecond"}, cobralib.ShellCompDirectiveNoFileComp
 		}))

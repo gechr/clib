@@ -38,6 +38,13 @@ func nativeFish(g *complete.Generator) (string, error) {
     end
     if test $filefilter -eq 1`
 	return patchCompletionScript(script.String(),
+		"set -l results (eval $requestComp 2> /dev/null)",
+		`set -l current (commandline -ct)
+    set -l program $args[1]
+    if string match -q -- '~/*' "$program"
+        set program "$HOME/"(string sub -s 3 -- "$program")
+    end
+    set -l results (env COBRA_ACTIVE_HELP=0 "$program" __complete $args[2..-1] "$current" 2> /dev/null)`,
 		"if test $filefilter -eq 1; or test $dirfilter -eq 1",
 		strings.ReplaceAll(directoryFilter, "__CLIB_APP__", "__"+g.AppName),
 		"# For Fish, when completing a flag with an = (e.g."+", <program> -n=<TAB>)",
@@ -63,6 +70,10 @@ func nativeZsh(g *complete.Generator) (string, error) {
 			g.AppName,
 		),
 		"# Prefix inline flag assignments with the flag name.",
+		// _describe and _arguments evaluate their option strings. Quote the
+		// prefix once so literal shell syntax in the current word stays data.
+		`flagPrefix="-P ${BASH_REMATCH}"`,
+		`flagPrefix="-P ${(q)BASH_REMATCH}"`,
 		`out=$(eval ${requestComp} 2>/dev/null)`,
 		`local program="${(Q)words[1]}"
     if [[ "$program" == '~/'* ]]; then

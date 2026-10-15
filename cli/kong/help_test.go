@@ -564,7 +564,7 @@ func TestNodeSections_Subcommand(t *testing.T) {
 		Verbose bool `help:"Verbose output"`
 		Run     struct {
 			Output string `name:"output" help:"Output format" short:"o"`
-		} `help:"Run the app"    cmd:""`
+		} `help:"Run the app" cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
@@ -1092,7 +1092,7 @@ func TestNodeSections_GroupedWithUngroupedLocalAndInherited(t *testing.T) {
 		Run     struct {
 			Author string `name:"author" help:"Author" short:"a" clib:"group='Filters'"`
 			Debug  bool   `name:"debug"  help:"Debug"` // local, ungrouped
-		} `               help:"Run"     cmd:""`
+		} `help:"Run" cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
@@ -1115,7 +1115,7 @@ func TestNodeSections_CustomOptionTitles(t *testing.T) {
 		Verbose bool `help:"Verbose"`
 		Run     struct {
 			Debug bool `help:"Debug"`
-		} `               cmd:""`
+		} `cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
@@ -1134,7 +1134,7 @@ func TestNodeSections_GlobalRoleUsesConfiguredTitle(t *testing.T) {
 		Anchored bool `help:"Anchored" clib:"group='@global/-1'"`
 		Run      struct {
 			Local bool `help:"Local"`
-		} `                                          cmd:""`
+		} `cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))
@@ -1275,7 +1275,7 @@ func TestNodeSections_GroupedInheritedTriggersGroupedMode(t *testing.T) {
 		Verbose bool `name:"verbose" help:"Verbose" clib:"group='Output'"`
 		Run     struct {
 			Limit int `name:"limit" help:"Max results" short:"L"`
-		} `               help:"Run"                           cmd:""`
+		} `help:"Run" cmd:""`
 	}
 
 	ctx := parseForHelp(t, &CLI{}, []string{"run", "--help"}, konglib.Name("myapp"))

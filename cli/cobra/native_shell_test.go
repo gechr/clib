@@ -90,6 +90,34 @@ func TestNativeShellDrivers(t *testing.T) {
 	t.Run("bash", func(t *testing.T) { testNativeBash(t, dir, environment, scripts["bash"]) })
 	t.Run("fish", func(t *testing.T) { testNativeFish(t, dir, environment, scripts["fish"]) })
 	t.Run("zsh", func(t *testing.T) { testNativeZsh(t, dir, environment, scripts["zsh"]) })
+	t.Run("zsh literal prefixes", func(t *testing.T) {
+		testNativeZshLiteralPrefixes(t, dir, environment, scripts["zsh"])
+	})
+}
+
+func testNativeZshLiteralPrefixes(t *testing.T, dir string, environment []string, script string) {
+	t.Helper()
+	for _, flag := range []string{"format", "config", "dir", "file"} {
+		t.Run(flag, func(t *testing.T) {
+			driver := `compdef() { :; }
+source "$1"
+shift
+words=("$@")
+CURRENT=${#words[@]}
+_describe() { [[ $words[-1] != --file=* ]] && printf '%s\n' "$@"; }
+_files() { printf '%s\n' "$@"; }
+_arguments() { eval "${1#*:*:}"; }
+_nativeapp`
+			word := "--" + flag + "=x$(touch evaluated)="
+			cmd := exec.CommandContext(t.Context(), nativeShell(t, "zsh"), "-f", "-c",
+				driver, "zsh", script, "nativeapp", "login", word)
+			cmd.Dir, cmd.Env = dir, environment
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "%s", out)
+			require.NoFileExists(t, filepath.Join(dir, "evaluated"))
+			require.Contains(t, strings.Split(string(out), "\n"), word)
+		})
+	}
 }
 
 func nativeShell(t *testing.T, name string) string {
@@ -183,6 +211,10 @@ if ((${#COMPREPLY[@]})); then printf '%s\n' "${COMPREPLY[@]}"; fi`
 func testNativeFish(t *testing.T, dir string, environment []string, script string) {
 	t.Helper()
 	for _, tc := range []struct{ line, want, exclude string }{
+		{"~/nativeapp login --format j", "json", "file.txt"},
+		{`nativeapp login --text '(touch evaluated)' --format j`, "json", "file.txt"},
+		{`nativeapp login --text 'two words' --echo-text `, "two words", "file.txt"},
+		{`nativeapp login --text '(touch evaluated)' --echo-text `, "(touch evaluated)", "file.txt"},
 		{"nativeapp login --dir dir", "directory/", "directory.json"},
 		{"nativeapp login --dir=dir", "directory/", "directory.json"},
 		{`nativeapp login --dir "dir`, "directory/", "directory.json"},
@@ -207,8 +239,12 @@ func testNativeFish(t *testing.T, dir string, environment []string, script strin
 			require.NoError(t, err, "%s", out)
 			//nolint:gocritic // shell descriptions and absolute paths vary
 			require.Contains(t, string(out), tc.want)
+			if tc.want == "json" {
+				require.Equal(t, "json\n", string(out))
+			}
 			//nolint:gocritic // check forbidden candidates regardless of descriptions
 			require.NotContains(t, string(out), tc.exclude)
+			require.NoFileExists(t, filepath.Join(dir, "evaluated"))
 		})
 	}
 }
@@ -217,6 +253,7 @@ func testNativeZsh(t *testing.T, dir string, environment []string, script string
 	t.Helper()
 	for _, words := range [][]string{
 		{"nativeapp", "login", "--format", "j"},
+		{"nativeapp", "login", `--format=x$(touch evaluated)=`},
 		{"~/nativeapp", "login", "--format", "j"},
 		{"nativeapp", "login", "--text", `"$(touch evaluated)"`, "--format", "j"},
 		{"nativeapp", "login", "--text", `"two words"`, "--format", "j"},
