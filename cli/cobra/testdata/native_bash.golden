@@ -1,0 +1,118 @@
+# nativeapp native Bash completion (Bash 3.2+, no bash-completion dependency).
+__start_nativeapp() {
+  COMPREPLY=()
+  # Read only up to the cursor. Reconstruct shell words without evaluating
+  # substitutions or splitting on COMP_WORDBREAKS (=, :, @, ...).
+  local line="${COMP_LINE:0:COMP_POINT}" word='' quote='' char next i active=0 break_at=0
+  local backtick=$'\140' words=()
+  for ((i = 0; i < ${#line}; i++)); do
+    char="${line:i:1}"
+    if [[ "$char" == '\' && "$quote" != "'" ]]; then
+      next="${line:i+1:1}"
+      if [[ -n "$next" && (-z "$quote" || "$next" == '"' ||
+        "$next" == '$' || "$next" == "$backtick" || "$next" == '\') ]]; then
+        word="$word$next"
+        ((i++))
+      else
+        word="$word$char"
+      fi
+      active=1
+    elif [[ -z "$quote" && ("$char" == '"' || "$char" == "'") ]]; then
+      quote="$char" active=1 break_at=${#word}
+    elif [[ -n "$quote" && "$char" == "$quote" ]]; then
+      quote=''
+    elif [[ -z "$quote" && "$char" == [[:space:]] ]]; then
+      if ((active)); then words+=("$word"); fi
+      word='' active=0 break_at=0
+    else
+      word="$word$char" active=1
+      if [[ -z "$quote" && "$COMP_WORDBREAKS" == *"$char"* ]]; then
+        break_at=${#word}
+      fi
+    fi
+  done
+  words+=("$word")
+  ((${#words[@]} > 1)) || return 0
+
+  local current=$((${#words[@]} - 1)) cur="$word" flag_prefix=''
+  if [[ "$cur" == -*=* ]]; then
+    flag_prefix="${cur%%=*}="
+    cur="${cur#*=}"
+  fi
+  if [[ -z "$quote" && "$cur" == '~/'* ]]; then
+    cur="$HOME/${cur#\~/}"
+    words[current]="$flag_prefix$cur"
+  fi
+
+  local result directive value quoted filter base='' values=() filters=()
+  local program="${words[0]}" prefix="${word:0:break_at}"
+  if [[ "$program" == '~/'* ]]; then program="$HOME/${program#\~/}"; fi
+  result=$("$program" __complete "${words[@]:1}" 2>/dev/null) || return 0
+  directive="${result##*$'\n'}"
+  [[ "$directive" == :* ]] || return 0
+  directive="${directive#:}"
+  case "$directive" in '' | *[!0-9]*) return 0 ;; esac
+  ((directive & 1)) && return 0
+  while IFS= read -r value; do
+    [[ "$value" == :"$directive" || "$value" == '_activeHelp_ '* ]] && continue
+    value="${value%%$'\t'*}"
+    [[ -n "$value" ]] || continue
+    if ((directive & 24)); then
+      filters+=("$value")
+    elif [[ "$value" == "$cur"* ]]; then
+      values+=("$value")
+    fi
+  done < <(printf '%s\n' "$result")
+
+  if ((directive & 16)); then
+    base="${filters[0]}"
+    while IFS= read -r value; do
+      values+=("${value%/}/")
+    done < <(
+      if [[ -n "$base" ]]; then cd -- "$base" || exit; fi
+      compgen -d -- "$cur"
+    )
+  elif ((directive & 8)); then
+    while IFS= read -r value; do
+      if [[ -d "$value" ]]; then
+        values+=("${value%/}/")
+      else
+        for filter in "${filters[@]}"; do
+          if [[ "$value" == *.$filter ]]; then
+            values+=("$value")
+            break
+          fi
+        done
+      fi
+    done < <(compgen -f -- "$cur")
+  elif ((${#values[@]} == 0 && ! (directive & 4))); then
+    while IFS= read -r value; do
+      [[ -d "$value" ]] && value="${value%/}/"
+      values+=("$value")
+    done < <(compgen -f -- "$cur")
+  fi
+
+  for value in "${values[@]}"; do
+    value="$flag_prefix$value"
+    # Readline breaks only at unquoted, unescaped separators.
+    [[ -n "$prefix" ]] && value="${value#"$prefix"}"
+    case "$quote" in
+      '"')
+        quoted="${value//\\/\\\\}"
+        quoted="${quoted//\"/\\\"}"
+        quoted="${quoted//\$/\\\$}"
+        quoted="${quoted//"$backtick"/\\"$backtick"}"
+        ;;
+      "'") quoted="${value//\'/\'\\\'\'}" ;;
+      *) printf -v quoted '%q' "$value" ;;
+    esac
+    COMPREPLY+=("$quoted")
+  done
+  # Bash 3.2 has no compopt. Always use nospace and add a space ourselves
+  # only for a unique, unquoted, terminal candidate.
+  if [[ -z "$quote" ]] && ((${#COMPREPLY[@]} == 1 && ! (directive & 2))); then
+    [[ "${values[0]}" != */ ]] && COMPREPLY[0]="${COMPREPLY[0]} "
+  fi
+  return 0
+}
+complete -o nospace -F __start_nativeapp nativeapp

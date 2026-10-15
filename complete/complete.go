@@ -152,6 +152,7 @@ type ValueDesc struct {
 
 // Generator generates shell completion scripts.
 type Generator struct {
+	shells               map[string]ShellFunc
 	AppName              string
 	DynamicArgs          []string // per-position dynamic completion; final entry repeats for additional positional args
 	HasMaxPositionalArgs bool
@@ -614,7 +615,10 @@ func (g *Generator) Print(w io.Writer, sh string) error {
 	if sh == "" {
 		sh = shell.Fish
 	}
-	fn, ok := resolveShellFunc(sh)
+	fn, ok := g.shells[sh]
+	if !ok {
+		fn, ok = resolveShellFunc(sh)
+	}
 	if !ok {
 		return fmt.Errorf("unsupported shell %q (supported: %s)", sh, supportedShells())
 	}

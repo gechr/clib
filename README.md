@@ -232,6 +232,49 @@ Use `complete.WithOrder(complete.OrderKeep)` to make keep-order the generator de
 
 Flags hidden from `--help` are omitted from completions by default. Use `complete-hidden` (Kong) or `FlagExtra.CompleteHidden` (Cobra/urfave) to still offer a specific hidden flag as a completion, or `complete.WithIncludeHidden()` to offer every hidden flag across the command tree.
 
+#### Native Cobra completions
+
+Call `RegisterCompletions` after building the command tree and registering any native Cobra callbacks. It returns a generator whose Bash, Fish, and Zsh scripts ask the application through `__complete`. Existing native callbacks take precedence. Text and number values suppress file completion by default; `Hint: "file"`, `Hint: "dir"`, and `Extension` opt into filesystem completion.
+
+```go
+import (
+    clibcobra "github.com/gechr/clib/cli/cobra"
+    "github.com/gechr/clib/complete"
+    "github.com/spf13/cobra"
+)
+
+root := &cobra.Command{
+    Use: "app [profiles...]",
+    Args: cobra.ArbitraryArgs,
+    Run: func(*cobra.Command, []string) {},
+    Annotations: map[string]string{"clib": "dynamic-args='profile'"},
+}
+root.Flags().String("profile", "", "Profile to use")
+clibcobra.Extend(root.Flags().Lookup("profile"), clibcobra.FlagExtra{
+    Complete: "predictor=profile",
+})
+gen, err := clibcobra.RegisterCompletions(root,
+    clibcobra.WithCompletionHandler(func(c complete.Context) ([]string, cobra.ShellCompDirective) {
+        if c.AfterDash {
+            return nil, cobra.ShellCompDirectiveDefault
+        }
+        return []string{"development\tLocal development", "production\tProduction"},
+            cobra.ShellCompDirectiveNoFileComp
+    }),
+)
+if err != nil {
+    return err
+}
+root.AddCommand(clibcobra.CompletionCommand(root, func() *complete.Generator { return gen }))
+return root.Execute()
+```
+
+Use `app completion bash`, `app completion fish`, or `app completion zsh` to print a script, or pass the returned generator to the existing install/preflight helpers. Bash supports 3.2 and newer without the bash-completion package. Regenerate installed scripts to switch to native completion. Keep your legacy `complete.Handler` and `--@complete` handling for users with older scripts.
+
+`complete.Context` carries `Command`, parsed positional `Args`, `Flag` (nil for positionals), predictor `Kind`, `ToComplete`, and `AfterDash`. Predictors return values with optional tab-separated descriptions and a Cobra directive. Comma lists retain the typed prefix and exclude already selected items. Their predictors receive the entire word in `ToComplete` and return next-item candidates without the comma prefix; the bridge keeps the cursor in the list by suppressing a trailing space. The final `dynamic-args` predictor repeats, subject to the command's positional limit; after `--`, the predictor decides what to complete.
+
+`clibcobra.CommandMeta(cmd)` exposes `DynamicArgs` and `PathArgs` for any command, including the root. Native callbacks can use `clibcobra.AfterDash(cmd)` directly. The bridge preserves existing root pre-run hooks; install it after setting them, and use `complete.IsRequest(os.Args[1:])` to bypass application initialization during completion. `Preflight()` ignores both `__complete` and `__completeNoDesc` requests, including any install, uninstall, or print flags being completed.
+
 ### Enum Formatting
 
 ```go

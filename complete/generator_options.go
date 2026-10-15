@@ -13,6 +13,17 @@ const (
 // Option configures a Generator.
 type Option func(*Generator)
 
+// WithShellGenerator overrides a shell client for this generator only.
+// Other generators continue to use the registered shell implementations.
+func WithShellGenerator(name string, fn ShellFunc) Option {
+	return func(g *Generator) {
+		if g.shells == nil {
+			g.shells = make(map[string]ShellFunc)
+		}
+		g.shells[name] = fn
+	}
+}
+
 // WithOrder sets the default completion ordering for flags that do not specify
 // an explicit order.
 func WithOrder(order Order) Option {

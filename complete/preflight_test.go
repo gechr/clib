@@ -13,6 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPreflight_NativeRequestIsNotAnAction(t *testing.T) {
+	oldArgs := os.Args
+	t.Cleanup(func() { os.Args = oldArgs })
+	for _, request := range []string{"__complete", "__completeNoDesc"} {
+		for _, action := range []string{"--install-completion", "--uninstall-completion", "--print-completion", "--@complete=item"} {
+			t.Run(request+action, func(t *testing.T) {
+				os.Args = []string{"app", request, action, ""}
+				flags, args, ok := complete.Preflight()
+				require.False(t, ok)
+				require.Empty(t, flags)
+				require.Nil(t, args)
+			})
+		}
+	}
+}
+
 func TestPreflight_NoMatch(t *testing.T) {
 	t.Setenv("_TEST_ARGS", "1")
 	os.Args = []string{"myapp", "run", "--verbose"}

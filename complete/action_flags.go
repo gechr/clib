@@ -8,6 +8,9 @@ import (
 // ApplyActionArgs supplements action with completion flags parsed from args.
 // Existing action fields are only updated when the corresponding flag is present.
 func ApplyActionArgs(action *Action, args []string) {
+	if IsRequest(args) {
+		return
+	}
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "--" {
