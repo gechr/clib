@@ -56,7 +56,7 @@ linters:
     exhaustive:
       check:
         - switch
-        - map
+        - mapliteral
     gocritic:
       enabled-checks:
         - ruleguard
