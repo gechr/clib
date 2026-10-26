@@ -1,0 +1,16 @@
+[1;33mUsage[m
+
+  [1;32mapp[m [34m<command>[m
+
+[1;33mAgents[m
+
+  [1;34malpha[m    Start alpha on a model
+  [1;34mbravo[m    Start bravo inside a sandbox
+  [1;34mcharlie[m  Start charlie on a model
+
+  [1;34mrun[m      Run any tool with the shared settings
+
+[1;33mAccount[m
+
+  [1;34mlogin[m   Sign in
+  [1;34mlogout[m  Forget the stored key

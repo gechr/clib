@@ -159,10 +159,35 @@ func sectionsAliases() []help.Section {
 	})
 }
 
+func commandGroupsRoot() *clilib.Command {
+	root := &clilib.Command{Name: "app"}
+	for _, entry := range []struct{ name, desc, native, group string }{
+		{"alpha", "Start alpha on a model", "Agents", "/0"},
+		{"bravo", "Start bravo inside a sandbox", "Agents", "/0"},
+		{"charlie", "Start charlie on a model", "Agents", "/0"},
+		{"run", "Run any tool with the shared settings", "Agents", "/-1"},
+		{"login", "Sign in", "Agents", "Account"},
+		{"logout", "Forget the stored key", "Account", ""},
+	} {
+		command := &clilib.Command{Name: entry.name, Usage: entry.desc, Category: entry.native}
+		urfavecli.ExtendCommand(command, urfavecli.CommandExtra{Group: entry.group})
+		root.Commands = append(root.Commands, command)
+	}
+	hidden := &clilib.Command{Name: "hidden", Hidden: true}
+	urfavecli.ExtendCommand(hidden, urfavecli.CommandExtra{Group: "Hidden"})
+	root.Commands = append(root.Commands, hidden)
+	return root
+}
+
+func sectionsCommandGroups() []help.Section {
+	return urfavecli.Sections(commandGroupsRoot())
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
+		"command_groups":        sectionsCommandGroups(),
 		"aliases":               sectionsAliases(),
 		"basic":                 sectionsBasic(),
 		"grouped":               sectionsGrouped(),
@@ -188,6 +213,68 @@ func TestGolden(t *testing.T) {
 			want, err := os.ReadFile(goldenFile)
 			require.NoError(t, err, "golden file missing; run with -update to create")
 			require.Equal(t, string(want), got)
+		})
+	}
+}
+
+func TestCommandGroupOrder(t *testing.T) {
+	root := commandGroupsRoot()
+	sections := urfavecli.SectionsWithOptions(urfavecli.WithSortedGroupOrder())(root)
+	require.Equal(t, "Account", sections[1].Title)
+	require.Equal(t, "Agents", sections[2].Title)
+	sections = urfavecli.SectionsWithOptions(
+		urfavecli.WithSortedGroupOrder(),
+		urfavecli.WithKeepGroupOrder(),
+	)(
+		root,
+	)
+	require.Equal(t, "Agents", sections[1].Title)
+	require.Equal(t, "Account", sections[2].Title)
+}
+
+func TestCommandGroupsAliases(t *testing.T) {
+	run := &clilib.Command{Name: "run", Category: "Tools"}
+	alias := &clilib.Command{Name: "publish", Category: "Tools"}
+	urfavecli.ExtendCommand(alias, urfavecli.CommandExtra{Alias: "release", Group: "/0"})
+	root := &clilib.Command{Name: "app", Commands: []*clilib.Command{run, alias, {Name: "version"}}}
+	for _, tt := range []struct {
+		name           string
+		opts           []urfavecli.SectionsOption
+		inline, hidden bool
+	}{
+		{name: "separate"},
+		{name: "inline", opts: []urfavecli.SectionsOption{urfavecli.WithInlineCommandAliases()}, inline: true},
+		{name: "hidden", opts: []urfavecli.SectionsOption{urfavecli.WithInlineCommandAliases(), urfavecli.WithHideCommandAliases()}, hidden: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sections := urfavecli.SectionsWithOptions(tt.opts...)(root)
+			content := []help.Content{help.CommandGroup{{Name: "run"}}}
+			if tt.inline {
+				content = append(
+					[]help.Content{
+						help.CommandGroup{{Name: "publish", Desc: "Alias for `release`"}},
+					},
+					content...)
+			}
+			want := []help.Section{
+				{Title: "Tools", Content: content},
+				{
+					Title:   "Additional Commands",
+					Content: []help.Content{help.CommandGroup{{Name: "version"}}},
+				},
+			}
+			if !tt.inline && !tt.hidden {
+				want = append(
+					want,
+					help.Section{
+						Title: "Aliases",
+						Content: []help.Content{
+							help.AliasGroup{{Name: "publish", Target: "release"}},
+						},
+					},
+				)
+			}
+			require.Equal(t, want, sections[1:])
 		})
 	}
 }

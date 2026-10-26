@@ -36,7 +36,7 @@ func HelpPrinter(
 }
 
 // Sections builds standard help sections from a urfave command.
-// Extracts: Usage, Aliases, Commands, and grouped flag sections.
+// Command groups combine Category with CommandExtra.Group; see help.BuildCommandSections.
 func Sections(cmd *clilib.Command) []help.Section {
 	return buildSections(cmd)
 }
@@ -86,7 +86,7 @@ func buildSections(cmd *clilib.Command, opts ...SectionsOption) []help.Section {
 			cmds, cfg.inlineCommandAliases, cfg.hideCommandAliases,
 		)
 		if len(commands) > 0 {
-			sections = append(sections, commandSection(commands))
+			sections = append(sections, commandSections(commands, cfg)...)
 		}
 		if len(aliases) > 0 {
 			sections = append(sections, help.Section{
@@ -158,19 +158,26 @@ func aliasSection(cmd *clilib.Command) help.Section {
 	}
 }
 
-func commandSection(cmds []*clilib.Command) help.Section {
-	var group help.CommandGroup
-	for _, c := range cmds {
-		desc := c.Usage
-		if extra := getCommandExtra(c); extra != nil && extra.Alias != "" {
-			desc = "Alias for `" + extra.Alias + "`"
+func commandSections(cmds []*clilib.Command, cfg sectionsConfig) []help.Section {
+	var classified []help.ClassifiedCommand
+	for _, command := range cmds {
+		desc, group := command.Usage, ""
+		if extra := getCommandExtra(command); extra != nil {
+			group = extra.Group
+			if extra.Alias != "" {
+				desc = "Alias for `" + extra.Alias + "`"
+			}
 		}
-		group = append(group, help.Command{Name: c.Name, Desc: desc})
+		classified = append(classified, help.ClassifiedCommand{
+			Command:     help.Command{Name: command.Name, Desc: desc},
+			NativeGroup: command.Category, Group: group,
+		})
 	}
-	return help.Section{
-		Title:   "Commands",
-		Content: []help.Content{group},
+	var opts []help.CommandSectionsOption
+	if cfg.sortGroupOrder {
+		opts = append(opts, help.WithSortedCommandGroupOrder())
 	}
+	return help.BuildCommandSections(classified, opts...)
 }
 
 // buildFlagSections builds flag help sections from a urfave command.
@@ -202,6 +209,9 @@ func buildFlagSections(cmd *clilib.Command, cfg sectionsConfig) ([]help.Section,
 	}
 
 	var opts []help.FlagSectionsOption
+	if cfg.keepGroupOrder {
+		opts = append(opts, help.WithKeepGroupOrder())
+	}
 	if cfg.optionsTitle != "" {
 		opts = append(opts, help.WithOptionsTitle(cfg.optionsTitle))
 	}

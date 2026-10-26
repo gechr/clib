@@ -41,6 +41,7 @@ const (
 // CommandExtra holds clib-specific metadata for a cobra command.
 type CommandExtra struct {
 	Alias string `json:"alias"` // command invoked by this alias command
+	Group string `json:"group"` // help section or section/subkey; /subkey inherits the native group
 }
 
 // ExtendCommand attaches clib metadata to a cobra command.

@@ -1,6 +1,8 @@
 package urfave
 
 type sectionsConfig struct {
+	keepGroupOrder        bool
+	sortGroupOrder        bool
 	hideCommandAliases    bool
 	inlineCommandAliases  bool
 	lowercasePlaceholders bool
@@ -48,4 +50,15 @@ func WithOptionsTitle(title string) SectionsOption {
 // title instead of the default merged-options layout.
 func WithGlobalOptionsTitle(title string) SectionsOption {
 	return func(c *sectionsConfig) { c.globalOptionsTitle = title }
+}
+
+// WithKeepGroupOrder preserves first-seen command and flag group order.
+// By default, commands keep first-seen order and flags sort alphabetically.
+func WithKeepGroupOrder() SectionsOption {
+	return func(c *sectionsConfig) { c.keepGroupOrder = true; c.sortGroupOrder = false }
+}
+
+// WithSortedGroupOrder sorts command and flag sections alphabetically.
+func WithSortedGroupOrder() SectionsOption {
+	return func(c *sectionsConfig) { c.keepGroupOrder = false; c.sortGroupOrder = true }
 }

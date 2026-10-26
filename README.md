@@ -211,6 +211,12 @@ gen := complete.NewGenerator("catalog").FromFlags(cliurfave.FlagMeta(cmd))
 handled, err := comp.Handle(gen, nil)
 ```
 
+### Command groups
+
+Set `CommandExtra.Group` in Cobra/urfave or `clib:"group=..."` on Kong command fields. Native groups supply the section; `/SubKey` adds a block within it, while `Section/SubKey` overrides it. Numeric subkeys sort ascending: non-negative blocks go above plain commands, negative blocks below. Sections keep native/first-seen order; use `WithSortedGroupOrder` or `WithKeepGroupOrder` to configure command and flag sections.
+
+Kong native command groups and urfave command categories are now honored. The stock renderer aligns descriptions across all blocks in a section. Aliases and completions keep their existing behavior.
+
 ### Completions
 
 The `complete` package generates shell completion scripts from flag

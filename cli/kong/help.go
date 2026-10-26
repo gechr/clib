@@ -67,9 +67,9 @@ func NodeSectionsFunc(opts ...NodeSectionsOption) func(*konglib.Context) ([]help
 // NodeSections builds help sections from the kong parse context.
 // It determines the active node via ctx.Selected() (falls back to the
 // application root) and produces Usage, Arguments, Aliases, Commands,
-// and flag sections.
+// and flag sections. Native group tags combine with clib group tags; see help.BuildCommandSections.
 func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Section, error) {
-	var cfg nodeSectionsConfig
+	cfg := nodeSectionsConfig{keepGroupOrder: true}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -119,37 +119,18 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		})
 	}
 
-	// Commands and command aliases sections.
-	if cmds := visibleChildren(node); len(cmds) > 0 {
-		var group help.CommandGroup
-		var aliases help.AliasGroup
-		for _, child := range cmds {
-			command, alias := classifyCommand(child, cfg)
-			if command.Name != "" {
-				group = append(group, command)
-			}
-			if alias.Name != "" {
-				aliases = append(aliases, alias)
-			}
-		}
-		if len(group) > 0 {
-			sections = append(sections, help.Section{
-				Title: "Commands", Content: []help.Content{group},
-			})
-		}
-		if len(aliases) > 0 {
-			sections = append(sections, help.Section{
-				Title: "Aliases", Content: []help.Content{aliases},
-			})
-		}
+	commandSections, err := nodeCommandSections(node, cfg)
+	if err != nil {
+		return nil, err
 	}
+	sections = append(sections, commandSections...)
 
 	// Flag sections are omitted for commands that only dispatch to
 	// subcommands, since flags at this level can't take effect without
 	// picking a subcommand. Preserve them as non-rendering metadata so
 	// descriptions can still resolve backticked flag references.
 	flagSections, err := buildNodeFlagSections(
-		node, cfg.separateGlobal, cfg.optionsTitle, cfg.globalTitle,
+		node, cfg.separateGlobal, cfg.optionsTitle, cfg.globalTitle, cfg.keepGroupOrder,
 	)
 	if err != nil {
 		return nil, err
@@ -162,6 +143,38 @@ func NodeSections(ctx *konglib.Context, opts ...NodeSectionsOption) ([]help.Sect
 		sections = append(sections, flagSections...)
 	}
 
+	return sections, nil
+}
+
+func nodeCommandSections(node *konglib.Node, cfg nodeSectionsConfig) ([]help.Section, error) {
+	var sections []help.Section
+	var classified []help.ClassifiedCommand
+	var aliases help.AliasGroup
+	for _, child := range visibleChildren(node) {
+		command, alias := classifyCommand(child, cfg)
+		if command.Name != "" {
+			group, err := nodeCommandGroup(child)
+			if err != nil {
+				return nil, err
+			}
+			classified = append(classified, help.ClassifiedCommand{
+				Command: command, NativeGroup: nodeGroupTitle(child), Group: group,
+			})
+		}
+		if alias.Name != "" {
+			aliases = append(aliases, alias)
+		}
+	}
+	var commandOpts []help.CommandSectionsOption
+	if cfg.sortGroupOrder {
+		commandOpts = append(commandOpts, help.WithSortedCommandGroupOrder())
+	}
+	sections = append(sections, help.BuildCommandSections(classified, commandOpts...)...)
+	if len(aliases) > 0 {
+		sections = append(sections, help.Section{
+			Title: "Aliases", Content: []help.Content{aliases},
+		})
+	}
 	return sections, nil
 }
 
@@ -255,6 +268,21 @@ func classifyCommand(
 	default:
 		return help.Command{}, help.Alias{Name: child.Name, Target: target}
 	}
+}
+
+func nodeGroupTitle(node *konglib.Node) string {
+	if node.Group == nil {
+		return ""
+	}
+	return node.Group.Title
+}
+
+func nodeCommandGroup(node *konglib.Node) (string, error) {
+	if node.Tag == nil {
+		return "", nil
+	}
+	group, _, err := tag.Parse(node.Tag.Get(tagClib), tag.Group)
+	return group, err
 }
 
 // nodeUsageTag reads clib:"usage='...'" from the node's struct tag, returning
@@ -583,7 +611,7 @@ func ancestorFlagsByDepth(node *konglib.Node) [][]*konglib.Flag {
 //     section into separate FlagGroup entries (blank line separator).
 //   - Otherwise: flat "Options" (local) + "Global Options" (ancestor).
 func buildNodeFlagSections(
-	node *konglib.Node, separateGlobal bool, optionsTitle, globalTitle string,
+	node *konglib.Node, separateGlobal bool, optionsTitle, globalTitle string, keepOrder bool,
 ) ([]help.Section, error) {
 	var classified []help.ClassifiedFlag
 	classifyKongFlags := func(flags []*konglib.Flag, depth int) error {
@@ -616,7 +644,10 @@ func buildNodeFlagSections(
 		}
 	}
 
-	opts := []help.FlagSectionsOption{help.WithKeepGroupOrder()}
+	var opts []help.FlagSectionsOption
+	if keepOrder {
+		opts = append(opts, help.WithKeepGroupOrder())
+	}
 	if optionsTitle != "" {
 		opts = append(opts, help.WithOptionsTitle(optionsTitle))
 	}

@@ -32,20 +32,15 @@ func HelpFunc(
 	}
 }
 
-// SectionsWithOptions builds standard help sections from a cobra command using
-// configurable flag-section behavior.
+// SectionsWithOptions builds help sections with the given options.
 func SectionsWithOptions(opts ...SectionsOption) func(*cobralib.Command) []help.Section {
 	return func(cmd *cobralib.Command) []help.Section {
 		return buildSections(cmd, opts...)
 	}
 }
 
-// Sections builds standard help sections from a cobra command.
-// Extracts: Usage, Aliases, Examples, grouped Subcommands, Flags, Inherited Flags.
-//
-// When any flag carries a clib "group" extra, flags are organized into
-// one section per group (alphabetical), with ungrouped local flags under "Flags"
-// and ungrouped inherited flags under "Inherited Flags".
+// Sections builds usage, aliases, examples, and grouped command/flag sections.
+// Command groups combine native titles with CommandExtra.Group; see help.BuildCommandSections.
 func Sections(cmd *cobralib.Command) []help.Section {
 	return buildSections(cmd)
 }
@@ -150,47 +145,28 @@ func subcommandSections(cmd *cobralib.Command, cfg sectionsConfig) []help.Sectio
 		available, cfg.inlineCommandAliases, cfg.hideCommandAliases,
 	)
 
-	groups := cmd.Groups()
-	if len(groups) == 0 {
-		var sections []help.Section
-		if len(commands) > 0 {
-			sections = append(sections, help.Section{
-				Title: "Commands", Content: []help.Content{formatCommandList(commands)},
-			})
-		}
-		return appendAliasSection(sections, aliases)
+	var classified []help.ClassifiedCommand
+	var titles []string
+	nativeTitles := make(map[string]string)
+	for _, group := range cmd.Groups() {
+		nativeTitles[group.ID] = group.Title
+		titles = append(titles, group.Title)
 	}
-
-	var sections []help.Section
-	grouped := make(map[string][]*cobralib.Command)
-	var ungrouped []*cobralib.Command
-
-	for _, c := range commands {
-		if c.GroupID != "" {
-			grouped[c.GroupID] = append(grouped[c.GroupID], c)
-		} else {
-			ungrouped = append(ungrouped, c)
+	for _, command := range commands {
+		var group string
+		if extra := getCommandExtra(command); extra != nil {
+			group = extra.Group
 		}
-	}
-
-	for _, g := range groups {
-		cmds := grouped[g.ID]
-		if len(cmds) == 0 {
-			continue
-		}
-		sections = append(sections, help.Section{
-			Title:   g.Title,
-			Content: []help.Content{formatCommandList(cmds)},
+		classified = append(classified, help.ClassifiedCommand{
+			Command:     formatCommand(command),
+			NativeGroup: nativeTitles[command.GroupID], Group: group,
 		})
 	}
-
-	if len(ungrouped) > 0 {
-		sections = append(sections, help.Section{
-			Title:   "Additional Commands",
-			Content: []help.Content{formatCommandList(ungrouped)},
-		})
+	opts := []help.CommandSectionsOption{help.WithCommandGroupOrder(titles...)}
+	if cfg.sortGroupOrder {
+		opts = append(opts, help.WithSortedCommandGroupOrder())
 	}
-
+	sections := help.BuildCommandSections(classified, opts...)
 	return appendAliasSection(sections, aliases)
 }
 
@@ -231,16 +207,12 @@ func availableCommands(cmd *cobralib.Command) []*cobralib.Command {
 	return cmds
 }
 
-func formatCommandList(cmds []*cobralib.Command) help.CommandGroup {
-	var group help.CommandGroup
-	for _, c := range cmds {
-		desc := c.Short
-		if extra := getCommandExtra(c); extra != nil && extra.Alias != "" {
-			desc = "Alias for `" + extra.Alias + "`"
-		}
-		group = append(group, help.Command{Name: c.Name(), Desc: desc})
+func formatCommand(cmd *cobralib.Command) help.Command {
+	desc := cmd.Short
+	if extra := getCommandExtra(cmd); extra != nil && extra.Alias != "" {
+		desc = "Alias for `" + extra.Alias + "`"
 	}
-	return group
+	return help.Command{Name: cmd.Name(), Desc: desc}
 }
 
 // buildFlagSections builds flag help sections from a cobra command.

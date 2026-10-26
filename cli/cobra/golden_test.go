@@ -121,10 +121,48 @@ func sectionsAliases() []help.Section {
 	return cobracli.Sections(root)
 }
 
+func commandGroupsRoot() *cobralib.Command {
+	root := &cobralib.Command{Use: "app"}
+	root.AddGroup(
+		&cobralib.Group{ID: "agents", Title: "Agents"},
+		&cobralib.Group{ID: "account", Title: "Account"},
+	)
+	for _, entry := range []struct{ name, desc, native, group string }{
+		{"alpha", "Start alpha on a model", "agents", "/0"},
+		{"bravo", "Start bravo inside a sandbox", "agents", "/0"},
+		{"charlie", "Start charlie on a model", "agents", "/0"},
+		{"run", "Run any tool with the shared settings", "agents", "/-1"},
+		{"login", "Sign in", "agents", "Account"},
+		{"logout", "Forget the stored key", "account", ""},
+	} {
+		command := &cobralib.Command{
+			Use:     entry.name,
+			Short:   entry.desc,
+			GroupID: entry.native,
+			Run:     func(*cobralib.Command, []string) {},
+		}
+		cobracli.ExtendCommand(command, cobracli.CommandExtra{Group: entry.group})
+		root.AddCommand(command)
+	}
+	hidden := &cobralib.Command{
+		Use:    "hidden",
+		Hidden: true,
+		Run:    func(*cobralib.Command, []string) {},
+	}
+	cobracli.ExtendCommand(hidden, cobracli.CommandExtra{Group: "Hidden"})
+	root.AddCommand(hidden, &cobralib.Command{Use: "unavailable"})
+	return root
+}
+
+func sectionsCommandGroups() []help.Section {
+	return cobracli.Sections(commandGroupsRoot())
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
+		"command_groups":         sectionsCommandGroups(),
 		"aliases":                sectionsAliases(),
 		"lowercase_placeholders": sectionsLowercasePlaceholders(),
 		"preserve_placeholders":  sectionsPreservePlaceholders(),
@@ -150,6 +188,109 @@ func TestGolden(t *testing.T) {
 			want, err := os.ReadFile(goldenFile)
 			require.NoError(t, err, "golden file missing; run with -update to create")
 			require.Equal(t, string(want), got)
+		})
+	}
+}
+
+func TestCommandGroupOrder(t *testing.T) {
+	root := commandGroupsRoot()
+	sections := cobracli.SectionsWithOptions(cobracli.WithSortedGroupOrder())(root)
+	require.Equal(t, "Account", sections[1].Title)
+	require.Equal(t, "Agents", sections[2].Title)
+	sections = cobracli.SectionsWithOptions(
+		cobracli.WithSortedGroupOrder(),
+		cobracli.WithKeepGroupOrder(),
+	)(
+		root,
+	)
+	require.Equal(t, "Agents", sections[1].Title)
+	require.Equal(t, "Account", sections[2].Title)
+}
+
+func TestCommandGroupsGoldenParity(t *testing.T) {
+	want, err := os.ReadFile("testdata/command_groups.golden")
+	require.NoError(t, err)
+	for _, adapter := range []string{"kong", "urfave"} {
+		got, readErr := os.ReadFile(
+			filepath.Join("..", adapter, "testdata", "command_groups.golden"),
+		)
+		require.NoError(t, readErr)
+		require.Equal(t, string(want), string(got), adapter)
+	}
+}
+
+func TestCommandGroupDeclarationOrder(t *testing.T) {
+	root := &cobralib.Command{Use: "app"}
+	root.AddGroup(
+		&cobralib.Group{ID: "account", Title: "Account"},
+		&cobralib.Group{ID: "agents", Title: "Agents"},
+	)
+	root.AddCommand(
+		&cobralib.Command{
+			Use:     "alpha",
+			GroupID: "agents",
+			Run:     func(*cobralib.Command, []string) {},
+		},
+		&cobralib.Command{
+			Use:     "login",
+			GroupID: "account",
+			Run:     func(*cobralib.Command, []string) {},
+		},
+	)
+	sections := cobracli.Sections(root)
+	require.Equal(t, "Account", sections[1].Title)
+	require.Equal(t, "Agents", sections[2].Title)
+}
+
+func TestCommandGroupsAliases(t *testing.T) {
+	root := &cobralib.Command{Use: "app"}
+	run := &cobralib.Command{Use: "run", Run: func(*cobralib.Command, []string) {}}
+	alias := &cobralib.Command{Use: "publish", Run: func(*cobralib.Command, []string) {}}
+	cobracli.ExtendCommand(run, cobracli.CommandExtra{Group: "Tools"})
+	cobracli.ExtendCommand(alias, cobracli.CommandExtra{Alias: "release", Group: "Tools/0"})
+	root.AddCommand(
+		run,
+		alias,
+		&cobralib.Command{Use: "version", Run: func(*cobralib.Command, []string) {}},
+	)
+	for _, tt := range []struct {
+		name           string
+		opts           []cobracli.SectionsOption
+		inline, hidden bool
+	}{
+		{name: "separate"},
+		{name: "inline", opts: []cobracli.SectionsOption{cobracli.WithInlineCommandAliases()}, inline: true},
+		{name: "hidden", opts: []cobracli.SectionsOption{cobracli.WithInlineCommandAliases(), cobracli.WithHideCommandAliases()}, hidden: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sections := cobracli.SectionsWithOptions(tt.opts...)(root)
+			content := []help.Content{help.CommandGroup{{Name: "run"}}}
+			if tt.inline {
+				content = append(
+					[]help.Content{
+						help.CommandGroup{{Name: "publish", Desc: "Alias for `release`"}},
+					},
+					content...)
+			}
+			want := []help.Section{
+				{Title: "Tools", Content: content},
+				{
+					Title:   "Additional Commands",
+					Content: []help.Content{help.CommandGroup{{Name: "version"}}},
+				},
+			}
+			if !tt.inline && !tt.hidden {
+				want = append(
+					want,
+					help.Section{
+						Title: "Aliases",
+						Content: []help.Content{
+							help.AliasGroup{{Name: "publish", Target: "release"}},
+						},
+					},
+				)
+			}
+			require.Equal(t, want, sections[1:])
 		})
 	}
 }

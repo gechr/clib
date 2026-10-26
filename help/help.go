@@ -2,7 +2,6 @@ package help
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -591,28 +590,10 @@ func buildFlatFlagSections(
 func buildGroupedFlagSections(
 	flags []ClassifiedFlag, keepOrder, separateGlobal bool, localTitle, globalTitle string,
 ) []Section {
-	type subGroup struct {
-		key     string
-		order   int  // parsed numeric subkey (0 when non-numeric; see numeric)
-		numeric bool // true when the subkey parsed as an integer
-		flags   FlagGroup
-	}
-	sectionGroups := make(map[string][]subGroup)
+	sectionGroups := make(map[string][]subGroup[Flag])
 	var sectionOrder []string
 	var ungrouped []ClassifiedFlag
-	var globalRoleGroups []subGroup
-	addSubGroup := func(subs []subGroup, subKey string, flag Flag) []subGroup {
-		for i := range subs {
-			if subs[i].key == subKey {
-				subs[i].flags = append(subs[i].flags, flag)
-				return subs
-			}
-		}
-		order, err := strconv.Atoi(subKey)
-		return append(subs, subGroup{
-			key: subKey, order: order, numeric: err == nil, flags: FlagGroup{flag},
-		})
-	}
+	var globalRoleGroups []subGroup[Flag]
 
 	for i := range flags {
 		f := &flags[i]
@@ -635,29 +616,8 @@ func buildGroupedFlagSections(
 		slices.Sort(sectionOrder)
 	}
 
-	// A subkey's sign anchors its subgroup above (>= 0) or below (< 0) the
-	// ungrouped flags. Numeric subkeys then sort by their value ascending, so
-	// a consumer can order and blank-line-separate subgroups explicitly -
-	// independent of struct field order - and float a low-priority flag to
-	// the foot of a section without a heading. Non-numeric subkeys are left
-	// in first-seen order (the stable sort only reorders a numeric pair).
-	splitBySign := func(subs []subGroup) ([]Content, []Content) {
-		ordered := slices.Clone(subs)
-		slices.SortStableFunc(ordered, func(a, b subGroup) int {
-			if a.numeric && b.numeric {
-				return a.order - b.order
-			}
-			return 0
-		})
-		var topC, bottomC []Content
-		for _, sg := range ordered {
-			if sg.order < 0 {
-				bottomC = append(bottomC, sg.flags)
-			} else {
-				topC = append(topC, sg.flags)
-			}
-		}
-		return topC, bottomC
+	splitBySign := func(subs []subGroup[Flag]) ([]Content, []Content) {
+		return splitSubGroups(subs, func(entries []Flag) Content { return FlagGroup(entries) })
 	}
 	top := map[string][]Content{}
 	bottom := map[string][]Content{}

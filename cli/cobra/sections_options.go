@@ -50,8 +50,7 @@ func WithInlineCommandAliases() SectionsOption {
 	return func(c *sectionsConfig) { c.inlineCommandAliases = true }
 }
 
-// WithKeepGroupOrder preserves first-seen order of grouped flag sections
-// instead of sorting them alphabetically. This is the default.
+// WithKeepGroupOrder preserves native/first-seen command and flag group order (the default).
 func WithKeepGroupOrder() SectionsOption {
 	return func(c *sectionsConfig) {
 		c.keepGroupOrder = true
@@ -88,7 +87,7 @@ func WithShowInheritedFlagsOnSubcommands() SectionsOption {
 	}
 }
 
-// WithSortedGroupOrder sorts grouped flag sections alphabetically.
+// WithSortedGroupOrder sorts command and flag sections alphabetically.
 func WithSortedGroupOrder() SectionsOption {
 	return func(c *sectionsConfig) {
 		c.keepGroupOrder = false

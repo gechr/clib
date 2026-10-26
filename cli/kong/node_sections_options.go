@@ -4,6 +4,8 @@ package kong
 type NodeSectionsOption func(*nodeSectionsConfig)
 
 type nodeSectionsConfig struct {
+	keepGroupOrder       bool
+	sortGroupOrder       bool
 	hideCommandAliases   bool
 	inlineCommandAliases bool
 	hideArguments        bool
@@ -67,4 +69,14 @@ func WithHideArguments() NodeSectionsOption {
 // clib tags (e.g. terse, help).
 func WithArguments(cli any) NodeSectionsOption {
 	return func(c *nodeSectionsConfig) { c.argsCLI = cli }
+}
+
+// WithKeepGroupOrder preserves native/first-seen command and flag group order.
+func WithKeepGroupOrder() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.keepGroupOrder = true; c.sortGroupOrder = false }
+}
+
+// WithSortedGroupOrder sorts command and flag sections alphabetically.
+func WithSortedGroupOrder() NodeSectionsOption {
+	return func(c *nodeSectionsConfig) { c.keepGroupOrder = false; c.sortGroupOrder = true }
 }

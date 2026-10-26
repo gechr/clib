@@ -160,6 +160,7 @@ func flagExtrasFromMetadata(cmd *clilib.Command) map[flagKey]FlagExtra {
 // CommandExtra holds clib-specific metadata for a urfave Command.
 type CommandExtra struct {
 	Alias    string // command invoked by this alias command
+	Group    string // help section or section/subkey; /subkey inherits the native category
 	PathArgs bool   // enable file completion for positional args
 }
 

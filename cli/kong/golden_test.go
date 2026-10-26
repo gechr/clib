@@ -171,16 +171,40 @@ func parseGoldenForHelp(cli any, args []string, opts ...konglib.Option) *konglib
 	return captured
 }
 
+type commandGroupsCLI struct {
+	Alpha   struct{} `help:"Start alpha on a model"                clib:"group=/0"      cmd:""          group:"agents"`
+	Bravo   struct{} `help:"Start bravo inside a sandbox"          clib:"group=/0"      cmd:""          group:"agents"`
+	Charlie struct{} `help:"Start charlie on a model"              clib:"group=/0"      cmd:""          group:"agents"`
+	Run     struct{} `help:"Run any tool with the shared settings" clib:"group=/-1"     cmd:""          group:"agents"`
+	Login   struct{} `help:"Sign in"                               clib:"group=Account" cmd:""          group:"agents"`
+	Logout  struct{} `help:"Forget the stored key"                 cmd:""               group:"account"`
+	Hidden  struct{} `hidden:""                                    clib:"group=Hidden"  cmd:""`
+}
+
+func commandGroupsContext() *konglib.Context {
+	return parseGoldenForHelp(&commandGroupsCLI{}, []string{"--help"}, konglib.Name("app"),
+		konglib.Groups{"agents": "Agents", "account": "Account"})
+}
+
+func sectionsCommandGroups() []help.Section {
+	sections, err := kong.NodeSections(commandGroupsContext())
+	if err != nil {
+		panic(err)
+	}
+	return sections
+}
+
 func TestGolden(t *testing.T) {
 	r := help.NewRenderer(theme.Dark())
 
 	scenarios := map[string][]help.Section{
-		"aliases":     sectionsAliases(),
-		"basic":       sectionsBasic(),
-		"grouped":     sectionsGrouped(),
-		"description": sectionsDescription(),
-		"login":       sectionsLogin(),
-		"negatable":   sectionsNegatable(),
+		"command_groups": sectionsCommandGroups(),
+		"aliases":        sectionsAliases(),
+		"basic":          sectionsBasic(),
+		"grouped":        sectionsGrouped(),
+		"description":    sectionsDescription(),
+		"login":          sectionsLogin(),
+		"negatable":      sectionsNegatable(),
 	}
 
 	for name, sections := range scenarios {
@@ -199,6 +223,68 @@ func TestGolden(t *testing.T) {
 			want, err := os.ReadFile(goldenFile)
 			require.NoError(t, err, "golden file missing; run with -update to create")
 			require.Equal(t, string(want), got)
+		})
+	}
+}
+
+func TestCommandGroupOrder(t *testing.T) {
+	ctx := commandGroupsContext()
+	sections, err := kong.NodeSections(ctx, kong.WithSortedGroupOrder())
+	require.NoError(t, err)
+	require.Equal(t, "Account", sections[1].Title)
+	require.Equal(t, "Agents", sections[2].Title)
+	sections, err = kong.NodeSections(ctx, kong.WithSortedGroupOrder(), kong.WithKeepGroupOrder())
+	require.NoError(t, err)
+	require.Equal(t, "Agents", sections[1].Title)
+	require.Equal(t, "Account", sections[2].Title)
+}
+
+func TestCommandGroupsAliases(t *testing.T) {
+	type CLI struct {
+		Run     struct{} `cmd:""                        group:"Tools"`
+		Publish struct{} `clib:"alias=release,group=/0" cmd:""        group:"Tools"`
+		Version struct{} `cmd:""`
+	}
+	ctx := parseGoldenForHelp(&CLI{}, []string{"--help"}, konglib.Name("app"))
+	for _, tt := range []struct {
+		name           string
+		opts           []kong.NodeSectionsOption
+		inline, hidden bool
+	}{
+		{name: "separate"},
+		{name: "inline", opts: []kong.NodeSectionsOption{kong.WithInlineCommandAliases()}, inline: true},
+		{name: "hidden", opts: []kong.NodeSectionsOption{kong.WithInlineCommandAliases(), kong.WithHideCommandAliases()}, hidden: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sections, err := kong.NodeSections(ctx, tt.opts...)
+			require.NoError(t, err)
+			content := []help.Content{help.CommandGroup{{Name: "run"}}}
+			if tt.inline {
+				content = append(
+					[]help.Content{
+						help.CommandGroup{{Name: "publish", Desc: "Alias for `release`"}},
+					},
+					content...)
+			}
+			want := []help.Section{
+				{Title: "Tools", Content: content},
+				{
+					Title:   "Additional Commands",
+					Content: []help.Content{help.CommandGroup{{Name: "version"}}},
+				},
+			}
+			if !tt.inline && !tt.hidden {
+				want = append(
+					want,
+					help.Section{
+						Title: "Aliases",
+						Content: []help.Content{
+							help.AliasGroup{{Name: "publish", Target: "release"}},
+						},
+					},
+				)
+			}
+			require.Equal(t, want, sections[1:])
 		})
 	}
 }

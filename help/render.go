@@ -161,6 +161,10 @@ func (r *Renderer) renderSection(
 		return err
 	}
 
+	sectionCmdCol := cmdDescCol
+	if sectionCmdCol == 0 {
+		sectionCmdCol = r.sectionCmdDescCol(sec, contentInd)
+	}
 	hasShort := sectionHasShort(sec)
 	rendered := false
 	for _, content := range sec.Content {
@@ -172,12 +176,17 @@ func (r *Renderer) renderSection(
 				return err
 			}
 		}
+		contentCmdCol := cmdDescCol
+		switch content.(type) {
+		case CommandGroup, AliasGroup:
+			contentCmdCol = sectionCmdCol
+		}
 		if err := r.renderContent(
 			w,
 			content,
 			hasShort,
 			descCol,
-			cmdDescCol,
+			contentCmdCol,
 			contentInd,
 			depth,
 		); err != nil {
@@ -1655,30 +1664,47 @@ func (r *Renderer) computeDescCol(sections []Section) int {
 // Commands and Aliases sections form one consistent vertical column. Without
 // aliases, command sections retain their configured per-section/global mode.
 func (r *Renderer) computeCmdDescCol(sections []Section) int {
-	aliasStyle := r.Theme.HelpAlias
-	if aliasStyle == nil {
-		aliasStyle = r.Theme.HelpSubcommand
-	}
 	hasAliases := false
 	col := 0
 	walkContent(sections, func(content Content, depth int, _ *Section) {
-		ind := nestIndent*depth + indent
-		switch c := content.(type) {
-		case CommandGroup:
-			for _, cmd := range c {
-				col = max(col, ind+visibleWidth(r.Theme.HelpSubcommand.Render(cmd.Name)))
-			}
-		case AliasGroup:
-			hasAliases = hasAliases || len(c) > 0
-			for _, alias := range c {
-				col = max(col, ind+visibleWidth(aliasStyle.Render(alias.Name)))
-			}
+		if aliases, ok := content.(AliasGroup); ok && len(aliases) > 0 {
+			hasAliases = true
+		}
+		if width := r.commandWidth(content); width > 0 {
+			col = max(col, nestIndent*depth+indent+width)
 		}
 	})
 	if r.cmdAlignMode != AlignModeGlobal && !hasAliases {
 		return 0
 	}
 	return col + r.cmdPad
+}
+
+func (r *Renderer) sectionCmdDescCol(sec *Section, ind int) int {
+	col := 0
+	for _, content := range sec.Content {
+		col = max(col, ind+r.commandWidth(content))
+	}
+	return col + r.cmdPad
+}
+
+func (r *Renderer) commandWidth(content Content) int {
+	width := 0
+	switch c := content.(type) {
+	case CommandGroup:
+		for _, command := range c {
+			width = max(width, visibleWidth(r.Theme.HelpSubcommand.Render(command.Name)))
+		}
+	case AliasGroup:
+		style := r.Theme.HelpAlias
+		if style == nil {
+			style = r.Theme.HelpSubcommand
+		}
+		for _, alias := range c {
+			width = max(width, visibleWidth(style.Render(alias.Name)))
+		}
+	}
+	return width
 }
 
 // sectionHasShort reports whether any FlagGroup in a section contains a flag
