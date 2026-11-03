@@ -62,6 +62,9 @@ func HandleAction(a Action, gen *Generator, handler Handler, quiet bool) (bool, 
 // ApplyMeta populates spec fields from a FlagMeta's completion-related
 // annotations (Complete, Extension, ValueHint, Terse, Enum).
 func ApplyMeta(spec *Spec, meta *FlagMeta) {
+	if meta.Repeatable {
+		spec.Repeatable = true
+	}
 	if meta.IsCSV {
 		spec.CommaList = true
 	}
@@ -113,6 +116,7 @@ type Spec struct {
 	LongFlag   string      // e.g. "author" (no dashes)
 	Order      Order       // completion ordering mode
 	Persistent bool        // true if the flag remains available on descendant subcommands
+	Repeatable bool        // keep offering the flag after earlier occurrences
 	ShortFlag  string      // e.g. "a" (no dash)
 	Terse      string      // very short description for tab completion
 	ValueDescs []ValueDesc // static values with descriptions (takes precedence over Values)

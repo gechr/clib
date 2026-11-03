@@ -153,6 +153,20 @@ k := konglib.Must(&cli,
 )
 ```
 
+Kong's `lastwins:"group"` flags remain available for repeated completion,
+including their short and negated forms. Kong handles which group member wins
+and resets overridden values. Use `xorprefix:"prefix"` on embedded structs to
+keep otherwise identical group names independent.
+
+Custom boolean fields implementing `konglib.BoolMapperValue` are detected
+through Kong's native mapper registry, including pointer fields and
+`negatable:""` flags. Kong handles boolean parsing and negation; clib supplies
+the help display and completion variants.
+
+`NodeSections` and `Subcommands` use Kong's built model, so propagated
+`envprefix` tags and `${name=}` empty interpolation fallbacks work natively.
+`Reflect` reads bare struct tags without evaluating Kong variables or options.
+
 #### [Cobra](https://github.com/spf13/cobra)
 
 Use `Extend` to attach `clib` metadata to pflag flags:

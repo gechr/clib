@@ -3,6 +3,7 @@ package kong
 import (
 	"reflect"
 
+	konglib "github.com/alecthomas/kong"
 	"github.com/gechr/clib/complete"
 	placeholders "github.com/gechr/clib/internal/placeholder"
 	"github.com/gechr/clib/internal/tag"
@@ -70,6 +71,7 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 
 	csvType := reflect.TypeFor[CSVFlag]()
 	completionFlagsType := reflect.TypeFor[CompletionFlags]()
+	registry := konglib.NewRegistry().RegisterDefaults()
 
 	for field := range t.Fields() {
 		if !field.IsExported() {
@@ -96,10 +98,16 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 			Name:        field.Tag.Get(tagName),
 			Origin:      field.Name,
 			Persistent:  true,
+			Repeatable:  field.Tag.Get(tagLastWins) != "",
 			Placeholder: field.Tag.Get(tagPlaceholder),
 			Short:       field.Tag.Get(tagShort),
 		}
 		isCounter := field.Tag.Get(tagType) == kongTypeCounter
+		value := konglib.Value{
+			Target: reflect.New(field.Type).Elem(),
+			Mapper: registry.ForNamedType(field.Tag.Get(tagType), field.Type),
+		}
+		isBool := value.IsBool()
 
 		// clib-specific metadata: clib:"terse='...',complete='...',group='...'"
 		if err := meta.ParseClibTag(field.Tag.Get(tagClib)); err != nil {
@@ -112,7 +120,7 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if !meta.PlaceholderOverride && meta.Placeholder != "" {
 			meta.PlaceholderOverride = true
 		}
-		if !isCounter {
+		if !isCounter && !isBool {
 			if meta.Placeholder == "" {
 				meta.Placeholder = kongTypePlaceholder(field.Tag.Get(tagType))
 			}
@@ -166,7 +174,7 @@ func inspectStruct(t reflect.Type) ([]complete.FlagMeta, error) {
 		if fieldType.Kind() == reflect.Pointer {
 			fieldType = fieldType.Elem()
 		}
-		meta.HasArg = fieldType.Kind() != reflect.Bool && !isCounter
+		meta.HasArg = !isBool && !isCounter
 		meta.IsSlice = fieldType.Kind() == reflect.Slice
 
 		// Determine IsCSV.

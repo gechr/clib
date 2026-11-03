@@ -226,6 +226,7 @@ func flagMeta(flag *konglib.Flag) complete.FlagMeta {
 		IsCSV:      isCSVFlag(flag),
 		IsSlice:    flag.IsSlice() || flag.IsCumulative(),
 		Persistent: true,
+		Repeatable: len(flag.LastWins) > 0,
 	}
 	if flag.Short != 0 {
 		meta.Short = string(flag.Short)

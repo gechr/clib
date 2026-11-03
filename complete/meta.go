@@ -45,6 +45,7 @@ type FlagMeta struct {
 	PlaceholderOverride bool     // true if placeholder was set via clib tag
 	PositiveDesc        string   // explicit description for positive variant (negatable flags)
 	PositiveOnly        bool     // advertise only the positive variant in help
+	Repeatable          bool     // keep offering the flag after earlier occurrences
 	Short               string   // short flag letter
 	Terse               string   // very short description for completions
 	ValueHint           string   // value type hint for completion (file, dir, command, user, host, url, email)

@@ -582,6 +582,9 @@ func zshFuncName(name string) string {
 }
 
 func zshExclusion(spec Spec) string {
+	if spec.Repeatable {
+		return "*"
+	}
 	if spec.ShortFlag != "" && spec.LongFlag != "" {
 		return fmt.Sprintf("(-%s --%s)", spec.ShortFlag, spec.LongFlag)
 	}

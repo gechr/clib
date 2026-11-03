@@ -10,6 +10,7 @@ const (
 	tagEnum        = "enum"
 	tagHelp        = "help"
 	tagHidden      = "hidden"
+	tagLastWins    = "lastwins"
 	tagName        = "name"
 	tagNegatable   = "negatable"
 	tagOptional    = "optional"
